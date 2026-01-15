@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ferro — Connection Error</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 2rem;
+      text-align: center;
+    }
+    .icon { font-size: 4rem; margin-bottom: 1rem; }
+    h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+    p { opacity: 0.7; max-width: 400px; }
+    .reason {
+      margin-top: 1rem;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-family: monospace;
+    }
+    @media (prefers-color-scheme: light) {
+      body { background: #f8fafc; color: #1e293b; }
+      .reason { background: #fee2e2; color: #991b1b; }
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #0f172a; color: #f1f5f9; }
+      .reason { background: #7f1d1d; color: #fecaca; }
+    }
+  </style>
+</head>
+<body>
+  <div class="icon">🔌</div>
+  <h1>Can't reach this page</h1>
+  <p>Ferro couldn't load the requested page.</p>
+  <div class="reason">${reason}</div>
+</body>
+</html>

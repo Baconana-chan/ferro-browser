@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ferro — New Tab</title>
+    <link rel="stylesheet" href="resource:///newtab.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="hero">
+        <div class="logo">
+          <span class="logo-icon">⚡</span>
+          <h1>Ferro</h1>
+        </div>
+        <p class="tagline">Lightweight. Fast. Minimal.</p>
+      </div>
+      
+      <form class="search-box" action="https://duckduckgo.com/">
+        <div class="search-wrapper">
+          <span class="search-icon">🔍</span>
+          <input 
+            type="text" 
+            name="q" 
+            placeholder="Search with DuckDuckGo..." 
+            autocomplete="off"
+            autofocus 
+          />
+          <button type="submit" aria-label="Search">
+            <span>→</span>
+          </button>
+        </div>
+      </form>
+
+      <div class="shortcuts">
+        <a href="https://github.com/nicengi/niceng" class="shortcut" title="GitHub">
+          <span class="shortcut-icon">⌨</span>
+          <span class="shortcut-label">GitHub</span>
+        </a>
+        <a href="https://duckduckgo.com" class="shortcut" title="DuckDuckGo">
+          <span class="shortcut-icon">🦆</span>
+          <span class="shortcut-label">DDG</span>
+        </a>
+        <a href="https://servo.org" class="shortcut" title="Servo Engine">
+          <span class="shortcut-icon">⚙</span>
+          <span class="shortcut-label">Servo</span>
+        </a>
+        <a href="servo:preferences" class="shortcut" title="Preferences">
+          <span class="shortcut-icon">⚙</span>
+          <span class="shortcut-label">Settings</span>
+        </a>
+      </div>
+    </div>
+
+    <footer>
+      <p>Powered by <a href="https://servo.org">Servo</a> engine</p>
+    </footer>
+  </body>
+</html>
