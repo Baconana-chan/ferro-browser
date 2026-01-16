@@ -9,7 +9,7 @@ use constellation_traits::{LoadData, NavigationHistoryBehavior};
 use embedder_traits::{
     ContextMenuAction, ContextMenuElementInformation, ContextMenuElementInformationFlags,
     ContextMenuItem, ContextMenuRequest, EditingActionEvent, EmbedderControlId,
-    EmbedderControlRequest, EmbedderControlResponse, EmbedderMsg,
+    EmbedderControlRequest, EmbedderControlResponse, EmbedderMsg, Theme,
 };
 use euclid::{Point2D, Rect, Size2D};
 use ipc_channel::router::ROUTER;
@@ -19,6 +19,9 @@ use rustc_hash::FxHashMap;
 use script_bindings::codegen::GenericBindings::HTMLAnchorElementBinding::HTMLAnchorElementMethods;
 use script_bindings::codegen::GenericBindings::HTMLImageElementBinding::HTMLImageElementMethods;
 use script_bindings::codegen::GenericBindings::HistoryBinding::HistoryMethods;
+use script_bindings::codegen::GenericBindings::DocumentBinding::{
+    DocumentMethods, ElementCreationOptions,
+};
 use script_bindings::codegen::GenericBindings::WindowBinding::WindowMethods;
 use script_bindings::inheritance::Castable;
 use script_bindings::root::{Dom, DomRoot};
@@ -28,8 +31,13 @@ use webrender_api::units::{DeviceIntRect, DevicePoint};
 
 use crate::dom::activation::Activatable;
 use crate::dom::bindings::cell::DomRefCell;
+use crate::dom::bindings::codegen::Bindings::ElementBinding::ElementMethods;
+use crate::dom::bindings::codegen::Bindings::NodeBinding::NodeMethods;
 use crate::dom::bindings::refcounted::Trusted;
 use crate::dom::bindings::trace::NoTrace;
+use crate::dom::bindings::str::DOMString;
+use crate::dom::bindings::codegen::UnionTypes::StringOrElementCreationOptions;
+use crate::dom::bindings::codegen::UnionTypes::TrustedHTMLOrTrustedScriptOrTrustedScriptURLOrString as TrustedTypeOrString;
 use crate::dom::inputevent::HitTestResult;
 use crate::dom::node::{Node, NodeTraits, ShadowIncluding};
 use crate::dom::textcontrol::TextControlElement;
@@ -38,6 +46,22 @@ use crate::dom::types::{
     HTMLTextAreaElement, Window,
 };
 use crate::messaging::MainThreadScriptMsg;
+
+const FORCED_DARK_STYLE_ID: &str = "ferro-forced-dark-mode";
+const FORCED_DARK_CSS: &str = r#"
+:root {
+    color-scheme: dark;
+}
+
+html {
+    filter: invert(1) hue-rotate(180deg);
+    background: #111 !important;
+}
+
+img, video, canvas, svg, iframe, picture {
+    filter: invert(1) hue-rotate(180deg) !important;
+}
+"#;
 
 #[derive(JSTraceable, MallocSizeOf)]
 pub(crate) enum ControlElement {
@@ -342,6 +366,12 @@ impl DocumentEmbedderControls {
             ]);
         }
 
+        let window = hit_test_result.node.owner_window();
+        let document = window.Document();
+        let forced_dark_enabled = document
+            .GetElementById(DOMString::from(FORCED_DARK_STYLE_ID))
+            .is_some();
+
         items.extend(vec![
             ContextMenuItem::Item {
                 label: "Back".into(),
@@ -357,6 +387,17 @@ impl DocumentEmbedderControls {
                 label: "Reload".into(),
                 action: ContextMenuAction::Reload,
                 enabled: true,
+            },
+            ContextMenuItem::Separator,
+            ContextMenuItem::Item {
+                label: "Force Dark Mode".into(),
+                action: ContextMenuAction::ForceDarkMode,
+                enabled: !forced_dark_enabled,
+            },
+            ContextMenuItem::Item {
+                label: "Force Light Mode".into(),
+                action: ContextMenuAction::ForceLightMode,
+                enabled: forced_dark_enabled,
             },
         ]);
 
@@ -507,6 +548,66 @@ impl ContextMenuNodes {
                     text_input_element.select_all();
                 }
             },
+            ContextMenuAction::ForceDarkMode => {
+                apply_forced_dark_mode(&window, true, can_gc);
+            },
+            ContextMenuAction::ForceLightMode => {
+                apply_forced_dark_mode(&window, false, can_gc);
+            },
+        }
+    }
+}
+
+fn apply_forced_dark_mode(window: &Window, enabled: bool, can_gc: CanGc) {
+    let document = window.Document();
+
+    if enabled {
+        window.set_theme(Theme::Dark);
+
+        if document
+            .GetElementById(DOMString::from(FORCED_DARK_STYLE_ID))
+            .is_some()
+        {
+            return;
+        }
+
+        let style = match document.CreateElement(
+            DOMString::from("style"),
+            StringOrElementCreationOptions::ElementCreationOptions(ElementCreationOptions {
+                is: None,
+            }),
+            can_gc,
+        ) {
+            Ok(style) => style,
+            Err(_) => return,
+        };
+
+        let _ = style.SetAttribute(
+            DOMString::from("id"),
+            TrustedTypeOrString::String(DOMString::from(FORCED_DARK_STYLE_ID)),
+            can_gc,
+        );
+
+        let _ = style
+            .upcast::<Node>()
+            .SetTextContent(Some(DOMString::from(FORCED_DARK_CSS)), can_gc);
+
+        if let Some(head) = document.GetHead() {
+            let _ = head.upcast::<Node>().AppendChild(style.upcast(), can_gc);
+        } else if let Some(body) = document.GetBody() {
+            let _ = body.upcast::<Node>().AppendChild(style.upcast(), can_gc);
+        } else {
+            let _ = document.upcast::<Node>().AppendChild(style.upcast(), can_gc);
+        }
+    } else {
+        window.set_theme(Theme::Light);
+
+        if let Some(style) =
+            document.GetElementById(DOMString::from(FORCED_DARK_STYLE_ID))
+        {
+            if let Some(parent) = style.upcast::<Node>().GetParentNode() {
+                let _ = parent.RemoveChild(style.upcast::<Node>(), can_gc);
+            }
         }
     }
 }

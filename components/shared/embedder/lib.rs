@@ -721,6 +721,9 @@ pub enum ContextMenuAction {
     Copy,
     Paste,
     SelectAll,
+
+    ForceDarkMode,
+    ForceLightMode,
 }
 
 bitflags! {

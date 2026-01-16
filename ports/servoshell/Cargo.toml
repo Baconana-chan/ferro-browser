@@ -91,8 +91,8 @@ euclid = { workspace = true }
 hilog = "0.2.2"
 # force inprocess until we add multi-process support for ohos
 ipc-channel = { workspace = true, features = ["force-inprocess"] }
-napi-derive-ohos = "1.1.4"
-napi-ohos = "1.1.4"
+napi-derive-ohos = "1.1.5"
+napi-ohos = "1.1.5"
 ohos-abilitykit-sys = { version = "0.1.2", features = ["api-14"] }
 ohos-deviceinfo = "0.1.0"
 ohos-ime = "0.4.0"
@@ -108,10 +108,10 @@ surfman = { workspace = true, features = ["sm-angle-default"] }
 
 [target.'cfg(not(any(target_os = "android", target_env = "ohos")))'.dependencies]
 dirs = "6.0"
-egui = { version = "0.33.2", features = ["accesskit"] }
+egui = { version = "0.33.3", features = ["accesskit"] }
 egui-file-dialog = "0.12.0"
-egui-winit = { version = "0.33.2", default-features = false, features = ["accesskit", "clipboard", "wayland"] }
-egui_glow = { version = "0.33.2", features = ["winit"] }
+egui-winit = { version = "0.33.3", default-features = false, features = ["accesskit", "clipboard", "wayland"] }
+egui_glow = { version = "0.33.3", features = ["winit"] }
 gilrs = "0.11.0"
 glow = { workspace = true }
 headers = { workspace = true }

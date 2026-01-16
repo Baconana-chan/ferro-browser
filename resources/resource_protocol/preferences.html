@@ -190,6 +190,56 @@
       </div>
       
       <div class="section">
+        <h2>Data Saver</h2>
+        
+        <div class="option">
+          <input type="checkbox" class="bool-preference" id="click-to-load">
+          <div class="option-text">
+            <label for="click-to-load">Click-to-load for large images</label>
+            <p class="hint">Show placeholder for large images until you click to load them</p>
+          </div>
+        </div>
+        
+        <div class="option" id="threshold-option">
+          <div class="option-text" style="width: 100%;">
+            <label for="click-to-load-threshold">Size threshold (KB)</label>
+            <p class="hint">Images larger than this will require a click to load</p>
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; align-items: center;">
+              <input type="range" id="click-to-load-threshold" class="int-preference" min="50" max="5000" step="50" style="flex: 1;">
+              <span id="threshold-value" style="min-width: 60px; text-align: right; font-family: monospace;">500 KB</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="option">
+          <div class="option-text" style="width: 100%;">
+            <label for="click-to-load-whitelist">Whitelist domains</label>
+            <p class="hint">Comma-separated list of domains where click-to-load is disabled</p>
+            <input type="text" class="string-preference" id="click-to-load-whitelist" 
+                   placeholder="example.com, trusted-site.org" 
+                   style="width: 100%; margin-top: 0.5rem; padding: 0.625rem 0.75rem; border: 1px solid rgba(128,128,128,0.3); border-radius: var(--radius); font-size: 0.875rem;">
+          </div>
+        </div>
+      </div>
+      
+      <div class="section">
+        <h2>Performance</h2>
+        
+        <div class="option">
+          <div class="option-text" style="width: 100%;">
+            <label for="animation-mode">Animated image behavior</label>
+            <p class="hint">Control how GIFs and animated images are displayed</p>
+            <select class="string-preference" id="animation-mode" 
+                    style="width: 100%; margin-top: 0.5rem; padding: 0.625rem 0.75rem; border: 1px solid rgba(128,128,128,0.3); border-radius: var(--radius); font-size: 0.875rem; cursor: pointer;">
+              <option value="">Normal (animate continuously)</option>
+              <option value="once">Play once (stop after first loop)</option>
+              <option value="none">Static (show first frame only)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      <div class="section">
         <h2>Identity</h2>
         
         <div class="user-agent-field">
@@ -214,6 +264,10 @@
           "http-cache": ["network_http_cache_disabled"],
           "more-experimental": ["dom_abort_controller_enabled", "dom_indexeddb_enabled"],
           "user-agent": ["user_agent"],
+          "click-to-load": ["media_click_to_load_enabled"],
+          "click-to-load-threshold": ["media_click_to_load_threshold_kb"],
+          "click-to-load-whitelist": ["media_click_to_load_whitelist"],
+          "animation-mode": ["media_animation_mode"],
       };
 
       const userAgents = {
@@ -239,7 +293,15 @@
                   for (const boolPref of relatedPrefs) {
                       navigator.servo.setBoolPreference(boolPref, ev.target.checked);
                   }
+                  // Update threshold option visibility
+                  if (ev.target.id === "click-to-load") {
+                      updateThresholdVisibility(ev.target.checked);
+                  }
               };
+              // Set initial visibility for threshold option
+              if (pref.id === "click-to-load") {
+                  updateThresholdVisibility(pref.checked);
+              }
           }
 
           const stringPrefInputs = document.getElementsByClassName("string-preference");
@@ -247,6 +309,38 @@
               const prefValue = navigator.servo.getStringPreference(prefs[pref.id][0]);
               pref.value = prefValue;
               pref.oninput = (ev) => updateStringPreference(ev.target);
+          }
+
+          // Handle integer preferences (slider)
+          const intPrefInputs = document.getElementsByClassName("int-preference");
+          for (const pref of intPrefInputs) {
+              const prefValue = navigator.servo.getIntPreference(prefs[pref.id][0]);
+              pref.value = prefValue;
+              updateThresholdDisplay(prefValue);
+              pref.oninput = (ev) => {
+                  const value = parseInt(ev.target.value);
+                  updateThresholdDisplay(value);
+                  navigator.servo.setIntPreference(prefs[pref.id][0], value);
+              };
+          }
+      }
+
+      function updateThresholdVisibility(enabled) {
+          const thresholdOption = document.getElementById("threshold-option");
+          if (thresholdOption) {
+              thresholdOption.style.opacity = enabled ? "1" : "0.5";
+              thresholdOption.style.pointerEvents = enabled ? "auto" : "none";
+          }
+      }
+
+      function updateThresholdDisplay(value) {
+          const display = document.getElementById("threshold-value");
+          if (display) {
+              if (value >= 1000) {
+                  display.textContent = (value / 1000).toFixed(1) + " MB";
+              } else {
+                  display.textContent = value + " KB";
+              }
           }
       }
 

@@ -8,6 +8,7 @@ use std::cell::{Cell, Ref, RefCell};
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::rc::Rc;
+use std::fs;
 
 use crossbeam_channel::{Receiver, Sender, unbounded};
 use euclid::Rect;
@@ -22,9 +23,11 @@ use servo::{
     WebDriverSenders, WebView, WebViewBuilder, WebViewDelegate, WebViewId, pref,
 };
 use url::Url;
+use serde_json;
 
 use crate::GamepadSupport;
 use crate::prefs::ServoShellPreferences;
+use crate::prefs::default_config_dir;
 use crate::webdriver::WebDriverEmbedderControls;
 use crate::window::{PlatformWindow, ServoShellWindow, ServoShellWindowId};
 
@@ -175,11 +178,40 @@ pub(crate) struct RunningAppState {
 
 impl Drop for RunningAppState {
     fn drop(&mut self) {
+        self.save_session();
         self.servo.deinit();
     }
 }
 
 impl RunningAppState {
+    fn save_session(&self) {
+        let Some(config_dir) = default_config_dir() else {
+            return;
+        };
+
+        let mut urls = Vec::new();
+        for window in self.windows.borrow().values() {
+            for (_, webview) in window.webview_collection.borrow().all_in_creation_order() {
+                if let Some(url) = webview.url() {
+                    urls.push(url.to_string());
+                }
+            }
+        }
+
+        if urls.is_empty() {
+            let _ = fs::remove_file(config_dir.join("session.json"));
+            return;
+        }
+
+        if fs::create_dir_all(&config_dir).is_err() {
+            return;
+        }
+
+        let Ok(contents) = serde_json::to_string_pretty(&urls) else {
+            return;
+        };
+        let _ = fs::write(config_dir.join("session.json"), contents);
+    }
     pub(crate) fn new(
         servo: Servo,
         servoshell_preferences: ServoShellPreferences,

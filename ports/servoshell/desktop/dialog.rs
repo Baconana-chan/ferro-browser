@@ -615,7 +615,7 @@ impl Dialog {
                         .show(ctx, |ui| {
                             Frame::popup(ui.style()).show(ui, |ui| {
                                 ui.set_min_width(MINIMUM_UI_ELEMENT_WIDTH);
-                                for item in context_menu.items() {
+                                for (index, item) in context_menu.items().iter().enumerate() {
                                     match item {
                                         ContextMenuItem::Item {
                                             label,
@@ -647,10 +647,12 @@ impl Dialog {
                                                         y: 0.0,
                                                     });
 
-                                            if ui.add(button).clicked() {
-                                                selected_action = Some(*action);
-                                                ui.close();
-                                            }
+                                            ui.push_id(index, |ui| {
+                                                if ui.add(button).clicked() {
+                                                    selected_action = Some(*action);
+                                                    ui.close();
+                                                }
+                                            });
                                         },
                                         ContextMenuItem::Separator => {
                                             ui.separator();

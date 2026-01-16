@@ -411,11 +411,16 @@ impl WebViewRenderer {
         let scroll_delta =
             DeviceVector2D::new(-wheel_event.delta.x as f32, -wheel_event.delta.y as f32);
 
-        // Use smooth scrolling for wheel events (Ferro Browser feature).
+        // Temporarily disable smooth scrolling due to performance issues.
         let scroll_point = wheel_event
             .point
             .as_device_point(self.device_pixels_per_page_pixel());
-        self.smooth_scroll_state.scroll_by(scroll_delta, scroll_point);
+        self.pending_scroll_zoom_events
+            .push(ScrollZoomEvent::Scroll(ScrollEvent {
+                scroll: Scroll::Delta(scroll_delta.into()),
+                point: scroll_point,
+                event_count: 1,
+            }));
     }
 
     fn send_touch_event(

@@ -346,7 +346,11 @@ pub fn create_http_client(tls_config: TlsConfig) -> ServoClient {
         .enable_http2()
         .wrap_connector(maybe_proxy_connector);
 
+    // Ferro Browser: Increase connection pool for faster parallel image/resource loading.
+    // Default hyper settings are too conservative for modern websites with many images.
     Client::builder(TokioExecutor {})
         .http1_title_case_headers(true)
+        .pool_max_idle_per_host(32) // Default is 1, increase for parallel downloads
+        .pool_idle_timeout(std::time::Duration::from_secs(90)) // Keep connections alive longer
         .build(connector)
 }

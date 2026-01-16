@@ -683,7 +683,11 @@ impl HTMLMediaElement {
     fn update_media_state(&self) {
         if self.is_potentially_playing() {
             if let Some(ref player) = *self.player.borrow() {
-                if let Err(err) = player.lock().unwrap().set_rate(self.playback_rate.get()) {
+                if let Err(err) = player
+                    .lock()
+                    .unwrap()
+                    .set_playback_rate(self.playback_rate.get())
+                {
                     warn!("Could not set the playback rate {:?}", err);
                 }
                 if let Err(err) = player.lock().unwrap().set_volume(self.volume.get()) {
@@ -2738,10 +2742,9 @@ impl HTMLMediaElement {
     fn seekable(&self) -> TimeRangesContainer {
         let mut seekable = TimeRangesContainer::default();
         if let Some(ref player) = *self.player.borrow() {
-            if let Ok(ranges) = player.lock().unwrap().seekable() {
-                for range in ranges {
-                    let _ = seekable.add(range.start, range.end);
-                }
+            let ranges = player.lock().unwrap().seekable();
+            for range in ranges {
+                let _ = seekable.add(range.start, range.end);
             }
         }
         seekable
@@ -3144,7 +3147,7 @@ impl HTMLMediaElementMethods<crate::DomTypeHolder> for HTMLMediaElement {
 
         if self.is_potentially_playing() {
             if let Some(ref player) = *self.player.borrow() {
-                if let Err(err) = player.lock().unwrap().set_rate(*value) {
+                if let Err(err) = player.lock().unwrap().set_playback_rate(*value) {
                     warn!("Could not set the playback rate {:?}", err);
                 }
             }
@@ -3226,10 +3229,9 @@ impl HTMLMediaElementMethods<crate::DomTypeHolder> for HTMLMediaElement {
     fn Buffered(&self, can_gc: CanGc) -> DomRoot<TimeRanges> {
         let mut buffered = TimeRangesContainer::default();
         if let Some(ref player) = *self.player.borrow() {
-            if let Ok(ranges) = player.lock().unwrap().buffered() {
-                for range in ranges {
-                    let _ = buffered.add(range.start, range.end);
-                }
+            let ranges = player.lock().unwrap().buffered();
+            for range in ranges {
+                let _ = buffered.add(range.start, range.end);
             }
         }
         TimeRanges::new(self.global().as_window(), buffered, can_gc)

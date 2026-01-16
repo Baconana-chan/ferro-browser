@@ -182,6 +182,18 @@ pub struct Preferences {
     pub gfx_texture_swizzling_enabled: bool,
     /// The amount of image keys we request per batch for the image cache.
     pub image_key_batch_size: i64,
+    /// Ferro Browser: Whether to require click to load large images/GIFs (data saver mode).
+    /// When enabled, images larger than the threshold will show a placeholder until clicked.
+    pub media_click_to_load_enabled: bool,
+    /// Ferro Browser: Size threshold in KB for click-to-load. Images larger than this
+    /// will require a click to load when media_click_to_load_enabled is true.
+    pub media_click_to_load_threshold_kb: i64,
+    /// Ferro Browser: Comma-separated list of domains where click-to-load is disabled.
+    /// Example: "example.com,trusted-site.org"
+    pub media_click_to_load_whitelist: String,
+    /// Ferro Browser: Control how animated images (GIF, APNG, WebP) are displayed.
+    /// Values: "normal" (default), "once" (play once), "none" (static first frame)
+    pub media_animation_mode: String,
     /// Whether or not the DOM inspector should show shadow roots of user-agent shadow trees
     pub inspector_show_servo_internal_shadow_roots: bool,
     pub js_asmjs_enabled: bool,
@@ -305,12 +317,12 @@ impl Preferences {
             dom_gamepad_enabled: true,
             dom_geolocation_enabled: false,
             dom_indexeddb_enabled: false,
-            dom_intersection_observer_enabled: false,
+            dom_intersection_observer_enabled: true,
             dom_microdata_testing_enabled: false,
             dom_uievent_which_enabled: true,
             dom_mutation_observer_enabled: true,
             dom_navigator_protocol_handlers_enabled: false,
-            dom_navigator_sendbeacon_enabled: false,
+            dom_navigator_sendbeacon_enabled: true,
             dom_notification_enabled: false,
             dom_parallel_css_parsing_enabled: true,
             dom_offscreen_canvas_enabled: false,
@@ -369,7 +381,15 @@ impl Preferences {
             gfx_text_antialiasing_enabled: true,
             gfx_subpixel_text_antialiasing_enabled: true,
             gfx_texture_swizzling_enabled: true,
-            image_key_batch_size: 10,
+            // Ferro Browser: Increase image key batch for faster image rendering.
+            image_key_batch_size: 32,
+            // Ferro Browser: Click-to-load for large images (data saver).
+            // Disabled by default - user opt-in feature.
+            media_click_to_load_enabled: false,
+            media_click_to_load_threshold_kb: 500, // 500 KB threshold
+            media_click_to_load_whitelist: String::new(), // Empty = no whitelist
+            // Ferro Browser: GIF/animation mode - "normal", "once", or "none"
+            media_animation_mode: String::new(), // Empty = "normal" (default behavior)
             inspector_show_servo_internal_shadow_roots: false,
             js_asmjs_enabled: true,
             js_asyncstack: false,
@@ -415,16 +435,16 @@ impl Preferences {
             largest_contentful_paint_enabled: false,
             layout_animations_test_enabled: false,
             layout_columns_enabled: false,
-            layout_container_queries_enabled: false,
+            layout_container_queries_enabled: true,
             layout_css_transition_behavior_enabled: true,
             layout_flexbox_enabled: true,
-            layout_grid_enabled: false,
+            layout_grid_enabled: true,
             layout_style_sharing_cache_enabled: true,
             // TODO(mrobinson): This should likely be based on the number of processors.
             layout_threads: 3,
             layout_unimplemented: false,
             layout_variable_fonts_enabled: false,
-            layout_writing_mode_enabled: false,
+            layout_writing_mode_enabled: true,
             media_glvideo_enabled: false,
             media_testing_enabled: false,
             network_enforce_tls_enabled: false,
@@ -436,13 +456,15 @@ impl Preferences {
             network_mime_sniff: false,
             session_history_max_length: 20,
             shell_background_color_rgba: [1.0, 1.0, 1.0, 1.0],
-            threadpools_async_runtime_workers_max: 6,
-            threadpools_fallback_worker_num: 3,
-            threadpools_image_cache_workers_max: 4,
+            // Ferro Browser: Increase threadpool sizes for better parallel resource loading.
+            // Modern websites load many images/resources simultaneously.
+            threadpools_async_runtime_workers_max: 16,
+            threadpools_fallback_worker_num: 8,
+            threadpools_image_cache_workers_max: 12,
             threadpools_indexeddb_workers_max: 4,
             threadpools_webstorage_workers_max: 4,
-            threadpools_resource_workers_max: 4,
-            threadpools_webrender_workers_max: 4,
+            threadpools_resource_workers_max: 12,
+            threadpools_webrender_workers_max: 6,
             webgl_testing_context_creation_error: false,
             user_agent: String::new(),
             viewport_meta_enabled: false,

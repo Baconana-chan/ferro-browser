@@ -13,6 +13,7 @@ use servo::protocol_handler::ProtocolRegistry;
 use servo::{
     EventLoopWaker, Opts, Preferences, ServoBuilder, ServoUrl, UserContentManager, UserScript,
 };
+use serde_json;
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoopProxy};
@@ -25,8 +26,34 @@ use crate::desktop::protocols;
 use crate::desktop::tracing::trace_winit_event;
 use crate::parser::get_default_url;
 use crate::prefs::ServoShellPreferences;
+use crate::prefs::default_config_dir;
 use crate::running_app_state::RunningAppState;
 use crate::window::PlatformWindow;
+
+const WEB_ANIMATIONS_POLYFILL: &str = r#"
+(() => {
+    if (!('animate' in Element.prototype)) {
+        Element.prototype.animate = function () {
+            const finished = Promise.resolve();
+            return {
+                play() {},
+                pause() {},
+                cancel() {},
+                finish() {},
+                reverse() {},
+                updatePlaybackRate() {},
+                get finished() { return finished; },
+                get playState() { return 'finished'; },
+                get currentTime() { return 0; },
+                set currentTime(_) {},
+            };
+        };
+    }
+    if (!('getAnimations' in Element.prototype)) {
+        Element.prototype.getAnimations = function () { return []; };
+    }
+})();
+"#;
 
 pub(crate) enum AppState {
     Initializing,
@@ -41,6 +68,7 @@ pub struct App {
     waker: Box<dyn EventLoopWaker>,
     event_loop_proxy: Option<EventLoopProxy<AppEvent>>,
     initial_url: ServoUrl,
+    session_urls: Vec<ServoUrl>,
     t_start: Instant,
     t: Instant,
     state: AppState,
@@ -53,12 +81,21 @@ impl App {
         servo_shell_preferences: ServoShellPreferences,
         event_loop: &ServoShellEventLoop,
     ) -> Self {
-        let initial_url = get_default_url(
+        let mut session_urls = Vec::new();
+        let mut initial_url = get_default_url(
             servo_shell_preferences.url.as_deref(),
             env::current_dir().unwrap(),
             |path| fs::metadata(path).is_ok(),
             &servo_shell_preferences,
         );
+
+        if servo_shell_preferences.url.is_none() {
+            let urls = load_session_urls();
+            if let Some((first, rest)) = urls.split_first() {
+                initial_url = first.clone();
+                session_urls = rest.to_vec();
+            }
+        }
 
         let t = Instant::now();
         App {
@@ -68,6 +105,7 @@ impl App {
             waker: event_loop.create_event_loop_waker(),
             event_loop_proxy: event_loop.event_loop_proxy(),
             initial_url: initial_url.clone(),
+            session_urls,
             t_start: t,
             t,
             state: AppState::Initializing,
@@ -77,6 +115,7 @@ impl App {
     /// Initialize Application once event loop start running.
     pub fn init(&mut self, active_event_loop: Option<&ActiveEventLoop>) {
         let mut user_content_manager = UserContentManager::new();
+        user_content_manager.add_script(UserScript::from(WEB_ANIMATIONS_POLYFILL));
         for script in load_userscripts(self.servoshell_preferences.userscripts_directory.as_deref())
             .expect("Loading userscripts failed")
         {
@@ -122,6 +161,13 @@ impl App {
         ));
         running_state.create_window(platform_window, self.initial_url.as_url().clone());
 
+        if !self.session_urls.is_empty() {
+            let window = running_state.any_window();
+            for url in self.session_urls.drain(..) {
+                window.create_toplevel_webview(running_state.clone(), url.as_url().clone());
+            }
+        }
+
         self.state = AppState::Running(running_state);
     }
 
@@ -160,6 +206,23 @@ impl App {
         }
         true
     }
+}
+
+fn load_session_urls() -> Vec<ServoUrl> {
+    let Some(config_dir) = default_config_dir() else {
+        return Vec::new();
+    };
+    let session_path = config_dir.join("session.json");
+    let Ok(contents) = fs::read_to_string(session_path) else {
+        return Vec::new();
+    };
+    let Ok(raw_urls) = serde_json::from_str::<Vec<String>>(&contents) else {
+        return Vec::new();
+    };
+    raw_urls
+        .into_iter()
+        .filter_map(|url| ServoUrl::parse(&url).ok())
+        .collect()
 }
 
 impl ApplicationHandler<AppEvent> for App {

@@ -12,6 +12,8 @@ use app_units::Au;
 use cssparser::{Parser, ParserInput};
 use dom_struct::dom_struct;
 use euclid::default::Point2D;
+use headers::ContentLength;
+use headers::HeaderMapExt;
 use html5ever::{LocalName, Prefix, QualName, local_name, ns};
 use js::jsapi::JSAutoRealm;
 use js::rust::HandleObject;
@@ -29,6 +31,7 @@ use num_traits::ToPrimitive;
 use pixels::{CorsStatus, ImageMetadata, Snapshot};
 use regex::Regex;
 use rustc_hash::FxHashSet;
+use servo_config::pref;
 use servo_url::ServoUrl;
 use servo_url::origin::MutableOrigin;
 use style::attr::{AttrValue, LengthOrPercentageOrAuto, parse_unsigned_integer};
@@ -45,6 +48,7 @@ use crate::dom::attr::Attr;
 use crate::dom::bindings::cell::{DomRefCell, RefMut};
 use crate::dom::bindings::codegen::Bindings::DOMRectBinding::DOMRect_Binding::DOMRectMethods;
 use crate::dom::bindings::codegen::Bindings::ElementBinding::Element_Binding::ElementMethods;
+use crate::dom::bindings::codegen::Bindings::EventBinding::EventMethods;
 use crate::dom::bindings::codegen::Bindings::HTMLImageElementBinding::HTMLImageElementMethods;
 use crate::dom::bindings::codegen::Bindings::MouseEventBinding::MouseEventMethods;
 use crate::dom::bindings::codegen::Bindings::NodeBinding::Node_Binding::NodeMethods;
@@ -184,6 +188,11 @@ pub(crate) struct HTMLImageElement {
     image_decode_promises: DomRefCell<Vec<Rc<Promise>>>,
     /// Line number this element was created on
     line_number: u64,
+    /// Ferro Browser: For click-to-load feature - stores deferred URL when image is too large
+    #[no_trace]
+    deferred_image_url: DomRefCell<Option<ServoUrl>>,
+    /// Ferro Browser: Whether this image is showing a placeholder waiting for click
+    waiting_for_click: Cell<bool>,
 }
 
 impl HTMLImageElement {
@@ -259,6 +268,56 @@ impl FetchResponseListener for ImageContext {
             FetchMetadata::Unfiltered(m) => m,
             FetchMetadata::Filtered { unsafe_, .. } => unsafe_,
         });
+
+        // Ferro Browser: Check if click-to-load is enabled and image exceeds size threshold
+        if pref!(media_click_to_load_enabled) {
+            // Check if the current domain is in the whitelist
+            let whitelist = pref!(media_click_to_load_whitelist);
+            let is_whitelisted = if whitelist.is_empty() {
+                false
+            } else {
+                if let Some(host) = self.url.host_str() {
+                    whitelist
+                        .split(',')
+                        .map(|s| s.trim().to_lowercase())
+                        .any(|domain| {
+                            host.to_lowercase() == domain || 
+                            host.to_lowercase().ends_with(&format!(".{}", domain))
+                        })
+                } else {
+                    false
+                }
+            };
+
+            if !is_whitelisted {
+                if let Some(ref meta) = metadata {
+                    if let Some(ref headers) = meta.headers {
+                        if let Some(content_length) = headers.typed_get::<ContentLength>() {
+                            let threshold_bytes = pref!(media_click_to_load_threshold_kb) * 1024;
+                            if content_length.0 as i64 > threshold_bytes {
+                                debug!(
+                                    "Ferro: Image exceeds click-to-load threshold ({} > {} bytes), deferring: {:?}",
+                                    content_length.0, threshold_bytes, self.url
+                                );
+                                // Abort the download and mark for click-to-load
+                                self.aborted = true;
+                                let element = self.element.clone();
+                                let url = self.url.clone();
+                                // Queue a task to notify the element
+                                let doc = self.doc.clone();
+                                doc.root().global().task_manager().networking_task_source().queue(
+                                    task!(mark_image_for_click_to_load: move || {
+                                        let elem = element.root();
+                                        elem.set_deferred_for_click_to_load(url, CanGc::note());
+                                    })
+                                );
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         // Step 14.5 of https://html.spec.whatwg.org/multipage/#img-environment-changes
         if let Some(metadata) = metadata.as_ref() {
@@ -1357,6 +1416,8 @@ impl HTMLImageElement {
             last_selected_source: DomRefCell::new(None),
             image_decode_promises: DomRefCell::new(vec![]),
             line_number: creator.return_line_number(),
+            deferred_image_url: DomRefCell::new(None),
+            waiting_for_click: Cell::new(false),
         }
     }
 
@@ -1447,6 +1508,47 @@ impl HTMLImageElement {
             .base_url()
             .join(&self.CurrentSrc())
             .ok()
+    }
+
+    /// Ferro Browser: Mark this image as deferred for click-to-load and show placeholder
+    pub(crate) fn set_deferred_for_click_to_load(&self, url: ServoUrl, can_gc: CanGc) {
+        *self.deferred_image_url.borrow_mut() = Some(url);
+        self.waiting_for_click.set(true);
+        self.load_click_to_load_placeholder(can_gc);
+    }
+
+    /// Ferro Browser: Load the click-to-load placeholder - uses broken image icon as placeholder
+    fn load_click_to_load_placeholder(&self, can_gc: CanGc) {
+        // Use broken image icon as a visual indicator that image needs to be clicked
+        // In future, could add a custom click-to-load icon
+        self.load_broken_image_icon();
+        // Set title attribute to inform user
+        self.upcast::<Element>().set_string_attribute(
+            &local_name!("title"),
+            DOMString::from("Click to load image"),
+            can_gc,
+        );
+    }
+
+    /// Ferro Browser: Check if this image is waiting for a click to load
+    pub(crate) fn is_waiting_for_click_to_load(&self) -> bool {
+        self.waiting_for_click.get()
+    }
+
+    /// Ferro Browser: Load the deferred image after user click
+    pub(crate) fn load_deferred_image(&self, can_gc: CanGc) {
+        if let Some(url) = self.deferred_image_url.borrow().clone() {
+            self.waiting_for_click.set(false);
+            *self.deferred_image_url.borrow_mut() = None;
+            // Clear the title we set
+            self.upcast::<Element>().remove_attribute(
+                &ns!(),
+                &local_name!("title"),
+                can_gc,
+            );
+            // Re-fetch the image
+            self.fetch_image(&url, can_gc);
+        }
     }
 }
 
@@ -1902,6 +2004,13 @@ impl VirtualMethods for HTMLImageElement {
 
     fn handle_event(&self, event: &Event, can_gc: CanGc) {
         if event.type_() != atom!("click") {
+            return;
+        }
+
+        // Ferro Browser: Handle click-to-load for deferred large images
+        if self.is_waiting_for_click_to_load() {
+            self.load_deferred_image(can_gc);
+            event.PreventDefault();
             return;
         }
 

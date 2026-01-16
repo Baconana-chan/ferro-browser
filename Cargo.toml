@@ -31,7 +31,7 @@ app_units = "0.7"
 arboard = "3"
 argon2 = { version = "0.5", features = ["alloc"] }
 arrayvec = "0.7"
-async-tungstenite = { version = "0.32", features = ["tokio-rustls-webpki-roots"] }
+async-tungstenite = { version = "0.32.1", features = ["tokio-rustls-webpki-roots"] }
 atomic_refcell = "0.1.13"
 aws-lc-rs = { version = "1.15", default-features = false, features = ["aws-lc-sys"] }
 background_hang_monitor_api = { path = "components/shared/background_hang_monitor" }
@@ -74,12 +74,12 @@ fonts_traits = { path = "components/shared/fonts" }
 freetype-sys = "0.20"
 gleam = "0.15"
 glow = "0.16.0"
-gstreamer = { version = "0.24", features = ["v1_18"] }
-gstreamer-base = "0.24"
-gstreamer-gl = "0.24"
-gstreamer-gl-sys = "0.24"
-gstreamer-sys = "0.24"
-gstreamer-video = "0.24"
+gstreamer = { version = "0.24.4", features = ["v1_18"] }
+gstreamer-base = "0.24.4"
+gstreamer-gl = "0.24.4"
+gstreamer-gl-sys = "0.24.4"
+gstreamer-sys = "0.24.4"
+gstreamer-video = "0.24.4"
 harfbuzz-sys = "0.6.1"
 headers = "0.4"
 hitrace = "0.1.5"
@@ -136,7 +136,7 @@ read-fonts = "0.35.0"
 regex = "1.12"
 resvg = "0.45.0"
 rustc-hash = "2.1.1"
-rustls = { version = "0.23", default-features = false, features = ["logging", "std", "tls12"] }
+rustls = { version = "0.23.36", default-features = false, features = ["logging", "std", "tls12"] }
 rustls-pemfile = "2.0"
 rustls-pki-types = "1.13"
 script_traits = { path = "components/shared/script" }
@@ -146,9 +146,9 @@ serde = "1.0.228"
 serde_bytes = "0.11"
 serde_core = "1.0.226"
 serde_json = "1.0"
-servo-media = { git = "https://github.com/servo/media" }
-servo-media-dummy = { git = "https://github.com/servo/media" }
-servo-media-gstreamer = { git = "https://github.com/servo/media" }
+servo-media = { git = "https://github.com/servo/media", rev = "f384dbc" }
+servo-media-dummy = { git = "https://github.com/servo/media", rev = "f384dbc" }
+servo-media-gstreamer = { git = "https://github.com/servo/media", rev = "f384dbc" }
 servo-tracing = { path = "components/servo_tracing" }
 servo_arc = { git = "https://github.com/servo/stylo", branch = "2025-11-01" }
 sha1 = "0.10"

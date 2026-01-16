@@ -56,7 +56,12 @@ pub fn get_default_url(
         }
     }
 
-    let pref_url = parse_url_or_filename(cwd.as_ref(), &preferences.homepage).ok();
+    let homepage = if preferences.homepage == "https://servo.org" {
+        "resource:///newtab.html"
+    } else {
+        preferences.homepage.as_str()
+    };
+    let pref_url = parse_url_or_filename(cwd.as_ref(), homepage).ok();
     let blank_url = ServoUrl::parse("about:blank").ok();
 
     new_url.or(pref_url).or(blank_url).unwrap()

@@ -65,7 +65,7 @@
   - Чтобы DDG перешёл в full mode (filters, suggestions, bangs)
   - Оценка: 4–10 недель (script crate + mozjs/boa)
 - [ ] Media / images improvements (lazy loading, object-fit/cover, aspect-ratio)
-  - Обложки в lorachi растягиваются/ломаются
+  - Изображения в растягиваются/ломаются/долго грузятся
   - Оценка: 2–5 недель
 - [ ] Shadow DOM + custom elements basics
   - Многие современные UI-компоненты (web components) ломаются
