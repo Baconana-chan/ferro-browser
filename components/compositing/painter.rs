@@ -298,7 +298,7 @@ impl Painter {
 
         // Request repaint to continue smooth scroll animation (Ferro Browser feature).
         if smooth_scroll_animating {
-            self.set_needs_repaint(RepaintReason::REPAINT_REQUIRED);
+            self.set_needs_repaint(RepaintReason::SmoothScrollAnimating);
         }
 
         self.send_zoom_and_scroll_offset_updates(need_zoom, scroll_offset_updates);

@@ -29,7 +29,11 @@ use js::rust::wrappers::{CheckRegExpSyntax, ExecuteRegExpNoStatics, ObjectIsRegE
 use js::rust::{HandleObject, MutableHandleObject};
 use net_traits::blob_url_store::get_blob_origin;
 use script_bindings::codegen::GenericBindings::CharacterDataBinding::CharacterDataMethods;
+use script_bindings::codegen::GenericBindings::DOMRectBinding::DOMRectMethods;
 use script_bindings::codegen::GenericBindings::DocumentBinding::DocumentMethods;
+use script_bindings::codegen::GenericBindings::ElementBinding::ElementMethods;
+use script_bindings::codegen::GenericBindings::MouseEventBinding::MouseEventMethods;
+use script_bindings::codegen::GenericBindings::UIEventBinding::UIEventMethods;
 use script_bindings::domstring::parse_floating_point_number;
 use style::attr::AttrValue;
 use style::selector_parser::PseudoElement;
@@ -38,6 +42,7 @@ use stylo_atoms::Atom;
 use stylo_dom::ElementState;
 use time::{Month, OffsetDateTime, Time};
 use unicode_bidi::{BidiClass, bidi_class};
+use unicode_segmentation::UnicodeSegmentation;
 use url::Url;
 use webdriver::error::ErrorStatus;
 
@@ -45,11 +50,11 @@ use crate::clipboard_provider::EmbedderClipboardProvider;
 use crate::dom::activation::Activatable;
 use crate::dom::attr::Attr;
 use crate::dom::bindings::cell::{DomRefCell, Ref};
-use crate::dom::bindings::codegen::Bindings::ElementBinding::ElementMethods;
 use crate::dom::bindings::codegen::Bindings::EventBinding::EventMethods;
+use crate::dom::bindings::codegen::Bindings::HTMLElementBinding::HTMLElementMethods;
+use crate::dom::bindings::codegen::Bindings::HTMLOrSVGElementBinding::FocusOptions;
 use crate::dom::bindings::codegen::Bindings::FileListBinding::FileListMethods;
 use crate::dom::bindings::refcounted::Trusted;
-use crate::dom::bindings::reflector::DomGlobal;
 use crate::dom::bindings::codegen::Bindings::HTMLFormElementBinding::SelectionMode;
 use crate::dom::bindings::codegen::Bindings::HTMLInputElementBinding::HTMLInputElementMethods;
 use crate::dom::bindings::codegen::Bindings::NodeBinding::{GetRootNodeOptions, NodeMethods};
@@ -1484,6 +1489,8 @@ pub(crate) trait LayoutHTMLInputElementHelpers<'dom> {
     fn value_for_layout(self) -> Cow<'dom, str>;
     fn size_for_layout(self) -> u32;
     fn selection_for_layout(self) -> Option<Range<usize>>;
+    /// Returns whether the caret should currently be visible for layout.
+    fn caret_visible_for_layout(self) -> bool;
 }
 
 #[expect(unsafe_code)]
@@ -1614,7 +1621,7 @@ impl<'dom> LayoutHTMLInputElementHelpers<'dom> for LayoutDom<'dom, HTMLInputElem
 
     /// Returns whether the caret should currently be visible for layout.
     fn caret_visible_for_layout(self) -> bool {
-        unsafe { self.unsafe_get().caret_visible.get() }
+        self.unsafe_get().caret_visible.get()
     }
 }
 
@@ -3420,15 +3427,24 @@ impl VirtualMethods for HTMLInputElement {
 
         if event.type_() == atom!("mousedown") && !event.DefaultPrevented() {
             // Handle mouse selection start
-            if self.input_type().is_textual_or_password() &&
-                !self.textinput.borrow().is_empty()
-            {
+            if self.input_type().is_textual_or_password() {
+                if self.is_mutable() && !self.upcast::<Element>().focus_state() {
+                    self.upcast::<HTMLElement>()
+                        .Focus(&FocusOptions::default(), can_gc);
+                }
                 if let Some(mouse_event) = event.downcast::<MouseEvent>() {
                     if let Some(point_in_target) = mouse_event.point_in_target() {
                         let window = self.owner_window();
                         let index = window
                             .text_index_query(self.upcast::<Node>(), point_in_target.to_untyped())
-                            .unwrap_or_else(|| self.textinput.borrow().char_count());
+                            .unwrap_or_else(|| {
+                                estimate_text_index_from_point(
+                                    point_in_target.to_untyped(),
+                                    self.upcast::<Element>(),
+                                    &self.textinput.borrow().get_content(),
+                                    can_gc,
+                                )
+                            });
 
                         let click_count = mouse_event.upcast::<UIEvent>().Detail();
                         let shift_held = mouse_event.ShiftKey();
@@ -3443,11 +3459,11 @@ impl VirtualMethods for HTMLInputElement {
                             self.is_mouse_selecting.set(false);
                         } else if shift_held {
                             // Shift+click: extend selection from current position
-                            self.textinput.borrow_mut().extend_selection_to_index(index);
+                            self.textinput.borrow_mut().extend_selection_to_line_and_index(0, index);
                             self.is_mouse_selecting.set(true);
                         } else {
                             // Regular click: start new selection
-                            self.textinput.borrow_mut().begin_selection_at_index(index);
+                            self.textinput.borrow_mut().begin_selection_at_line_and_index(0, index);
                             self.is_mouse_selecting.set(true);
                         }
                         self.reset_caret_blink();
@@ -3458,18 +3474,24 @@ impl VirtualMethods for HTMLInputElement {
         } else if event.type_() == atom!("mousemove") && !event.DefaultPrevented() {
             // Handle mouse selection extend (drag)
             if self.is_mouse_selecting.get() &&
-                self.input_type().is_textual_or_password() &&
-                !self.textinput.borrow().is_empty()
+                self.input_type().is_textual_or_password()
             {
                 if let Some(mouse_event) = event.downcast::<MouseEvent>() {
                     if let Some(point_in_target) = mouse_event.point_in_target() {
                         let window = self.owner_window();
                         let index = window
                             .text_index_query(self.upcast::<Node>(), point_in_target.to_untyped())
-                            .unwrap_or_else(|| self.textinput.borrow().char_count());
+                            .unwrap_or_else(|| {
+                                estimate_text_index_from_point(
+                                    point_in_target.to_untyped(),
+                                    self.upcast::<Element>(),
+                                    &self.textinput.borrow().get_content(),
+                                    can_gc,
+                                )
+                            });
 
                         // Extend selection to this point
-                        self.textinput.borrow_mut().extend_selection_to_index(index);
+                        self.textinput.borrow_mut().extend_selection_to_line_and_index(0, index);
                         self.reset_caret_blink();
                         self.upcast::<Node>().dirty(NodeDamage::Other);
                     }
@@ -3487,10 +3509,7 @@ impl VirtualMethods for HTMLInputElement {
 
             // Handle click for positioning caret when not selecting
             // (click fires after mouseup, so selection is already finished)
-            if self.input_type().is_textual_or_password() &&
-                // Check if we display a placeholder. Layout doesn't know about this.
-                !self.textinput.borrow().is_empty()
-            {
+            if self.input_type().is_textual_or_password() {
                 if let Some(mouse_event) = event.downcast::<MouseEvent>() {
                     // dispatch_key_event (document.rs) triggers a click event when releasing
                     // the space key. There's no nice way to catch this so let's use this for
@@ -3505,14 +3524,20 @@ impl VirtualMethods for HTMLInputElement {
                             let window = self.owner_window();
                             let edit_point_index = window
                                 .text_index_query(self.upcast::<Node>(), point_in_target.to_untyped())
-                                .unwrap_or_else(|| self.textinput.borrow().char_count());
+                                .unwrap_or_else(|| {
+                                    estimate_text_index_from_point(
+                                        point_in_target.to_untyped(),
+                                        self.upcast::<Element>(),
+                                        &self.textinput.borrow().get_content(),
+                                        can_gc,
+                                    )
+                                });
                             self.textinput.borrow_mut().clear_selection();
                             self.textinput
                                 .borrow_mut()
-                                .set_edit_point_index(edit_point_index);
+                                .set_edit_point_line_and_index(0, edit_point_index);
                             self.upcast::<Node>().dirty(NodeDamage::Other);
                         }
-                        event.PreventDefault();
                     }
                 }
             }
@@ -3624,6 +3649,25 @@ impl VirtualMethods for HTMLInputElement {
             .set_content(self.textinput.borrow().get_content());
         self.value_changed(can_gc);
     }
+}
+
+fn estimate_text_index_from_point(
+    point_in_target: euclid::Point2D<f32, euclid::UnknownUnit>,
+    element: &Element,
+    content: &DOMString,
+    can_gc: CanGc,
+) -> usize {
+    let rect = element.GetBoundingClientRect(can_gc);
+    let width = rect.Width().max(1.0);
+    let content_str = content.str();
+    let grapheme_count = content_str.graphemes(true).count();
+    if grapheme_count == 0 {
+        return 0;
+    }
+
+    let ratio = (point_in_target.x as f64 / width).clamp(0.0, 1.0);
+    let index = (ratio * grapheme_count as f64).round() as usize;
+    index.min(grapheme_count)
 }
 
 impl FormControl for HTMLInputElement {

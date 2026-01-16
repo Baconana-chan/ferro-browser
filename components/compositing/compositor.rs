@@ -131,6 +131,8 @@ bitflags! {
         const Resize = 1 << 3;
         /// A fling has started and a repaint needs to happen to process the animation.
         const StartedFlinging = 1 << 4;
+        /// Smooth scroll animation is active (Ferro Browser feature).
+        const SmoothScrollAnimating = 1 << 5;
     }
 }
 

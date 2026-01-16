@@ -12,20 +12,27 @@ use html5ever::{LocalName, Prefix, local_name, ns};
 use js::rust::HandleObject;
 use style::attr::AttrValue;
 use stylo_dom::ElementState;
+use unicode_segmentation::UnicodeSegmentation;
 
 use crate::clipboard_provider::EmbedderClipboardProvider;
 use crate::dom::attr::Attr;
 use crate::dom::bindings::cell::DomRefCell;
 use crate::dom::bindings::codegen::Bindings::EventBinding::EventMethods;
+use crate::dom::bindings::codegen::Bindings::HTMLElementBinding::HTMLElementMethods;
+use crate::dom::bindings::codegen::Bindings::HTMLOrSVGElementBinding::FocusOptions;
 use crate::dom::bindings::codegen::Bindings::HTMLFormElementBinding::SelectionMode;
 use crate::dom::bindings::codegen::Bindings::HTMLTextAreaElementBinding::HTMLTextAreaElementMethods;
 use crate::dom::bindings::codegen::Bindings::NodeBinding::NodeMethods;
 use crate::dom::bindings::error::ErrorResult;
 use crate::dom::bindings::inheritance::Castable;
 use crate::dom::bindings::refcounted::Trusted;
-use crate::dom::bindings::reflector::DomGlobal;
 use crate::dom::bindings::root::{DomRoot, LayoutDom, MutNullableDom};
 use crate::dom::bindings::str::DOMString;
+use script_bindings::codegen::GenericBindings::DocumentBinding::DocumentMethods;
+use script_bindings::codegen::GenericBindings::DOMRectBinding::DOMRectMethods;
+use script_bindings::codegen::GenericBindings::ElementBinding::ElementMethods;
+use script_bindings::codegen::GenericBindings::MouseEventBinding::MouseEventMethods;
+use script_bindings::codegen::GenericBindings::UIEventBinding::UIEventMethods;
 use crate::dom::clipboardevent::{ClipboardEvent, ClipboardEventType};
 use crate::dom::compositionevent::CompositionEvent;
 use crate::dom::document::Document;
@@ -109,7 +116,7 @@ impl<'dom> LayoutDom<'dom, HTMLTextAreaElement> {
 
     /// Returns whether the caret should currently be visible for layout.
     fn caret_visible_for_layout(self) -> bool {
-        unsafe { self.unsafe_get().caret_visible.get() }
+        self.unsafe_get().caret_visible.get()
     }
 }
 
@@ -867,13 +874,19 @@ impl VirtualMethods for HTMLTextAreaElement {
 
         if event.type_() == atom!("mousedown") && !event.DefaultPrevented() {
             // Handle mouse selection start
-            if !self.textinput.borrow().is_empty() {
+            {
+                if self.is_mutable() && !self.upcast::<Element>().focus_state() {
+                    self.upcast::<HTMLElement>()
+                        .Focus(&FocusOptions::default(), can_gc);
+                }
                 if let Some(mouse_event) = event.downcast::<MouseEvent>() {
                     if let Some(point_in_target) = mouse_event.point_in_target() {
-                        let window = self.owner_window();
-                        let index = window
-                            .text_index_query(self.upcast::<Node>(), point_in_target.to_untyped())
-                            .unwrap_or_else(|| self.textinput.borrow().char_count());
+                        let (line, index) = estimate_line_and_index_from_point(
+                            point_in_target.to_untyped(),
+                            self.upcast::<Element>(),
+                            &self.textinput.borrow().get_content(),
+                            can_gc,
+                        );
 
                         let click_count = mouse_event.upcast::<UIEvent>().Detail();
                         let shift_held = mouse_event.ShiftKey();
@@ -888,11 +901,15 @@ impl VirtualMethods for HTMLTextAreaElement {
                             self.is_mouse_selecting.set(false);
                         } else if shift_held {
                             // Shift+click: extend selection from current position
-                            self.textinput.borrow_mut().extend_selection_to_index(index);
+                            self.textinput
+                                .borrow_mut()
+                                .extend_selection_to_line_and_index(line, index);
                             self.is_mouse_selecting.set(true);
                         } else {
                             // Regular click: start new selection
-                            self.textinput.borrow_mut().begin_selection_at_index(index);
+                            self.textinput
+                                .borrow_mut()
+                                .begin_selection_at_line_and_index(line, index);
                             self.is_mouse_selecting.set(true);
                         }
                         self.reset_caret_blink();
@@ -902,16 +919,20 @@ impl VirtualMethods for HTMLTextAreaElement {
             }
         } else if event.type_() == atom!("mousemove") && !event.DefaultPrevented() {
             // Handle mouse selection extend (drag)
-            if self.is_mouse_selecting.get() && !self.textinput.borrow().is_empty() {
+            if self.is_mouse_selecting.get() {
                 if let Some(mouse_event) = event.downcast::<MouseEvent>() {
                     if let Some(point_in_target) = mouse_event.point_in_target() {
-                        let window = self.owner_window();
-                        let index = window
-                            .text_index_query(self.upcast::<Node>(), point_in_target.to_untyped())
-                            .unwrap_or_else(|| self.textinput.borrow().char_count());
+                        let (line, index) = estimate_line_and_index_from_point(
+                            point_in_target.to_untyped(),
+                            self.upcast::<Element>(),
+                            &self.textinput.borrow().get_content(),
+                            can_gc,
+                        );
 
                         // Extend selection to this point
-                        self.textinput.borrow_mut().extend_selection_to_index(index);
+                        self.textinput
+                            .borrow_mut()
+                            .extend_selection_to_line_and_index(line, index);
                         self.reset_caret_blink();
                         self.upcast::<Node>().dirty(NodeDamage::Other);
                     }
@@ -925,7 +946,7 @@ impl VirtualMethods for HTMLTextAreaElement {
             }
         } else if event.type_() == atom!("click") && !event.DefaultPrevented() {
             // Handle click for positioning caret when not selecting
-            if !self.textinput.borrow().is_empty() {
+            {
                 if let Some(mouse_event) = event.downcast::<MouseEvent>() {
                     if let Some(point_in_target) = mouse_event.point_in_target() {
                         // Only reposition caret if we didn't just finish a selection
@@ -933,17 +954,18 @@ impl VirtualMethods for HTMLTextAreaElement {
                             self.textinput.borrow().selection_start() != self.textinput.borrow().selection_end();
 
                         if !has_selection {
-                            let window = self.owner_window();
-                            let edit_point_index = window
-                                .text_index_query(self.upcast::<Node>(), point_in_target.to_untyped())
-                                .unwrap_or_else(|| self.textinput.borrow().char_count());
+                            let (line, edit_point_index) = estimate_line_and_index_from_point(
+                                point_in_target.to_untyped(),
+                                self.upcast::<Element>(),
+                                &self.textinput.borrow().get_content(),
+                                can_gc,
+                            );
                             self.textinput.borrow_mut().clear_selection();
                             self.textinput
                                 .borrow_mut()
-                                .set_edit_point_index(edit_point_index);
+                                .set_edit_point_line_and_index(line, edit_point_index);
                             self.upcast::<Node>().dirty(NodeDamage::Other);
                         }
-                        event.PreventDefault();
                     }
                 }
             }
@@ -1030,6 +1052,36 @@ impl VirtualMethods for HTMLTextAreaElement {
         // https://html.spec.whatwg.org/multipage/#the-textarea-element:stack-of-open-elements
         self.reset();
     }
+}
+
+fn estimate_line_and_index_from_point(
+    point_in_target: euclid::Point2D<f32, euclid::UnknownUnit>,
+    element: &Element,
+    content: &DOMString,
+    can_gc: CanGc,
+) -> (usize, usize) {
+    let rect = element.GetBoundingClientRect(can_gc);
+    let width = rect.Width().max(1.0);
+    let height = rect.Height().max(1.0);
+
+    let content_str = content.str();
+    let lines: Vec<&str> = content_str.split('\n').collect();
+    let line_count = lines.len().max(1);
+
+    let mut line = ((point_in_target.y as f64 / height) * line_count as f64).floor() as usize;
+    if line >= line_count {
+        line = line_count - 1;
+    }
+
+    let line_str = lines.get(line).copied().unwrap_or("");
+    let grapheme_count = line_str.graphemes(true).count();
+    if grapheme_count == 0 {
+        return (line, 0);
+    }
+
+    let ratio = (point_in_target.x as f64 / width).clamp(0.0, 1.0);
+    let index = (ratio * grapheme_count as f64).round() as usize;
+    (line, index.min(grapheme_count))
 }
 
 impl FormControl for HTMLTextAreaElement {

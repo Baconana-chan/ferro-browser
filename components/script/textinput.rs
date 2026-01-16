@@ -1216,6 +1216,7 @@ impl<T: ClipboardProvider> TextInput<T> {
     }
 
     /// The length of the content in Unicode code points.
+    #[allow(dead_code)]
     pub(crate) fn char_count(&self) -> usize {
         self.lines.iter().fold(0, |m, l| {
             m + l.str().chars().count() + 1 // + 1 for the '\n'
@@ -1358,6 +1359,24 @@ impl<T: ClipboardProvider> TextInput<T> {
         self.selection_direction = SelectionDirection::None;
     }
 
+    /// Begin a new mouse selection at the given line and grapheme index.
+    /// This sets both the selection origin and edit point to the same position.
+    pub fn begin_selection_at_line_and_index(&mut self, line: usize, index: usize) {
+        let line = line.min(self.lines.len().saturating_sub(1));
+        let byte_offset = self.lines[line]
+            .str()
+            .graphemes(true)
+            .take(index)
+            .fold(UTF8Bytes::zero(), |acc, x| acc + x.len_utf8());
+        let text_point = TextPoint {
+            line,
+            index: byte_offset,
+        };
+        self.selection_origin = Some(text_point);
+        self.edit_point = text_point;
+        self.selection_direction = SelectionDirection::None;
+    }
+
     /// Extend the current selection to the given grapheme cluster index.
     /// This moves the edit point while keeping the selection origin fixed.
     pub fn extend_selection_to_index(&mut self, index: usize) {
@@ -1384,6 +1403,48 @@ impl<T: ClipboardProvider> TextInput<T> {
 
         self.edit_point = new_edit_point;
         self.assert_ok_selection();
+    }
+
+    /// Extend the current selection to the given line and grapheme index.
+    /// This moves the edit point while keeping the selection origin fixed.
+    pub fn extend_selection_to_line_and_index(&mut self, line: usize, index: usize) {
+        let line = line.min(self.lines.len().saturating_sub(1));
+        let byte_offset = self.lines[line]
+            .str()
+            .graphemes(true)
+            .take(index)
+            .fold(UTF8Bytes::zero(), |acc, x| acc + x.len_utf8());
+        let new_edit_point = TextPoint {
+            line,
+            index: byte_offset,
+        };
+
+        if let Some(origin) = self.selection_origin {
+            if new_edit_point < origin {
+                self.selection_direction = SelectionDirection::Backward;
+            } else if new_edit_point > origin {
+                self.selection_direction = SelectionDirection::Forward;
+            } else {
+                self.selection_direction = SelectionDirection::None;
+            }
+        }
+
+        self.edit_point = new_edit_point;
+        self.assert_ok_selection();
+    }
+
+    /// Set the edit point based on a line and grapheme index.
+    pub fn set_edit_point_line_and_index(&mut self, line: usize, index: usize) {
+        let line = line.min(self.lines.len().saturating_sub(1));
+        let byte_offset = self.lines[line]
+            .str()
+            .graphemes(true)
+            .take(index)
+            .fold(UTF8Bytes::zero(), |acc, x| acc + x.len_utf8());
+        self.edit_point = TextPoint {
+            line,
+            index: byte_offset,
+        };
     }
 
     /// Select the word at the given grapheme cluster index (for double-click).
