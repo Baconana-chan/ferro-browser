@@ -1,0 +1,42 @@
+[package]
+name = "ferro_media"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+description = "FFmpeg-based media backend for Ferro Browser"
+
+[lib]
+name = "ferro_media"
+path = "src/lib.rs"
+
+[dependencies]
+# FFmpeg bindings (optional - requires FFmpeg installed)
+ffmpeg-next = { workspace = true, optional = true }
+
+# Audio playback
+cpal = { workspace = true, optional = true }
+rodio = { workspace = true, optional = true }
+
+# Image/GIF handling  
+image = { version = "0.25", default-features = false, features = ["gif", "png", "jpeg", "webp"] }
+
+# Utilities
+log = { workspace = true }
+euclid = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+parking_lot = { workspace = true }
+crossbeam-channel = { workspace = true }
+thiserror = "1.0"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.58", features = ["Win32_Media_Audio", "Win32_System_Com"], optional = true }
+
+[features]
+default = []
+# Enable full FFmpeg-based media playback
+ffmpeg = ["ffmpeg-next", "cpal", "rodio", "windows"]
+# Enable hardware acceleration where available
+hwaccel = []

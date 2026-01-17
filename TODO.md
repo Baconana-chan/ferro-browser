@@ -54,8 +54,9 @@
   - Оценка: 3–6 недель
 
 ## Приоритет 2: Совместимость с реальными сайтами (lorachi.xyz, DDG, etc.)
-- [ ] Полная/улучшенная поддержка CSS Grid + Flexbox edge-cases
-  - minmax(auto-fit), repeat(auto-fit, ...), subgrid, nested grids
+- [x] Полная/улучшенная поддержка CSS Grid + Flexbox edge-cases
+  - ✅ minmax(auto-fit), repeat(auto-fit, ...), subgrid, nested grids
+  - ✅ Реализована поддержка subgrid и masonry в Taffy wrapper (wrapper.rs)
   - Проблема: карточки накладываются, masonry-эффекты ломаются на Tailwind-сайтах
   - Оценка: 3–6 недель (stylo crate)
 - [ ] Dark mode (prefers-color-scheme + .dark class handling)
@@ -104,6 +105,59 @@
   - youtube.com (video playback)
 - Целевые баллы: HTML5Test > 300–350, Acid3 ~80–90%
 - Инструменты: mach test-wpt, wpt.fyi сравнение с Gecko
+
+## Миграция медиа: GStreamer → FFmpeg
+**Статус: FFmpeg СОБИРАЕТСЯ ✅**
+
+### Причины миграции:
+- GStreamer плохо работает кросс-платформенно (особенно на Windows)
+- Сложная настройка зависимостей (GStreamer DLLs, плагины)
+- servo-media добавляет много overhead
+
+### Новый стек ferro_media:
+- **ffmpeg-next v8** — Rust bindings для FFmpeg (декодирование видео/аудио)
+- **cpal/rodio** — кросс-платформенный аудио вывод
+- **image crate** — статические изображения и GIF
+
+### Прогресс:
+- [x] Создан components/ferro_media с базовой структурой
+- [x] Реализован MediaPlayer с FFmpeg decoder
+- [x] Реализован AudioOutput с cpal/rodio
+- [x] Добавлен в workspace dependencies
+- [x] **FFmpeg 7.1 + ffmpeg-next 8.0 успешно собирается на Windows!**
+- [x] Создан servo-media-ferro backend (components/servo_media_ferro)
+- [x] Интеграция с libservo через feature `media-ferro`
+- [x] Сборка servoshell с `--features media-ferro` работает!
+- [x] **GStreamer полностью удалён из проекта!** 🎉
+- [ ] Тестирование реального воспроизведения медиа
+- [ ] Тестирование на Linux/macOS
+
+### Установка FFmpeg для разработки (Windows):
+```powershell
+# 1. Скачать FFmpeg 7.1 shared builds:
+Invoke-WebRequest -Uri "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-win64-gpl-shared-7.1.zip" -OutFile "$env:USERPROFILE\ffmpeg71.zip"
+Expand-Archive -Path "$env:USERPROFILE\ffmpeg71.zip" -DestinationPath "C:\ffmpeg71" -Force
+
+# 2. Перед сборкой запустить setup script:
+. .\setup_ffmpeg.ps1
+
+# 3. Собрать с FFmpeg:
+cargo build -p ferro_media --features ffmpeg
+```
+
+### Требования:
+- LLVM/Clang (для bindgen): `C:\Program Files\LLVM\bin`
+- FFmpeg 7.1 shared libs: `C:\ffmpeg71\ffmpeg-n7.1-latest-win64-gpl-shared-7.1`
+
+**Linux:**
+```bash
+sudo apt install libavcodec-dev libavformat-dev libavutil-dev libswscale-dev
+```
+
+**macOS:**
+```bash
+brew install ffmpeg
+```
 
 ## Заметки
 - Многие проблемы — не "баги", а missing features (Servo — research/embedding engine, не полноценный браузер).

@@ -84,47 +84,19 @@ use crate::webview_delegate::{
     PermissionRequest, ProtocolHandlerRegistration, WebResourceLoad,
 };
 
-#[cfg(feature = "media-gstreamer")]
+// Ferro Browser: FFmpeg-based media backend (GStreamer removed)
+#[cfg(feature = "media-ferro")]
 mod media_platform {
-    #[cfg(any(windows, target_os = "macos"))]
-    mod gstreamer_plugins {
-        include!(concat!(env!("OUT_DIR"), "/gstreamer_plugins.rs"));
-    }
-
-    use servo_media_gstreamer::GStreamerBackend;
+    use servo_media_ferro::FerroBackend;
 
     use super::ServoMedia;
 
-    #[cfg(any(windows, target_os = "macos"))]
     pub fn init() {
-        ServoMedia::init_with_backend(|| {
-            let mut plugin_dir = std::env::current_exe().unwrap();
-            plugin_dir.pop();
-
-            if cfg!(target_os = "macos") {
-                plugin_dir.push("lib");
-            }
-
-            match GStreamerBackend::init_with_plugins(
-                plugin_dir,
-                gstreamer_plugins::GSTREAMER_PLUGINS,
-            ) {
-                Ok(b) => b,
-                Err(e) => {
-                    log::error!("Error initializing GStreamer: {:?}", e);
-                    std::process::exit(1);
-                },
-            }
-        });
-    }
-
-    #[cfg(not(any(windows, target_os = "macos")))]
-    pub fn init() {
-        ServoMedia::init::<GStreamerBackend>();
+        ServoMedia::init::<FerroBackend>();
     }
 }
 
-#[cfg(not(feature = "media-gstreamer"))]
+#[cfg(not(feature = "media-ferro"))]
 mod media_platform {
     use super::ServoMedia;
     pub fn init() {

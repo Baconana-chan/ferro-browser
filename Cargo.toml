@@ -2,6 +2,8 @@
 resolver = "2"
 members = [
     "components/xpath",
+    "components/ferro_media",
+    "components/servo_media_ferro",
     "ports/servoshell",
     "tests/unit/*",
 ]
@@ -74,12 +76,7 @@ fonts_traits = { path = "components/shared/fonts" }
 freetype-sys = "0.20"
 gleam = "0.15"
 glow = "0.16.0"
-gstreamer = { version = "0.24.4", features = ["v1_18"] }
-gstreamer-base = "0.24.4"
-gstreamer-gl = "0.24.4"
-gstreamer-gl-sys = "0.24.4"
-gstreamer-sys = "0.24.4"
-gstreamer-video = "0.24.4"
+# GStreamer removed - using FFmpeg via ferro_media instead
 harfbuzz-sys = "0.6.1"
 headers = "0.4"
 hitrace = "0.1.5"
@@ -146,9 +143,15 @@ serde = "1.0.228"
 serde_bytes = "0.11"
 serde_core = "1.0.226"
 serde_json = "1.0"
+# Ferro Browser: FFmpeg-based media backend (replaces GStreamer)
+ferro_media = { path = "components/ferro_media" }
+servo-media-ferro = { path = "components/servo_media_ferro" }
+ffmpeg-next = "8"
+cpal = "0.15"
+rodio = { version = "0.19", default-features = false, features = ["symphonia-all"] }
+# servo-media core (GStreamer backend removed - using FFmpeg via servo-media-ferro)
 servo-media = { git = "https://github.com/servo/media", rev = "f384dbc" }
 servo-media-dummy = { git = "https://github.com/servo/media", rev = "f384dbc" }
-servo-media-gstreamer = { git = "https://github.com/servo/media", rev = "f384dbc" }
 servo-tracing = { path = "components/servo_tracing" }
 servo_arc = { git = "https://github.com/servo/stylo", branch = "2025-11-01" }
 sha1 = "0.10"

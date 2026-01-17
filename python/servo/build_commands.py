@@ -33,7 +33,7 @@ import servo.util
 import servo.visual_studio
 
 from servo.command_base import BuildType, CommandBase, check_call
-from servo.gstreamer import windows_dlls, windows_plugins, package_gstreamer_dylibs
+# Ferro Browser: GStreamer imports removed - using FFmpeg instead
 from servo.platform.build_target import BuildTarget
 
 from python.servo.platform.build_target import SanitizerKind
@@ -211,10 +211,7 @@ class MachCommands(CommandBase):
             servo_bin_dir = os.path.dirname(built_binary)
             assert os.path.exists(servo_bin_dir)
 
-            if self.enable_media:
-                library_target_directory = path.join(path.dirname(built_binary), "lib/")
-                if not package_gstreamer_dylibs(built_binary, library_target_directory, self.target):
-                    return 1
+            # Ferro Browser: GStreamer dylib packaging removed - using FFmpeg instead
 
             # On the Mac, set a lovely icon. This makes it easier to pick out the Servo binary in tools
             # like Instruments.app.
@@ -338,9 +335,7 @@ def copy_windows_dlls_to_build_directory(servo_binary: str, target: BuildTarget)
     find_and_copy_built_dll("libEGL.dll")
     find_and_copy_built_dll("libGLESv2.dll")
 
-    print(" • Copying GStreamer DLLs to binary directory...")
-    if not package_gstreamer_dlls(servo_exe_dir, target):
-        return False
+    # Ferro Browser: GStreamer DLLs removed - using FFmpeg instead
 
     print(" • Copying MSVC DLLs to binary directory...")
     if not package_msvc_dlls(servo_exe_dir, target):
@@ -349,43 +344,7 @@ def copy_windows_dlls_to_build_directory(servo_binary: str, target: BuildTarget)
     return True
 
 
-def package_gstreamer_dlls(servo_exe_dir: str, target: BuildTarget) -> bool:
-    gst_root = servo.platform.get().gstreamer_root(target)
-    if not gst_root:
-        print("Could not find GStreamer installation directory.")
-        return False
-
-    missing = []
-    for gst_lib in windows_dlls():
-        try:
-            shutil.copy(path.join(gst_root, "bin", gst_lib), servo_exe_dir)
-        except Exception:
-            missing += [str(gst_lib)]
-
-    for gst_lib in missing:
-        print("ERROR: could not find required GStreamer DLL: " + gst_lib)
-    if missing:
-        return False
-
-    # Only copy a subset of the available plugins.
-    gst_dlls = windows_plugins()
-
-    gst_plugin_path_root = os.environ.get("GSTREAMER_PACKAGE_PLUGIN_PATH") or gst_root
-    gst_plugin_path = path.join(gst_plugin_path_root, "lib", "gstreamer-1.0")
-    if not os.path.exists(gst_plugin_path):
-        print("ERROR: couldn't find gstreamer plugins at " + gst_plugin_path)
-        return False
-
-    missing = []
-    for gst_lib in gst_dlls:
-        try:
-            shutil.copy(path.join(gst_plugin_path, gst_lib), servo_exe_dir)
-        except Exception:
-            missing += [str(gst_lib)]
-
-    for gst_lib in missing:
-        print("ERROR: could not find required GStreamer DLL: " + gst_lib)
-    return not missing
+# Ferro Browser: package_gstreamer_dlls function removed - using FFmpeg instead
 
 
 def package_msvc_dlls(servo_exe_dir: str, target: BuildTarget) -> bool:

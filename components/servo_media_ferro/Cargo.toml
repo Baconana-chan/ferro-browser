@@ -1,0 +1,32 @@
+[package]
+name = "servo-media-ferro"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+description = "FFmpeg-based backend for servo-media (replaces GStreamer)"
+
+[lib]
+name = "servo_media_ferro"
+path = "lib.rs"
+
+[dependencies]
+# Core servo-media crates
+servo-media = { workspace = true }
+
+# IPC for player events  
+ipc-channel = { workspace = true }
+
+# Logging
+log = { workspace = true }
+
+# FFmpeg (via ferro_media)
+ferro_media = { path = "../ferro_media", features = ["ffmpeg"] }
+
+# Synchronization
+parking_lot = { workspace = true }
+
+[features]
+default = []

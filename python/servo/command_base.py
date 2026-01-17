@@ -484,19 +484,7 @@ class CommandBase(object):
         """Return an extended environment dictionary."""
         env = os.environ.copy()
 
-        # If we are installing on MacOS and Windows, we need to make sure that GStreamer's
-        # `pkg-config` is on the path and takes precedence over other `pkg-config`s.
-        if self.enable_media:
-            platform = servo.platform.get()
-            gstreamer_root = platform.gstreamer_root(self.target)
-            if gstreamer_root:
-                util.prepend_paths_to_env(env, "PATH", os.path.join(gstreamer_root, "bin"))
-
-                # FIXME: This is necessary to run unit tests, because they depend on dylibs from the
-                # GStreamer distribution (such as harfbuzz), but we only modify the rpath of the
-                # target binary (servoshell / libsimpleservo).
-                if platform.is_macos:
-                    util.prepend_paths_to_env(env, "DYLD_FALLBACK_LIBRARY_PATH", os.path.join(gstreamer_root, "lib"))
+        # Ferro Browser: GStreamer path manipulation removed - using FFmpeg instead
 
         if sys.platform != "win32":
             env.setdefault("CC", "clang")
@@ -627,8 +615,8 @@ class CommandBase(object):
                     "--media-stack",
                     default=None,
                     group="Feature Selection",
-                    choices=["gstreamer", "dummy"],
-                    help="Which media stack to use",
+                    choices=["ferro", "dummy"],  # Ferro Browser: FFmpeg backend
+                    help="Which media stack to use (ferro=FFmpeg, dummy=no media)",
                 ),
                 CommandArgument(
                     "--debug-mozjs",
@@ -823,22 +811,17 @@ class CommandBase(object):
     def is_media_enabled(self, media_stack: Optional[str]) -> bool:
         """Determine whether media is enabled based on the value of the build target
         platform and the value of the '--media-stack' command-line argument.
-        Returns true if media is enabled."""
+        Returns true if media is enabled.
+        
+        Ferro Browser: Uses FFmpeg via media-ferro instead of GStreamer."""
         if not media_stack:
             if self.config["build"]["media-stack"] != "auto":
                 media_stack = self.config["build"]["media-stack"]
                 assert media_stack
             elif not self.target.is_cross_build():
-                media_stack = "gstreamer"
+                media_stack = "ferro"  # Ferro Browser: FFmpeg backend by default
             else:
                 media_stack = "dummy"
-
-        # This is a workaround for Ubuntu 20.04, which doesn't support a new enough GStreamer.
-        # Once we drop support for this platform (it's currently needed for wpt.fyi runners),
-        # we can remove this workaround and officially only support Ubuntu 22.04 and up.
-        platform = servo.platform.get()
-        if not self.target.is_cross_build() and platform.is_linux and not platform.is_gstreamer_installed(self.target):
-            return False
 
         return media_stack != "dummy"
 
@@ -858,13 +841,7 @@ class CommandBase(object):
     ) -> CompletedProcess[bytes] | int:
         env = cast(dict[str, str], env or self.build_env())
 
-        # NB: On non-Linux platforms we cannot check whether GStreamer is installed until
-        # environment variables are set via `self.build_env()`.
-        platform = servo.platform.get()
-        if self.enable_media and not platform.is_gstreamer_installed(self.target):
-            raise FileNotFoundError(
-                "GStreamer libraries not found (>= version 1.18).Please see installation instructions in README.md"
-            )
+        # Ferro Browser: GStreamer check removed - using FFmpeg via media-ferro
 
         args = []
         if "--manifest-path" not in cargo_args:
@@ -905,7 +882,7 @@ class CommandBase(object):
         if "-p" not in cargo_args:  # We're building specific package, that may not have features
             features += list(self.features)
             if self.enable_media:
-                features.append("media-gstreamer")
+                features.append("media-ferro")  # Ferro Browser: FFmpeg backend
             if self.config["build"]["debug-mozjs"] or debug_mozjs:
                 features.append("debugmozjs")
 

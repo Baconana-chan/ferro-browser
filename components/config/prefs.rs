@@ -316,7 +316,7 @@ impl Preferences {
             dom_fullscreen_test: false,
             dom_gamepad_enabled: true,
             dom_geolocation_enabled: false,
-            dom_indexeddb_enabled: false,
+            dom_indexeddb_enabled: true,  // Ferro: enabled for modern web apps (YouTube, TikTok)
             dom_intersection_observer_enabled: true,
             dom_microdata_testing_enabled: false,
             dom_uievent_which_enabled: true,

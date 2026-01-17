@@ -29,11 +29,25 @@ partial interface Performance {
 [Exposed=(Window,Worker)]
 partial interface Performance {
   [Throws]
-  undefined mark(DOMString markName);
+  PerformanceMark mark(DOMString markName, optional PerformanceMarkOptions markOptions = {});
   undefined clearMarks(optional DOMString markName);
   [Throws]
-  undefined measure(DOMString measureName, optional DOMString startMark, optional DOMString endMark);
+  PerformanceMeasure measure(DOMString measureName, optional (DOMString or PerformanceMeasureOptions) startOrMeasureOptions, optional DOMString endMark);
   undefined clearMeasures(optional DOMString measureName);
+};
+
+// https://w3c.github.io/user-timing/#dictdef-performancemarkoptions
+dictionary PerformanceMarkOptions {
+  any detail;
+  DOMHighResTimeStamp startTime;
+};
+
+// https://w3c.github.io/user-timing/#dictdef-performancemeasureoptions
+dictionary PerformanceMeasureOptions {
+  any detail;
+  (DOMString or DOMHighResTimeStamp) start;
+  DOMHighResTimeStamp duration;
+  (DOMString or DOMHighResTimeStamp) end;
 };
 
 //https://w3c.github.io/resource-timing/#sec-extensions-performance-interface
