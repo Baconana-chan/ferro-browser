@@ -118,6 +118,7 @@ pub struct Preferences {
     pub dom_geolocation_enabled: bool,
     pub dom_indexeddb_enabled: bool,
     pub dom_intersection_observer_enabled: bool,
+    pub dom_mediasource_enabled: bool,
     pub dom_microdata_testing_enabled: bool,
     pub dom_uievent_which_enabled: bool,
     pub dom_mutation_observer_enabled: bool,
@@ -318,6 +319,7 @@ impl Preferences {
             dom_geolocation_enabled: false,
             dom_indexeddb_enabled: true,  // Ferro: enabled for modern web apps (YouTube, TikTok)
             dom_intersection_observer_enabled: true,
+            dom_mediasource_enabled: true,  // Ferro: enabled for YouTube/TikTok streaming
             dom_microdata_testing_enabled: false,
             dom_uievent_which_enabled: true,
             dom_mutation_observer_enabled: true,

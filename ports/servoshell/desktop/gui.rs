@@ -203,7 +203,33 @@ impl Gui {
     fn toolbar_button(text: &str) -> egui::Button<'_> {
         egui::Button::new(text)
             .frame(false)
-            .min_size(Vec2 { x: 20.0, y: 20.0 })
+            .min_size(Vec2 { x: 28.0, y: 28.0 })
+    }
+
+    /// Create a styled navigation button (back, forward, reload, stop)
+    fn nav_button(text: &str) -> egui::Button<'_> {
+        egui::Button::new(
+            egui::RichText::new(text).size(16.0)
+        )
+        .frame(false)
+        .min_size(Vec2 { x: 32.0, y: 32.0 })
+        .corner_radius(6.0)
+    }
+
+    /// Calculate the width for each tab based on available space
+    fn calculate_tab_width(available_width: f32, tab_count: usize, new_tab_button_width: f32) -> f32 {
+        const MIN_TAB_WIDTH: f32 = 60.0;  // Minimum width to show at least icon + X
+        const MAX_TAB_WIDTH: f32 = 200.0; // Maximum comfortable tab width
+        const TAB_MARGIN: f32 = 4.0;      // Margin between tabs
+
+        if tab_count == 0 {
+            return MAX_TAB_WIDTH;
+        }
+
+        let usable_width = available_width - new_tab_button_width - 16.0; // 16px padding
+        let width_per_tab = (usable_width / tab_count as f32) - TAB_MARGIN;
+        
+        width_per_tab.clamp(MIN_TAB_WIDTH, MAX_TAB_WIDTH)
     }
 
     /// Draws a browser tab, checking for clicks and queues appropriate [`GuiCommand`]s.
@@ -215,6 +241,7 @@ impl Gui {
         webview: WebView,
         event_queue: &mut Vec<GuiCommand>,
         favicon_texture: Option<egui::load::SizedTexture>,
+        tab_width: f32,
     ) {
         let label = match (webview.page_title(), webview.url()) {
             (Some(title), _) if !title.is_empty() => title,
@@ -222,73 +249,154 @@ impl Gui {
             _ => "New Tab".into(),
         };
 
-        let inactive_bg_color = ui.visuals().window_fill;
-        let active_bg_color = ui.visuals().widgets.active.weak_bg_fill;
         let active = window.active_webview().map(|webview| webview.id()) == Some(webview.id());
+        
+        // Modern color scheme
+        let visuals = ui.visuals();
+        let inactive_bg_color = if visuals.dark_mode {
+            egui::Color32::from_rgb(45, 45, 48)
+        } else {
+            egui::Color32::from_rgb(235, 235, 238)
+        };
+        let active_bg_color = if visuals.dark_mode {
+            egui::Color32::from_rgb(60, 60, 64)
+        } else {
+            egui::Color32::from_rgb(255, 255, 255)
+        };
+        let hover_bg_color = if visuals.dark_mode {
+            egui::Color32::from_rgb(55, 55, 58)
+        } else {
+            egui::Color32::from_rgb(245, 245, 248)
+        };
+        let close_hover_color = egui::Color32::from_rgb(200, 60, 60);
 
-        // Setup a tab frame that will contain the favicon, title and close button
-        let mut tab_frame = egui::Frame::NONE.corner_radius(4).begin(ui);
+        // Calculate label truncation based on tab width
+        // Reserve space for: padding (10) + favicon (16) + spacing (6) + close button (20) + padding (6)
+        let available_text_width = tab_width - 58.0;
+        let char_width = 7.0; // Approximate width per character
+        let max_chars = ((available_text_width / char_width).max(3.0)) as usize;
+
+        // Setup a tab frame with fixed width
+        let mut tab_frame = egui::Frame::NONE
+            .corner_radius(egui::CornerRadius {
+                nw: 8,
+                ne: 8,
+                sw: 0,
+                se: 0,
+            })
+            .inner_margin(egui::Margin::symmetric(5, 4))
+            .begin(ui);
         {
-            tab_frame.content_ui.add_space(5.0);
+            // Make the content use horizontal layout
+            tab_frame.content_ui.set_min_width(tab_width - 10.0);
+            tab_frame.content_ui.set_max_width(tab_width - 10.0);
 
             let visuals = tab_frame.content_ui.visuals_mut();
-            // Remove the stroke so we don't see the border between the close button and the label
+            // Remove strokes
             visuals.widgets.active.bg_stroke.width = 0.0;
             visuals.widgets.hovered.bg_stroke.width = 0.0;
-            // Now we make sure the fill color is always the same, irrespective of state, that way
-            // we can make sure that both the label and close button have the same background color
-            visuals.widgets.noninteractive.weak_bg_fill = inactive_bg_color;
-            visuals.widgets.inactive.weak_bg_fill = inactive_bg_color;
-            visuals.widgets.hovered.weak_bg_fill = active_bg_color;
-            visuals.widgets.active.weak_bg_fill = active_bg_color;
-            visuals.selection.bg_fill = active_bg_color;
-            visuals.selection.stroke.color = visuals.widgets.active.fg_stroke.color;
-            visuals.widgets.hovered.fg_stroke.color = visuals.widgets.active.fg_stroke.color;
-
-            // Expansion would also show that they are 2 separate widgets
+            visuals.widgets.noninteractive.weak_bg_fill = egui::Color32::TRANSPARENT;
+            visuals.widgets.inactive.weak_bg_fill = egui::Color32::TRANSPARENT;
+            visuals.widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
+            visuals.widgets.active.weak_bg_fill = egui::Color32::TRANSPARENT;
             visuals.widgets.active.expansion = 0.0;
             visuals.widgets.hovered.expansion = 0.0;
 
-            if let Some(favicon) = favicon_texture {
-                tab_frame.content_ui.add(
-                    egui::Image::from_texture(favicon)
-                        .fit_to_exact_size(egui::vec2(16.0, 16.0))
-                        .bg_fill(egui::Color32::TRANSPARENT),
+            tab_frame.content_ui.horizontal(|ui| {
+                // Favicon
+                if let Some(favicon) = favicon_texture {
+                    ui.add(
+                        egui::Image::from_texture(favicon)
+                            .fit_to_exact_size(egui::vec2(16.0, 16.0))
+                            .bg_fill(egui::Color32::TRANSPARENT),
+                    );
+                    ui.add_space(4.0);
+                } else {
+                    // Default page icon
+                    ui.label(egui::RichText::new("📄").size(12.0));
+                    ui.add_space(4.0);
+                }
+
+                // Tab title - use remaining space except for close button
+                let remaining_width = ui.available_width() - 24.0;
+                ui.allocate_ui_with_layout(
+                    egui::vec2(remaining_width, ui.available_height()),
+                    egui::Layout::left_to_right(egui::Align::Center),
+                    |ui| {
+                        ui.set_clip_rect(ui.max_rect());
+                        let tab = ui.add(
+                            egui::Label::new(
+                                egui::RichText::new(truncate_with_ellipsis(&label, max_chars))
+                                    .size(12.0)
+                            )
+                            .selectable(false)
+                            .sense(egui::Sense::click())
+                        );
+                        
+                        if !active && tab.clicked() {
+                            window.activate_webview(webview.id());
+                        }
+                        if tab.middle_clicked() {
+                            event_queue.push(GuiCommand::CloseWebView(webview.id()));
+                        }
+                        tab.on_hover_ui(|ui| {
+                            ui.label(&label);
+                        });
+                    }
                 );
-            }
 
-            let tab = tab_frame
-                .content_ui
-                .add(Button::selectable(
-                    active,
-                    truncate_with_ellipsis(&label, 20),
-                ))
-                .on_hover_ui(|ui| {
-                    ui.label(&label);
+                // Close button
+                let close_response = ui.add(
+                    egui::Button::new(egui::RichText::new("×").size(14.0))
+                        .frame(false)
+                        .min_size(egui::vec2(18.0, 18.0))
+                );
+                if close_response.hovered() {
+                    ui.painter().rect_filled(
+                        close_response.rect,
+                        4.0,
+                        close_hover_color.gamma_multiply(0.3),
+                    );
+                }
+                close_response.widget_info(|| {
+                    let mut info = WidgetInfo::new(WidgetType::Button);
+                    info.label = Some("Close".into());
+                    info
                 });
-
-            let close_button = tab_frame
-                .content_ui
-                .add(egui::Button::new("X").fill(egui::Color32::TRANSPARENT));
-            close_button.widget_info(|| {
-                let mut info = WidgetInfo::new(WidgetType::Button);
-                info.label = Some("Close".into());
-                info
+                if close_response.clicked() || close_response.middle_clicked() {
+                    event_queue.push(GuiCommand::CloseWebView(webview.id()));
+                }
             });
-            if close_button.clicked() || close_button.middle_clicked() || tab.middle_clicked() {
-                event_queue.push(GuiCommand::CloseWebView(webview.id()))
-            } else if !active && tab.clicked() {
-                window.activate_webview(webview.id());
-            }
         }
 
         let response = tab_frame.allocate_space(ui);
-        let fill_color = if active || response.hovered() {
+        let fill_color = if active {
             active_bg_color
+        } else if response.hovered() {
+            hover_bg_color
         } else {
             inactive_bg_color
         };
         tab_frame.frame.fill = fill_color;
+        
+        // Add bottom border for active tab (like Chrome)
+        if active {
+            let rect = response.rect;
+            let accent_color = if ui.visuals().dark_mode {
+                egui::Color32::from_rgb(100, 150, 255)
+            } else {
+                egui::Color32::from_rgb(26, 115, 232)
+            };
+            ui.painter().rect_filled(
+                egui::Rect::from_min_size(
+                    egui::pos2(rect.left(), rect.bottom() - 2.0),
+                    egui::vec2(rect.width(), 2.0)
+                ),
+                0.0,
+                accent_color,
+            );
+        }
+        
         tab_frame.end(ui);
     }
 
@@ -317,158 +425,261 @@ impl Gui {
             // TODO: While in fullscreen add some way to mitigate the increased phishing risk
             // when not displaying the URL bar: https://github.com/servo/servo/issues/32443
             if winit_window.fullscreen().is_none() {
-                let frame = egui::Frame::default()
-                    .fill(ctx.style().visuals.window_fill)
-                    .inner_margin(4.0);
+                // Modern toolbar styling
+                let toolbar_bg = if ctx.style().visuals.dark_mode {
+                    egui::Color32::from_rgb(40, 40, 44)
+                } else {
+                    egui::Color32::from_rgb(248, 249, 250)
+                };
+                
+                let frame = egui::Frame::NONE
+                    .fill(toolbar_bg)
+                    .inner_margin(egui::Margin::symmetric(8, 6));
+                    
                 TopBottomPanel::top("toolbar").frame(frame).show(ctx, |ui| {
-                    ui.allocate_ui_with_layout(
-                        ui.available_size(),
-                        egui::Layout::left_to_right(egui::Align::Center),
-                        |ui| {
-                            let back_button =
-                                ui.add_enabled(self.can_go_back, Gui::toolbar_button("⏴"));
-                            back_button.widget_info(|| {
-                                let mut info = WidgetInfo::new(WidgetType::Button);
-                                info.label = Some("Back".into());
-                                info
+                    ui.horizontal_centered(|ui| {
+                        ui.spacing_mut().item_spacing.x = 4.0;
+                        
+                        // Navigation buttons group
+                        let nav_button_size = egui::vec2(32.0, 32.0);
+                        
+                        let back_button = ui.add_enabled(
+                            self.can_go_back, 
+                            egui::Button::new(egui::RichText::new("◀").size(14.0))
+                                .frame(false)
+                                .min_size(nav_button_size)
+                                .corner_radius(6.0)
+                        );
+                        back_button.widget_info(|| {
+                            let mut info = WidgetInfo::new(WidgetType::Button);
+                            info.label = Some("Back".into());
+                            info
+                        });
+                        if back_button.clicked() {
+                            event_queue.push(GuiCommand::Back);
+                        }
+
+                        let forward_button = ui.add_enabled(
+                            self.can_go_forward, 
+                            egui::Button::new(egui::RichText::new("▶").size(14.0))
+                                .frame(false)
+                                .min_size(nav_button_size)
+                                .corner_radius(6.0)
+                        );
+                        forward_button.widget_info(|| {
+                            let mut info = WidgetInfo::new(WidgetType::Button);
+                            info.label = Some("Forward".into());
+                            info
+                        });
+                        if forward_button.clicked() {
+                            event_queue.push(GuiCommand::Forward);
+                        }
+
+                        match self.load_status {
+                            LoadStatus::Started | LoadStatus::HeadParsed => {
+                                let stop_button = ui.add(
+                                    egui::Button::new(egui::RichText::new("✕").size(14.0))
+                                        .frame(false)
+                                        .min_size(nav_button_size)
+                                        .corner_radius(6.0)
+                                );
+                                stop_button.widget_info(|| {
+                                    let mut info = WidgetInfo::new(WidgetType::Button);
+                                    info.label = Some("Stop".into());
+                                    info
+                                });
+                                if stop_button.clicked() {
+                                    warn!("Do not support stop yet.");
+                                }
+                            },
+                            LoadStatus::Complete => {
+                                let reload_button = ui.add(
+                                    egui::Button::new(egui::RichText::new("↻").size(16.0))
+                                        .frame(false)
+                                        .min_size(nav_button_size)
+                                        .corner_radius(6.0)
+                                );
+                                reload_button.widget_info(|| {
+                                    let mut info = WidgetInfo::new(WidgetType::Button);
+                                    info.label = Some("Reload".into());
+                                    info
+                                });
+                                if reload_button.clicked() {
+                                    event_queue.push(GuiCommand::Reload);
+                                }
+                            },
+                        }
+                        
+                        ui.add_space(8.0);
+
+                        // Modern address bar - takes remaining width
+                        let address_bar_bg = if ctx.style().visuals.dark_mode {
+                            egui::Color32::from_rgb(55, 55, 60)
+                        } else {
+                            egui::Color32::from_rgb(255, 255, 255)
+                        };
+                        
+                        let available_width = ui.available_width() - 44.0; // Reserve for prefs button
+                        
+                        let location_id = egui::Id::new("location_input");
+                        
+                        // Styled address bar frame
+                        egui::Frame::NONE
+                            .fill(address_bar_bg)
+                            .corner_radius(20.0)
+                            .stroke(egui::Stroke::new(1.0, egui::Color32::from_gray(180)))
+                            .inner_margin(egui::Margin::symmetric(12, 6))
+                            .show(ui, |ui| {
+                                ui.set_min_width(available_width);
+                                
+                                // Lock/security icon
+                                let url_text = location.as_str();
+                                if url_text.starts_with("https://") {
+                                    ui.label(egui::RichText::new("🔒").size(12.0));
+                                } else if url_text.starts_with("http://") {
+                                    ui.label(egui::RichText::new("⚠").size(12.0).color(egui::Color32::from_rgb(200, 150, 0)));
+                                }
+                                
+                                let location_field = ui.add(
+                                    egui::TextEdit::singleline(location)
+                                        .id(location_id)
+                                        .frame(false)
+                                        .desired_width(available_width - 30.0)
+                                        .hint_text("Search or enter address")
+                                        .font(egui::TextStyle::Body)
+                                );
+
+                                if location_field.changed() {
+                                    *location_dirty = true;
+                                }
+                                
+                                // Handle address bar shortcut.
+                                if ui.input(|i| {
+                                    if cfg!(target_os = "macos") {
+                                        i.clone().consume_key(Modifiers::COMMAND, Key::L)
+                                    } else {
+                                        i.clone().consume_key(Modifiers::COMMAND, Key::L) ||
+                                            i.clone().consume_key(Modifiers::ALT, Key::D)
+                                    }
+                                }) {
+                                    location_field.request_focus();
+                                }
+                                
+                                // Select address bar text when it's focused
+                                if location_field.gained_focus() {
+                                    if let Some(mut state) = TextEditState::load(ui.ctx(), location_id) {
+                                        state.cursor.set_char_range(Some(CCursorRange::two(
+                                            CCursor::new(0),
+                                            CCursor::new(location.len()),
+                                        )));
+                                        state.store(ui.ctx(), location_id);
+                                    }
+                                }
+                                
+                                // Navigate when enter is pressed
+                                if location_field.lost_focus() &&
+                                    ui.input(|i| i.clone().key_pressed(Key::Enter))
+                                {
+                                    event_queue.push(GuiCommand::Go(location.clone()));
+                                }
                             });
-                            if back_button.clicked() {
-                                event_queue.push(GuiCommand::Back);
+                        
+                        ui.add_space(4.0);
+                        
+                        // Settings/experimental prefs button
+                        let prefs_toggle = ui
+                            .add(
+                                egui::Button::new(egui::RichText::new("⚙").size(16.0))
+                                    .frame(false)
+                                    .min_size(nav_button_size)
+                                    .corner_radius(6.0)
+                                    .selected(self.experimental_prefs_enabled)
+                            )
+                            .on_hover_text("Experimental features");
+                        prefs_toggle.widget_info(|| {
+                            let mut info = WidgetInfo::new(WidgetType::Button);
+                            info.label = Some("Enable experimental preferences".into());
+                            info.selected = Some(self.experimental_prefs_enabled);
+                            info
+                        });
+                        if prefs_toggle.clicked() {
+                            self.experimental_prefs_enabled = !self.experimental_prefs_enabled;
+                            let enable = self.experimental_prefs_enabled;
+                            for pref in EXPERIMENTAL_PREFS {
+                                state.servo().set_preference(pref, PrefValue::Bool(enable));
                             }
+                            event_queue.push(GuiCommand::ReloadAll);
+                        }
+                    });
+                });
 
-                            let forward_button =
-                                ui.add_enabled(self.can_go_forward, Gui::toolbar_button("⏵"));
-                            forward_button.widget_info(|| {
-                                let mut info = WidgetInfo::new(WidgetType::Button);
-                                info.label = Some("Forward".into());
-                                info
-                            });
-                            if forward_button.clicked() {
-                                event_queue.push(GuiCommand::Forward);
-                            }
-
-                            match self.load_status {
-                                LoadStatus::Started | LoadStatus::HeadParsed => {
-                                    let stop_button = ui.add(Gui::toolbar_button("X"));
-                                    stop_button.widget_info(|| {
-                                        let mut info = WidgetInfo::new(WidgetType::Button);
-                                        info.label = Some("Stop".into());
-                                        info
-                                    });
-                                    if stop_button.clicked() {
-                                        warn!("Do not support stop yet.");
+                // Modern Tab bar with adaptive scaling
+                let tabs_bg_color = if ctx.style().visuals.dark_mode {
+                    egui::Color32::from_rgb(35, 35, 38)
+                } else {
+                    egui::Color32::from_rgb(222, 225, 230)
+                };
+                
+                let tabs_frame = egui::Frame::NONE
+                    .fill(tabs_bg_color)
+                    .inner_margin(egui::Margin {
+                        left: 8,
+                        right: 8,
+                        top: 4,
+                        bottom: 0,
+                    });
+                    
+                TopBottomPanel::top("tabs")
+                    .frame(tabs_frame)
+                    .show(ctx, |ui| {
+                        let available_width = ui.available_width();
+                        let webviews: Vec<_> = window.webviews().into_iter().collect();
+                        let tab_count = webviews.len();
+                        let new_tab_button_width = 36.0;
+                        let tab_width = Self::calculate_tab_width(
+                            available_width, 
+                            tab_count, 
+                            new_tab_button_width
+                        );
+                        
+                        // Use horizontal scroll for many tabs
+                        egui::ScrollArea::horizontal()
+                            .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded)
+                            .auto_shrink([false, true])
+                            .show(ui, |ui| {
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 2.0;
+                                    
+                                    for (id, webview) in webviews.into_iter() {
+                                        let favicon = favicon_textures
+                                            .get(&id)
+                                            .map(|(_, favicon)| favicon)
+                                            .copied();
+                                        Self::browser_tab(
+                                            ui, window, webview, event_queue, favicon, tab_width
+                                        );
                                     }
-                                },
-                                LoadStatus::Complete => {
-                                    let reload_button = ui.add(Gui::toolbar_button("↻"));
-                                    reload_button.widget_info(|| {
-                                        let mut info = WidgetInfo::new(WidgetType::Button);
-                                        info.label = Some("Reload".into());
-                                        info
-                                    });
-                                    if reload_button.clicked() {
-                                        event_queue.push(GuiCommand::Reload);
-                                    }
-                                },
-                            }
-                            ui.add_space(2.0);
-
-                            ui.allocate_ui_with_layout(
-                                ui.available_size(),
-                                egui::Layout::right_to_left(egui::Align::Center),
-                                |ui| {
-                                    let prefs_toggle = ui
-                                        .toggle_value(&mut self.experimental_prefs_enabled, "☢")
-                                        .on_hover_text("Enable experimental prefs");
-                                    prefs_toggle.widget_info(|| {
-                                        let mut info = WidgetInfo::new(WidgetType::Button);
-                                        info.label = Some("Enable experimental preferences".into());
-                                        info.selected = Some(self.experimental_prefs_enabled);
-                                        info
-                                    });
-                                    if prefs_toggle.clicked() {
-                                        let enable = self.experimental_prefs_enabled;
-                                        for pref in EXPERIMENTAL_PREFS {
-                                            state
-                                                .servo()
-                                                .set_preference(pref, PrefValue::Bool(enable));
-                                        }
-                                        event_queue.push(GuiCommand::ReloadAll);
-                                    }
-
-                                    let location_id = egui::Id::new("location_input");
-                                    let location_field = ui.add_sized(
-                                        ui.available_size(),
-                                        egui::TextEdit::singleline(location)
-                                            .id(location_id)
-                                            .hint_text("Search or enter address"),
+                                    
+                                    // New tab button - styled to match tabs
+                                    let new_tab_btn = ui.add(
+                                        egui::Button::new(
+                                            egui::RichText::new("+").size(18.0)
+                                        )
+                                        .frame(false)
+                                        .min_size(egui::vec2(32.0, 28.0))
+                                        .corner_radius(6.0)
                                     );
-
-                                    if location_field.changed() {
-                                        *location_dirty = true;
+                                    new_tab_btn.widget_info(|| {
+                                        let mut info = WidgetInfo::new(WidgetType::Button);
+                                        info.label = Some("New tab".into());
+                                        info
+                                    });
+                                    if new_tab_btn.clicked() {
+                                        event_queue.push(GuiCommand::NewWebView);
                                     }
-                                    // Handle adddress bar shortcut.
-                                    if ui.input(|i| {
-                                        if cfg!(target_os = "macos") {
-                                            i.clone().consume_key(Modifiers::COMMAND, Key::L)
-                                        } else {
-                                            i.clone().consume_key(Modifiers::COMMAND, Key::L) ||
-                                                i.clone().consume_key(Modifiers::ALT, Key::D)
-                                        }
-                                    }) {
-                                        // The focus request immediately makes gained_focus return true.
-                                        location_field.request_focus();
-                                    }
-                                    // Select address bar text when it's focused (click or shortcut).
-                                    if location_field.gained_focus() {
-                                        if let Some(mut state) =
-                                            TextEditState::load(ui.ctx(), location_id)
-                                        {
-                                            // Select the whole input.
-                                            state.cursor.set_char_range(Some(CCursorRange::two(
-                                                CCursor::new(0),
-                                                CCursor::new(location.len()),
-                                            )));
-                                            state.store(ui.ctx(), location_id);
-                                        }
-                                    }
-                                    // Navigate to address when enter is pressed in the address bar.
-                                    if location_field.lost_focus() &&
-                                        ui.input(|i| i.clone().key_pressed(Key::Enter))
-                                    {
-                                        event_queue.push(GuiCommand::Go(location.clone()));
-                                    }
-                                },
-                            );
-                        },
-                    );
-                });
-
-                // A simple Tab header strip
-                TopBottomPanel::top("tabs").show(ctx, |ui| {
-                    ui.allocate_ui_with_layout(
-                        ui.available_size(),
-                        egui::Layout::left_to_right(egui::Align::Center),
-                        |ui| {
-                            for (id, webview) in window.webviews().into_iter() {
-                                let favicon = favicon_textures
-                                    .get(&id)
-                                    .map(|(_, favicon)| favicon)
-                                    .copied();
-                                Self::browser_tab(ui, window, webview, event_queue, favicon);
-                            }
-                            let new_tab_button = ui.add(Gui::toolbar_button("+"));
-                            new_tab_button.widget_info(|| {
-                                let mut info = WidgetInfo::new(WidgetType::Button);
-                                info.label = Some("New tab".into());
-                                info
+                                });
                             });
-                            if new_tab_button.clicked() {
-                                event_queue.push(GuiCommand::NewWebView);
-                            }
-                        },
-                    );
-                });
+                    });
             };
 
             // The toolbar height is where the Context’s available rect starts.

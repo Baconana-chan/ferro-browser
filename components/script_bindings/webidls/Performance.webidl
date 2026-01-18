@@ -32,7 +32,7 @@ partial interface Performance {
   PerformanceMark mark(DOMString markName, optional PerformanceMarkOptions markOptions = {});
   undefined clearMarks(optional DOMString markName);
   [Throws]
-  PerformanceMeasure measure(DOMString measureName, optional (DOMString or PerformanceMeasureOptions) startOrMeasureOptions, optional DOMString endMark);
+  PerformanceMeasure measure(DOMString measureName, optional (DOMString or PerformanceMeasureOptions) startOrMeasureOptions = {}, optional DOMString endMark);
   undefined clearMeasures(optional DOMString measureName);
 };
 

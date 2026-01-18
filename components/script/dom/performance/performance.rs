@@ -450,6 +450,34 @@ impl Performance {
             *e = DomRoot::from_ref(entry);
         }
     }
+
+    /// Helper to resolve a time value from PerformanceMeasureOptions
+    fn resolve_measure_time(
+        &self,
+        time_opt: &Option<crate::dom::bindings::codegen::UnionTypes::StringOrDouble>,
+        is_start: bool,
+    ) -> Fallible<CrossProcessInstant> {
+        use crate::dom::bindings::codegen::UnionTypes::StringOrDouble;
+        
+        match time_opt {
+            Some(StringOrDouble::String(mark_name)) => {
+                self.buffer
+                    .borrow()
+                    .get_last_entry_start_time_with_name_and_type(mark_name.clone(), EntryType::Mark)
+                    .ok_or(Error::Syntax(None))
+            },
+            Some(StringOrDouble::Double(timestamp)) => {
+                Ok(self.time_origin + Duration::milliseconds((**timestamp * 1000.0) as i64))
+            },
+            None => {
+                if is_start {
+                    Ok(self.time_origin)
+                } else {
+                    Ok(CrossProcessInstant::now())
+                }
+            },
+        }
+    }
 }
 
 impl PerformanceMethods<crate::DomTypeHolder> for Performance {
@@ -520,25 +548,45 @@ impl PerformanceMethods<crate::DomTypeHolder> for Performance {
     }
 
     /// <https://w3c.github.io/user-timing/#dom-performance-mark>
-    fn Mark(&self, mark_name: DOMString) -> Fallible<()> {
+    fn Mark(
+        &self,
+        mark_name: DOMString,
+        options: script_bindings::trace::RootedTraceableBox<script_bindings::codegen::GenericBindings::PerformanceBinding::PerformanceMarkOptions>,
+    ) -> Fallible<DomRoot<PerformanceMark>> {
         let global = self.global();
         // Step 1.
         if global.is::<Window>() && INVALID_ENTRY_NAMES.contains(&&*mark_name.str()) {
             return Err(Error::Syntax(None));
         }
 
+        // Get start time from options or use current time
+        // Note: startTime is relative to time_origin, not absolute timestamp
+        let start_time = if let Some(time) = options.startTime {
+            // startTime is in milliseconds relative to time_origin
+            // Use saturating arithmetic to prevent overflow
+            let millis = (*time * 1000.0) as i64; // Convert to microseconds for Duration
+            if millis >= 0 {
+                self.time_origin.saturating_add(Duration::microseconds(millis))
+            } else {
+                // Negative offset - use saturating_sub
+                self.time_origin.saturating_sub(Duration::microseconds(-millis))
+            }
+        } else {
+            CrossProcessInstant::now()
+        };
+
         // Steps 2 to 6.
         let entry = PerformanceMark::new(
             &global,
             mark_name,
-            CrossProcessInstant::now(),
+            start_time,
             Duration::ZERO,
         );
         // Steps 7 and 8.
         self.queue_entry(entry.upcast::<PerformanceEntry>());
 
-        // Step 9.
-        Ok(())
+        // Step 9. Return the entry
+        Ok(entry)
     }
 
     /// <https://w3c.github.io/user-timing/#dom-performance-clearmarks>
@@ -552,27 +600,53 @@ impl PerformanceMethods<crate::DomTypeHolder> for Performance {
     fn Measure(
         &self,
         measure_name: DOMString,
-        start_mark: Option<DOMString>,
+        start_or_options: crate::dom::bindings::codegen::UnionTypes::StringOrPerformanceMeasureOptions,
         end_mark: Option<DOMString>,
-    ) -> Fallible<()> {
-        // Steps 1 and 2.
-        let end_time = end_mark
-            .map(|name| {
-                self.buffer
-                    .borrow()
-                    .get_last_entry_start_time_with_name_and_type(name, EntryType::Mark)
-                    .unwrap_or(self.time_origin)
-            })
-            .unwrap_or_else(CrossProcessInstant::now);
+    ) -> Fallible<DomRoot<PerformanceMeasure>> {
+        use crate::dom::bindings::codegen::UnionTypes::StringOrPerformanceMeasureOptions;
 
-        // Step 3.
-        let start_time = start_mark
-            .and_then(|name| {
-                self.buffer
+        let (start_time, end_time) = match Some(start_or_options) {
+            Some(StringOrPerformanceMeasureOptions::String(start_mark)) => {
+                // Legacy: start_mark is a string
+                let start = self.buffer
                     .borrow()
-                    .get_last_entry_start_time_with_name_and_type(name, EntryType::Mark)
-            })
-            .unwrap_or(self.time_origin);
+                    .get_last_entry_start_time_with_name_and_type(start_mark, EntryType::Mark)
+                    .unwrap_or(self.time_origin);
+
+                let end = end_mark
+                    .and_then(|name| {
+                        self.buffer
+                            .borrow()
+                            .get_last_entry_start_time_with_name_and_type(name, EntryType::Mark)
+                    })
+                    .unwrap_or_else(CrossProcessInstant::now);
+
+                (start, end)
+            },
+            Some(StringOrPerformanceMeasureOptions::PerformanceMeasureOptions(ref options)) => {
+                // New: options object
+                let start = self.resolve_measure_time(&options.start, true)?;
+                let end = if let Some(ref dur) = options.duration {
+                    // If duration is specified, calculate end from start + duration
+                    start + Duration::milliseconds((**dur * 1000.0) as i64)
+                } else {
+                    self.resolve_measure_time(&options.end, false)?
+                };
+                (start, end)
+            },
+            None => {
+                // No options: start from time origin, end now
+                let end = end_mark
+                    .and_then(|name| {
+                        self.buffer
+                            .borrow()
+                            .get_last_entry_start_time_with_name_and_type(name, EntryType::Mark)
+                    })
+                    .unwrap_or_else(CrossProcessInstant::now);
+
+                (self.time_origin, end)
+            },
+        };
 
         // Steps 4 to 8.
         let entry = PerformanceMeasure::new(
@@ -585,8 +659,8 @@ impl PerformanceMethods<crate::DomTypeHolder> for Performance {
         // Step 9 and 10.
         self.queue_entry(entry.upcast::<PerformanceEntry>());
 
-        // Step 11.
-        Ok(())
+        // Step 11. Return the entry
+        Ok(entry)
     }
 
     /// <https://w3c.github.io/user-timing/#dom-performance-clearmeasures>

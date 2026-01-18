@@ -48,4 +48,10 @@ pub enum MediaError {
     
     #[error("Feature not enabled: {0}")]
     FeatureNotEnabled(String),
+    
+    #[error("Parse error: {0}")]
+    ParseError(String),
+    
+    #[error("MSE error: {0}")]
+    MseError(String),
 }

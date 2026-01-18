@@ -15,6 +15,7 @@
 
 pub mod error;
 pub mod video;
+pub mod mse;
 
 #[cfg(feature = "ffmpeg")]
 pub mod player;
@@ -24,6 +25,7 @@ pub mod audio;
 pub mod decoder;
 
 pub use error::{MediaError, MediaResult};
+pub use mse::{SegmentParser, MseSourceBuffer, TimeRange, MediaSegment, AppendMode, CodecInfo};
 
 #[cfg(feature = "ffmpeg")]
 pub use player::{MediaPlayer, MediaPlayerBuilder, PlaybackState, PlayerEvent};

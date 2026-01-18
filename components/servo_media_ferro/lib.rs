@@ -6,6 +6,8 @@
 //! 
 //! This is a drop-in replacement for servo-media-gstreamer that uses FFmpeg
 //! via the ferro_media crate for media decoding and playback.
+//!
+//! Also provides Media Source Extensions (MSE) support for streaming video.
 
 use std::any::Any;
 use std::ops::Range;
@@ -19,6 +21,9 @@ use servo_media::player::context::PlayerGLContext;
 use servo_media::player::{Player, PlayerError, PlayerEvent, StreamType};
 use servo_media::player::audio::AudioRenderer;
 use servo_media::player::video::VideoFrameRenderer;
+
+// Re-export ferro_media MSE types for use in DOM
+pub use ferro_media::{MseSourceBuffer, SegmentParser, TimeRange, MediaSegment, AppendMode, CodecInfo};
 
 // Re-export from servo_media for convenience
 pub use servo_media::player::context::{GlApi, GlContext, NativeDisplay};
@@ -524,4 +529,184 @@ impl servo_media::webrtc::WebRtcControllerBackend for FerroWebRtcController {
     }
 
     fn quit(&mut self) {}
+}
+
+// ============================================================================
+// MSE (Media Source Extensions) Support
+// ============================================================================
+
+/// MSE-aware player that can handle streaming media via SourceBuffer
+pub struct MsePlayer {
+    source_buffers: Vec<MseSourceBuffer>,
+    duration: Option<f64>,
+    ready_state: MseReadyState,
+    paused: bool,
+    current_time: f64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MseReadyState {
+    Closed,
+    Open,
+    Ended,
+}
+
+impl MsePlayer {
+    pub fn new() -> Self {
+        Self {
+            source_buffers: Vec::new(),
+            duration: None,
+            ready_state: MseReadyState::Closed,
+            paused: true,
+            current_time: 0.0,
+        }
+    }
+    
+    /// Open the media source
+    pub fn open(&mut self) {
+        self.ready_state = MseReadyState::Open;
+        debug!("MsePlayer: opened");
+    }
+    
+    /// Add a source buffer for a given MIME type
+    pub fn add_source_buffer(&mut self, mime_type: &str) -> usize {
+        let buffer = MseSourceBuffer::new(mime_type);
+        self.source_buffers.push(buffer);
+        debug!("MsePlayer: added source buffer for {}", mime_type);
+        self.source_buffers.len() - 1
+    }
+    
+    /// Remove a source buffer by index
+    pub fn remove_source_buffer(&mut self, index: usize) {
+        if index < self.source_buffers.len() {
+            self.source_buffers.remove(index);
+            debug!("MsePlayer: removed source buffer {}", index);
+        }
+    }
+    
+    /// Get a mutable reference to a source buffer
+    pub fn source_buffer_mut(&mut self, index: usize) -> Option<&mut MseSourceBuffer> {
+        self.source_buffers.get_mut(index)
+    }
+    
+    /// Get a reference to a source buffer
+    pub fn source_buffer(&self, index: usize) -> Option<&MseSourceBuffer> {
+        self.source_buffers.get(index)
+    }
+    
+    /// Get number of source buffers
+    pub fn source_buffer_count(&self) -> usize {
+        self.source_buffers.len()
+    }
+    
+    /// Set duration
+    pub fn set_duration(&mut self, duration: f64) {
+        self.duration = Some(duration);
+    }
+    
+    /// Get duration
+    pub fn duration(&self) -> Option<f64> {
+        self.duration
+    }
+    
+    /// End of stream
+    pub fn end_of_stream(&mut self, error: Option<&str>) {
+        if let Some(err) = error {
+            debug!("MsePlayer: end of stream with error: {}", err);
+        } else {
+            debug!("MsePlayer: end of stream");
+        }
+        self.ready_state = MseReadyState::Ended;
+    }
+    
+    /// Get ready state
+    pub fn ready_state(&self) -> MseReadyState {
+        self.ready_state
+    }
+    
+    /// Check if currently updating any buffer
+    pub fn is_updating(&self) -> bool {
+        self.source_buffers.iter().any(|sb| sb.is_updating())
+    }
+    
+    /// Get combined buffered ranges across all source buffers
+    pub fn buffered_ranges(&self) -> Vec<TimeRange> {
+        // Combine and intersect ranges from all source buffers
+        if self.source_buffers.is_empty() {
+            return Vec::new();
+        }
+        
+        // Start with first buffer's ranges
+        let mut combined = self.source_buffers[0].buffered_ranges().to_vec();
+        
+        // Intersect with other buffers
+        for buffer in &self.source_buffers[1..] {
+            let other_ranges = buffer.buffered_ranges();
+            combined = Self::intersect_ranges(&combined, other_ranges);
+        }
+        
+        combined
+    }
+    
+    fn intersect_ranges(a: &[TimeRange], b: &[TimeRange]) -> Vec<TimeRange> {
+        let mut result = Vec::new();
+        
+        for range_a in a {
+            for range_b in b {
+                // Check for intersection
+                let start = range_a.start.max(range_b.start);
+                let end = range_a.end.min(range_b.end);
+                if start < end {
+                    result.push(TimeRange::new(start, end));
+                }
+            }
+        }
+        
+        result
+    }
+    
+    /// Play
+    pub fn play(&mut self) {
+        self.paused = false;
+        debug!("MsePlayer: play");
+    }
+    
+    /// Pause
+    pub fn pause(&mut self) {
+        self.paused = true;
+        debug!("MsePlayer: pause");
+    }
+    
+    /// Get paused state
+    pub fn paused(&self) -> bool {
+        self.paused
+    }
+    
+    /// Set current time (seek)
+    pub fn set_current_time(&mut self, time: f64) {
+        self.current_time = time;
+        debug!("MsePlayer: seek to {}", time);
+    }
+    
+    /// Get current time
+    pub fn current_time(&self) -> f64 {
+        self.current_time
+    }
+    
+    /// Check if we can play through without buffering
+    pub fn can_play_through(&self) -> bool {
+        if let Some(duration) = self.duration {
+            let buffered = self.buffered_ranges();
+            // Check if we have buffered to the end
+            buffered.iter().any(|r| r.end >= duration)
+        } else {
+            false
+        }
+    }
+}
+
+impl Default for MsePlayer {
+    fn default() -> Self {
+        Self::new()
+    }
 }

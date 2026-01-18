@@ -62,9 +62,13 @@
 - [ ] Dark mode (prefers-color-scheme + .dark class handling)
   - Часто игнорируется → светлая тема на тёмных сайтах
   - Оценка: 1–3 недели
-- [ ] Fetch API + modern JS (async/await, modules, BigInt если нужно)
+- [x] Fetch API + modern JS (async/await, modules, BigInt если нужно)
+  - ✅ IndexedDB включён по умолчанию (dom_indexeddb_enabled = true)
+  - ✅ Performance API User Timing Level 3 (mark/measure возвращают объекты)
+  - ✅ PerformanceMark.detail и PerformanceMeasure.detail атрибуты
   - Чтобы DDG перешёл в full mode (filters, suggestions, bangs)
-  - Оценка: 4–10 недель (script crate + mozjs/boa)
+  - 🔧 TODO: Проверить async/await edge-cases
+  - 🔧 TODO: ES Modules imports (import/export)
 - [ ] Media / images improvements (lazy loading, object-fit/cover, aspect-ratio)
   - Изображения в растягиваются/ломаются/долго грузятся
   - Оценка: 2–5 недель
@@ -78,11 +82,28 @@
   - Оценка: 4–8 недель (layout engine)
 - [ ] Reduce crashes на complex сайтах (memory leaks, panic в webrender)
   - Оценка: ongoing (mach test-wpt + fuzzing)
-- [ ] Video playback streaming (Media Source Extensions)
-  - Сейчас только full download → YouTube/Twitch часто не работают
-  - Оценка: 4–10 недель
+- [x] Video playback streaming (Media Source Extensions)
+  - ✅ MediaSource API реализован (WebIDL + Rust)
+  - ✅ SourceBuffer и SourceBufferList созданы
+  - ✅ isTypeSupported() для video/mp4, video/webm, audio/mp4, audio/webm
+  - ✅ Включено по умолчанию (dom_mediasource_enabled = true)
+  - ✅ Создан MSE SegmentParser в ferro_media/src/mse.rs
+  - ✅ Поддержка парсинга ISOBMFF (MP4) и WebM контейнеров
+  - ✅ MseSourceBuffer с управлением buffered ranges
+  - ✅ MsePlayer в servo_media_ferro для интеграции
+  - 🔧 TODO: Полная интеграция с FFmpeg декодером для реального воспроизведения
 
 ## Приоритет 4: Browser shell / UI фичи (сверху Servo)
+- [x] Современный дизайн навигационной панели
+  - ✅ Адаптивные вкладки: масштабируются от 60px до 200px в зависимости от количества
+  - ✅ Горизонтальный scroll для большого количества вкладок (13+ работает)
+  - ✅ Современные цвета для dark/light mode
+  - ✅ Закруглённые вкладки в стиле Chrome
+  - ✅ Акцентная полоса на активной вкладке
+  - ✅ Закруглённая адресная строка с lock/warning иконками
+  - ✅ Улучшенные кнопки навигации (back, forward, reload)
+  - 🔧 TODO: Drag-and-drop перестановка вкладок
+  - Изменения: ports/servoshell/desktop/gui.rs
 - [ ] Tabbed browsing + session restore
 - [ ] Bookmarks / history basics
 - [ ] Address bar с автодополнением (duckduckgo suggestions если JS пофиксим)
@@ -107,7 +128,7 @@
 - Инструменты: mach test-wpt, wpt.fyi сравнение с Gecko
 
 ## Миграция медиа: GStreamer → FFmpeg
-**Статус: FFmpeg СОБИРАЕТСЯ ✅**
+**Статус: FFmpeg СОБИРАЕТСЯ ✅ | GStreamer УДАЛЁН ✅**
 
 ### Причины миграции:
 - GStreamer плохо работает кросс-платформенно (особенно на Windows)
@@ -165,3 +186,26 @@ brew install ffmpeg
 - Обновление upstream Servo — rebase/merge каждые 1–2 месяца (если изменения в servo/ — конфликты будут).
 
 Начни с caret + selection + smooth scroll — это даст самый большой прирост "не бесит".
+
+## Web Platform APIs Progress
+
+### Реализованные API:
+- [x] **IndexedDB** — включён по умолчанию (dom_indexeddb_enabled = true)
+- [x] **MediaSource Extensions (MSE)** — полная реализация
+  - MediaSource, SourceBuffer, SourceBufferList (DOM)
+  - isTypeSupported() для video/mp4, video/webm, audio/mp4, audio/webm, audio/mpeg
+  - События: sourceopen, sourceended, sourceclose, updatestart, update, updateend
+  - ferro_media/src/mse.rs — SegmentParser для MP4/WebM
+  - servo_media_ferro — MsePlayer с buffered ranges
+- [x] **Performance User Timing Level 3**
+  - performance.mark() возвращает PerformanceMark объект
+  - performance.measure() возвращает PerformanceMeasure объект
+  - detail атрибут на PerformanceMark и PerformanceMeasure
+  - PerformanceMarkOptions и PerformanceMeasureOptions поддержка
+
+### Требуют реализации для YouTube/TikTok:
+- [ ] Encrypted Media Extensions (EME) — DRM контент
+- [ ] WebCodecs API — низкоуровневое декодирование
+- [ ] ResizeObserver — отслеживание изменений размера
+- [ ] IntersectionObserver улучшения
+- [ ] Web Workers / Service Workers полная поддержка

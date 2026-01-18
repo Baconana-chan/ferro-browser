@@ -323,6 +323,7 @@ pub(crate) mod keyboardevent;
 pub(crate) mod location;
 pub(crate) mod media;
 pub(crate) use self::media::*;
+pub(crate) mod mediasource;
 pub(crate) mod messagechannel;
 pub(crate) mod messageevent;
 #[expect(dead_code)]
@@ -390,6 +391,8 @@ pub(crate) mod servointernals;
 #[expect(dead_code)]
 pub(crate) mod servoparser;
 pub(crate) mod shadowroot;
+pub(crate) mod sourcebuffer;
+pub(crate) mod sourcebufferlist;
 pub(crate) mod staticrange;
 pub(crate) mod storage;
 pub(crate) mod storageevent;
