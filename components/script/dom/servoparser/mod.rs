@@ -1120,6 +1120,7 @@ impl ParserContext {
             );
             let audio = DomRoot::downcast::<HTMLMediaElement>(audio).unwrap();
             audio.SetSrc(USVString(self.url.to_string()));
+            audio.SetControls(true);  // Show controls for standalone media documents
             DomRoot::upcast::<Node>(audio)
         } else {
             let video = Element::create(
@@ -1133,6 +1134,7 @@ impl ParserContext {
             );
             let video = DomRoot::downcast::<HTMLMediaElement>(video).unwrap();
             video.SetSrc(USVString(self.url.to_string()));
+            video.SetControls(true);  // Show controls for standalone media documents
             DomRoot::upcast::<Node>(video)
         };
         // Step 4. Append an element host element for the media, as described below, to the body element.

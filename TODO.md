@@ -66,6 +66,7 @@
   - ✅ IndexedDB включён по умолчанию (dom_indexeddb_enabled = true)
   - ✅ Performance API User Timing Level 3 (mark/measure возвращают объекты)
   - ✅ PerformanceMark.detail и PerformanceMeasure.detail атрибуты
+  - ✅ Constructable StyleSheets (adoptedStyleSheets) включены для GitHub
   - Чтобы DDG перешёл в full mode (filters, suggestions, bangs)
   - 🔧 TODO: Проверить async/await edge-cases
   - 🔧 TODO: ES Modules imports (import/export)
@@ -91,7 +92,9 @@
   - ✅ Поддержка парсинга ISOBMFF (MP4) и WebM контейнеров
   - ✅ MseSourceBuffer с управлением buffered ranges
   - ✅ MsePlayer в servo_media_ferro для интеграции
-  - 🔧 TODO: Полная интеграция с FFmpeg декодером для реального воспроизведения
+  - ✅ Standalone video/audio documents с controls
+  - ⚠️ ПРОБЛЕМА: FerroPlayer - заглушка! push_data() ничего не делает
+  - 🔧 TODO: Реализовать настоящий FFmpeg Player с декодированием и рендерингом
 
 ## Приоритет 4: Browser shell / UI фичи (сверху Servo)
 - [x] Современный дизайн навигационной панели

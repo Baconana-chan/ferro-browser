@@ -41,6 +41,34 @@ impl CrossProcessInstant {
     pub fn epoch() -> Self {
         Self { value: 0 }
     }
+
+    /// Add a duration with saturating arithmetic to prevent overflow
+    pub fn saturating_add(self, rhs: Duration) -> Self {
+        let nanos = rhs.whole_nanoseconds();
+        if nanos >= 0 {
+            Self {
+                value: self.value.saturating_add(nanos as u64),
+            }
+        } else {
+            Self {
+                value: self.value.saturating_sub((-nanos) as u64),
+            }
+        }
+    }
+
+    /// Subtract a duration with saturating arithmetic to prevent underflow
+    pub fn saturating_sub(self, rhs: Duration) -> Self {
+        let nanos = rhs.whole_nanoseconds();
+        if nanos >= 0 {
+            Self {
+                value: self.value.saturating_sub(nanos as u64),
+            }
+        } else {
+            Self {
+                value: self.value.saturating_add((-nanos) as u64),
+            }
+        }
+    }
 }
 
 impl Sub for CrossProcessInstant {

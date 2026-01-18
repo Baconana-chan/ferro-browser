@@ -519,7 +519,8 @@ impl Gui {
                             egui::Color32::from_rgb(255, 255, 255)
                         };
                         
-                        let available_width = ui.available_width() - 44.0; // Reserve for prefs button
+                        // Reserve space for: prefs button (32) + spacing (12)
+                        let available_width = (ui.available_width() - 48.0).max(100.0);
                         
                         let location_id = egui::Id::new("location_input");
                         
@@ -586,12 +587,14 @@ impl Gui {
                         
                         ui.add_space(4.0);
                         
+                        ui.add_space(4.0);
+                        
                         // Settings/experimental prefs button
                         let prefs_toggle = ui
                             .add(
                                 egui::Button::new(egui::RichText::new("⚙").size(16.0))
                                     .frame(false)
-                                    .min_size(nav_button_size)
+                                    .min_size(egui::vec2(32.0, 32.0))
                                     .corner_radius(6.0)
                                     .selected(self.experimental_prefs_enabled)
                             )
@@ -691,6 +694,19 @@ impl Gui {
                 Scale::<_, DeviceIndependentPixel, DevicePixel>::new(ctx.pixels_per_point());
 
             headed_window.for_each_active_dialog(window, |dialog| dialog.update(ctx));
+
+            // Paint background for webview area to prevent flash when loading new tabs
+            let webview_bg = if ctx.style().visuals.dark_mode {
+                egui::Color32::from_rgb(28, 28, 30)
+            } else {
+                egui::Color32::from_rgb(255, 255, 255)
+            };
+            let available_rect = ctx.available_rect();
+            ctx.layer_painter(LayerId::background()).rect_filled(
+                available_rect,
+                0.0,
+                webview_bg,
+            );
 
             // If the top parts of the GUI changed size, then update the size of the WebView and also
             // the size of its RenderingContext.
