@@ -786,6 +786,8 @@ where
         return None;
     }
 
+    debug!("Decoded animated image with {} frames, size {}x{}", frames.len(), width, height);
+
     // Coalesce the frame data into one single shared memory region.
     let mut bytes = Vec::with_capacity(total_number_of_bytes);
     for frame in frame_data {

@@ -89,6 +89,7 @@ impl SourceBuffer {
         self.fire_event(Atom::from("updateend"), can_gc);
     }
 
+    #[allow(dead_code)]
     fn signal_error(&self, can_gc: CanGc) {
         self.updating.set(false);
         self.fire_event(Atom::from("error"), can_gc);

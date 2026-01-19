@@ -1088,7 +1088,34 @@ impl ParserContext {
         // Step 8. Act as if the user agent had stopped parsing document.
         self.is_synthesized_document = true;
         // Step 3. Populate with html/head/body given document.
-        let page = "<html><body></body></html>".into();
+        // Use styling to center media and fill viewport properly
+        let page = r#"<html><head><style>
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+video, audio, img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+}
+video, img {
+    object-fit: contain;
+}
+audio {
+    min-width: 300px;
+    background: #1a1a1a;
+    border-radius: 8px;
+}
+</style></head><body></body></html>"#.into();
         parser.push_string_input_chunk(page);
         parser.parse_sync(CanGc::note());
 

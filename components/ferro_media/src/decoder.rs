@@ -80,20 +80,43 @@ impl MediaDecoder {
             let context_decoder = ffmpeg::codec::context::Context::from_parameters(stream.parameters())?;
             let decoder = context_decoder.decoder().video()?;
             
-            video_size = Some(Size2D::new(decoder.width(), decoder.height()));
+            // Validate video parameters before proceeding
+            let width = decoder.width();
+            let height = decoder.height();
+            let format = decoder.format();
             
-            // Create scaler for RGBA output
-            scaler = Some(ScalerContext::get(
-                decoder.format(),
-                decoder.width(),
-                decoder.height(),
-                Pixel::RGBA,
-                decoder.width(),
-                decoder.height(),
-                Flags::BILINEAR,
-            )?);
-            
-            video_decoder = Some(decoder);
+            // Check for valid dimensions and pixel format
+            // Pixel::None indicates FFmpeg couldn't determine the format
+            if width > 0 && height > 0 && format != Pixel::None {
+                video_size = Some(Size2D::new(width, height));
+                
+                // Create scaler for RGBA output
+                match ScalerContext::get(
+                    format,
+                    width,
+                    height,
+                    Pixel::RGBA,
+                    width,
+                    height,
+                    Flags::BILINEAR,
+                ) {
+                    Ok(s) => {
+                        scaler = Some(s);
+                        video_decoder = Some(decoder);
+                    }
+                    Err(e) => {
+                        log::warn!("Failed to create video scaler: {:?}, skipping video stream", e);
+                        // Don't use this video stream since we can't scale it
+                        video_stream_index = None;
+                    }
+                }
+            } else {
+                log::warn!(
+                    "Invalid video parameters: width={}, height={}, format={:?}, skipping video stream",
+                    width, height, format
+                );
+                video_stream_index = None;
+            }
         }
         
         // Find audio stream
@@ -189,32 +212,53 @@ impl MediaDecoder {
             // Process video packet
             if Some(stream_index) == self.video_stream_index {
                 if let Some(ref mut decoder) = self.video_decoder {
-                    decoder.send_packet(&packet)?;
+                    // Use send_packet and handle errors gracefully
+                    if let Err(e) = decoder.send_packet(&packet) {
+                        log::debug!("Failed to send video packet: {:?}", e);
+                        continue; // Skip this packet
+                    }
                     
                     let mut decoded_frame = FfmpegVideoFrame::empty();
                     if decoder.receive_frame(&mut decoded_frame).is_ok() {
+                        // Validate decoded frame before scaling
+                        let frame_format = decoded_frame.format();
+                        let frame_width = decoded_frame.width();
+                        let frame_height = decoded_frame.height();
+                        
+                        if frame_format == Pixel::None || frame_width == 0 || frame_height == 0 {
+                            log::debug!("Skipping invalid video frame: format={:?}, {}x{}", 
+                                frame_format, frame_width, frame_height);
+                            continue; // Skip invalid frame
+                        }
+                        
                         // Calculate timestamp
                         let pts = decoded_frame.pts().unwrap_or(0);
                         let timestamp = Duration::from_secs_f64(pts as f64 * self.time_base_video);
                         
-                        // Convert to RGBA
+                        // Convert to RGBA - with error handling
                         let mut rgb_frame = FfmpegVideoFrame::empty();
                         if let Some(ref mut scaler) = self.scaler {
-                            scaler.run(&decoded_frame, &mut rgb_frame)?;
-                            
-                            let video_frame = VideoFrame {
-                                width: rgb_frame.width(),
-                                height: rgb_frame.height(),
-                                data: rgb_frame.data(0).to_vec(),
-                                stride: rgb_frame.stride(0) as u32,
-                                timestamp,
-                            };
-                            
-                            return Ok(Some(DecodedFrame {
-                                timestamp,
-                                video: Some(video_frame),
-                                audio: None,
-                            }));
+                            match scaler.run(&decoded_frame, &mut rgb_frame) {
+                                Ok(_) => {
+                                    let video_frame = VideoFrame {
+                                        width: rgb_frame.width(),
+                                        height: rgb_frame.height(),
+                                        data: rgb_frame.data(0).to_vec(),
+                                        stride: rgb_frame.stride(0) as u32,
+                                        timestamp,
+                                    };
+                                    
+                                    return Ok(Some(DecodedFrame {
+                                        timestamp,
+                                        video: Some(video_frame),
+                                        audio: None,
+                                    }));
+                                }
+                                Err(e) => {
+                                    log::debug!("Failed to scale video frame: {:?}", e);
+                                    continue; // Skip this frame
+                                }
+                            }
                         }
                     }
                 }

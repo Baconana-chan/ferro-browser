@@ -4,7 +4,6 @@
 
 use base::cross_process_instant::CrossProcessInstant;
 use dom_struct::dom_struct;
-use js::jsval::JSVal;
 use time::Duration;
 
 use crate::dom::bindings::codegen::Bindings::PerformanceMarkBinding::PerformanceMarkMethods;

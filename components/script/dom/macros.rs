@@ -717,6 +717,7 @@ macro_rules! window_event_handlers(
 );
 
 /// DOM struct implementation for simple interfaces inheriting from PerformanceEntry.
+#[allow(unused_macros)]
 macro_rules! impl_performance_entry_struct(
     ($binding:ident, $struct:ident, $type:path) => (
         use base::cross_process_instant::CrossProcessInstant;

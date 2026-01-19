@@ -101,6 +101,7 @@ impl MediaSource {
         media_source
     }
 
+    #[allow(dead_code)]
     pub(crate) fn get_ready_state(&self) -> ReadyState {
         self.ready_state.get()
     }

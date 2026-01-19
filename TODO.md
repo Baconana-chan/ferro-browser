@@ -93,8 +93,27 @@
   - ✅ MseSourceBuffer с управлением buffered ranges
   - ✅ MsePlayer в servo_media_ferro для интеграции
   - ✅ Standalone video/audio documents с controls
-  - ⚠️ ПРОБЛЕМА: FerroPlayer - заглушка! push_data() ничего не делает
-  - 🔧 TODO: Реализовать настоящий FFmpeg Player с декодированием и рендерингом
+  - ✅ **FerroPlayer полностью реализован с FFmpeg:**
+    - ✅ play/pause/stop/seek работают (components/servo_media_ferro/lib.rs)
+    - ✅ Автоматический seek(0) при play из Ended состояния (перезапуск видео)
+    - ✅ Обработка EndOfStream → состояние Ended
+    - ✅ push_data() буферизирует поток и отправляет NeedData/EnoughData события
+    - ✅ Поддержка как URL так и Media Source Extensions
+    - ✅ Видео/аудио декодирование через FFmpeg
+    - ✅ Системный аудиовывод через cpal/rodio
+  - ✅ Улучшен дизайн standalone медиа документов (components/script/dom/servoparser/mod.rs):
+    - ✅ Чёрный фон для видео/аудио плеера
+    - ✅ Центрирование контента (flexbox)
+    - ✅ Правильное масштабирование с сохранением соотношения сторон
+    - ✅ CSS стили также для img элементов (изображения)
+    - ✅ Плеер заполняет экран без белых полос
+  - ✅ Добавлены debug логи для диагностики:
+    - ✅ Логи в handle_animated_image (components/layout/context.rs - количество кадров)
+    - ✅ Логи в decode_animated_image (components/pixels/lib.rs - информация о декодировании)
+    - ✅ Логи в update_active_frames (components/script/image_animation.rs - обновление кадров)
+  - 🔧 TODO: Проверить работу GIF анимации в браузере (логи подскажут на каком этапе проблема)
+  - 🔧 TODO: Оптимизировать обновление кадров для плавной анимации
+  - 🔧 TODO: Добавить поддержку форматов AVIF, WebP на Windows (требует libdav1d)
 
 ## Приоритет 4: Browser shell / UI фичи (сверху Servo)
 - [x] Современный дизайн навигационной панели

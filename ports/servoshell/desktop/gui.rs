@@ -10,7 +10,7 @@ use dpi::PhysicalSize;
 use egui::text::{CCursor, CCursorRange};
 use egui::text_edit::TextEditState;
 use egui::{
-    Button, Key, Label, LayerId, Modifiers, PaintCallback, TopBottomPanel, Vec2, WidgetInfo,
+    Key, Label, LayerId, Modifiers, PaintCallback, TopBottomPanel, Vec2, WidgetInfo,
     WidgetType, pos2,
 };
 use egui_glow::{CallbackFn, EguiGlow};
@@ -200,6 +200,7 @@ impl Gui {
     }
 
     /// Create a frameless button with square sizing, as used in the toolbar.
+    #[allow(dead_code)]
     fn toolbar_button(text: &str) -> egui::Button<'_> {
         egui::Button::new(text)
             .frame(false)
@@ -207,6 +208,7 @@ impl Gui {
     }
 
     /// Create a styled navigation button (back, forward, reload, stop)
+    #[allow(dead_code)]
     fn nav_button(text: &str) -> egui::Button<'_> {
         egui::Button::new(
             egui::RichText::new(text).size(16.0)
@@ -313,7 +315,7 @@ impl Gui {
                     ui.add_space(4.0);
                 } else {
                     // Default page icon
-                    ui.label(egui::RichText::new("📄").size(12.0));
+                    ui.label(egui::RichText::new("[#]").size(10.0));
                     ui.add_space(4.0);
                 }
 
@@ -347,7 +349,7 @@ impl Gui {
 
                 // Close button
                 let close_response = ui.add(
-                    egui::Button::new(egui::RichText::new("×").size(14.0))
+                    egui::Button::new(egui::RichText::new("x").size(14.0))
                         .frame(false)
                         .min_size(egui::vec2(18.0, 18.0))
                 );
@@ -445,7 +447,7 @@ impl Gui {
                         
                         let back_button = ui.add_enabled(
                             self.can_go_back, 
-                            egui::Button::new(egui::RichText::new("◀").size(14.0))
+                            egui::Button::new(egui::RichText::new("<").size(14.0))
                                 .frame(false)
                                 .min_size(nav_button_size)
                                 .corner_radius(6.0)
@@ -461,7 +463,7 @@ impl Gui {
 
                         let forward_button = ui.add_enabled(
                             self.can_go_forward, 
-                            egui::Button::new(egui::RichText::new("▶").size(14.0))
+                            egui::Button::new(egui::RichText::new(">").size(14.0))
                                 .frame(false)
                                 .min_size(nav_button_size)
                                 .corner_radius(6.0)
@@ -478,7 +480,7 @@ impl Gui {
                         match self.load_status {
                             LoadStatus::Started | LoadStatus::HeadParsed => {
                                 let stop_button = ui.add(
-                                    egui::Button::new(egui::RichText::new("✕").size(14.0))
+                                    egui::Button::new(egui::RichText::new("x").size(14.0))
                                         .frame(false)
                                         .min_size(nav_button_size)
                                         .corner_radius(6.0)
@@ -494,7 +496,7 @@ impl Gui {
                             },
                             LoadStatus::Complete => {
                                 let reload_button = ui.add(
-                                    egui::Button::new(egui::RichText::new("↻").size(16.0))
+                                    egui::Button::new(egui::RichText::new("R").size(14.0))
                                         .frame(false)
                                         .min_size(nav_button_size)
                                         .corner_radius(6.0)
@@ -536,9 +538,9 @@ impl Gui {
                                 // Lock/security icon
                                 let url_text = location.as_str();
                                 if url_text.starts_with("https://") {
-                                    ui.label(egui::RichText::new("🔒").size(12.0));
+                                    ui.label(egui::RichText::new("[S]").size(10.0).color(egui::Color32::GREEN));
                                 } else if url_text.starts_with("http://") {
-                                    ui.label(egui::RichText::new("⚠").size(12.0).color(egui::Color32::from_rgb(200, 150, 0)));
+                                    ui.label(egui::RichText::new("[!]").size(10.0).color(egui::Color32::from_rgb(200, 150, 0)));
                                 }
                                 
                                 let location_field = ui.add(
@@ -592,7 +594,7 @@ impl Gui {
                         // Settings/experimental prefs button
                         let prefs_toggle = ui
                             .add(
-                                egui::Button::new(egui::RichText::new("⚙").size(16.0))
+                                egui::Button::new(egui::RichText::new("[=]").size(12.0))
                                     .frame(false)
                                     .min_size(egui::vec2(32.0, 32.0))
                                     .corner_radius(6.0)

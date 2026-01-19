@@ -7744,6 +7744,7 @@ dependencies = [
 name = "servo-media-ferro"
 version = "0.0.1"
 dependencies = [
+ "crossbeam-channel",
  "ferro_media",
  "ipc-channel",
  "log",

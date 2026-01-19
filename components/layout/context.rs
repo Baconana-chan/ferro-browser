@@ -173,8 +173,10 @@ impl ImageResolver {
     pub(crate) fn handle_animated_image(&self, node: OpaqueNode, image: Arc<RasterImage>) {
         let mut animating_images = self.animating_images.write();
         if !image.should_animate() {
+            log::debug!("Image does not animate, frames count: {}", image.frames.len());
             animating_images.remove(node);
         } else {
+            log::debug!("Image should animate, frames count: {}", image.frames.len());
             animating_images.maybe_insert_or_update(node, image, self.animation_timeline_value);
         }
     }

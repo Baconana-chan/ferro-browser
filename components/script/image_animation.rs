@@ -56,6 +56,8 @@ impl ImageAnimationManager {
             return;
         }
 
+        log::debug!("update_active_frames: {} animating images", self.animating_images.read().node_to_state_map.len());
+
         let updates = self
             .animating_images
             .write()
@@ -65,6 +67,8 @@ impl ImageAnimationManager {
                 if !state.update_frame_for_animation_timeline_value(now) {
                     return None;
                 }
+
+                log::debug!("Updating animated image to frame {}", state.active_frame);
 
                 let image = &state.image;
                 let (descriptor, ipc_shared_memory) =

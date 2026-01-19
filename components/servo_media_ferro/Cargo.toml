@@ -12,6 +12,10 @@ description = "FFmpeg-based backend for servo-media (replaces GStreamer)"
 name = "servo_media_ferro"
 path = "lib.rs"
 
+[features]
+default = ["ffmpeg"]
+ffmpeg = ["ferro_media/ffmpeg"]
+
 [dependencies]
 # Core servo-media crates
 servo-media = { workspace = true }
@@ -23,10 +27,8 @@ ipc-channel = { workspace = true }
 log = { workspace = true }
 
 # FFmpeg (via ferro_media)
-ferro_media = { path = "../ferro_media", features = ["ffmpeg"] }
+ferro_media = { path = "../ferro_media" }
 
 # Synchronization
 parking_lot = { workspace = true }
-
-[features]
-default = []
+crossbeam-channel = { workspace = true }

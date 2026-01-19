@@ -9,15 +9,11 @@
 //! ISOBMFF (MP4) and WebM containers.
 
 use std::collections::VecDeque;
-use std::io::{Cursor, Read};
-use std::ops::Range;
-use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use log::{debug, warn};
 
 use crate::error::{MediaError, MediaResult};
-use crate::video::VideoFrame;
 
 /// Segment types in MSE
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -209,7 +205,7 @@ impl SegmentParser {
     
     /// Remove buffered data in a time range
     pub fn remove_range(&mut self, start: f64, end: f64) {
-        let remove_range = TimeRange::new(start, end);
+        let _remove_range = TimeRange::new(start, end);
         let mut new_ranges = Vec::new();
         
         for range in &self.buffered_ranges {
@@ -583,7 +579,7 @@ impl SegmentParser {
         // For MP4 fragmented media, we look for moof + mdat pairs
         let mut segments = Vec::new();
         let mut offset = 0;
-        let mut moof_data: Option<&[u8]> = None;
+        let mut _moof_data: Option<&[u8]> = None;
         let mut base_time: Option<Duration> = None;
         
         while offset + 8 <= data.len() {
@@ -596,7 +592,7 @@ impl SegmentParser {
             
             match box_type {
                 b"moof" => {
-                    moof_data = Some(&data[offset..offset+size]);
+                    _moof_data = Some(&data[offset..offset+size]);
                     // Extract base decode time from tfdt if present
                     base_time = self.extract_base_time(&data[offset+8..offset+size]);
                 }
