@@ -313,7 +313,7 @@ impl Preferences {
             dom_crypto_subtle_enabled: true,
             dom_document_dblclick_dist: 1,
             dom_document_dblclick_timeout: 300,
-            dom_fontface_enabled: false,
+            dom_fontface_enabled: true,
             dom_fullscreen_test: false,
             dom_gamepad_enabled: true,
             dom_geolocation_enabled: false,
@@ -445,7 +445,7 @@ impl Preferences {
             // TODO(mrobinson): This should likely be based on the number of processors.
             layout_threads: 3,
             layout_unimplemented: false,
-            layout_variable_fonts_enabled: false,
+            layout_variable_fonts_enabled: true,
             layout_writing_mode_enabled: true,
             media_glvideo_enabled: false,
             media_testing_enabled: false,
@@ -479,6 +479,12 @@ impl Default for Preferences {
     fn default() -> Self {
         let mut preferences = Self::const_default();
         preferences.user_agent = UserAgentPlatform::default().to_user_agent_string();
+        if cfg!(target_os = "windows") {
+            preferences.fonts_default = "Segoe UI".to_string();
+            preferences.fonts_sans_serif = "Segoe UI".to_string();
+            preferences.fonts_serif = "Times New Roman".to_string();
+            preferences.fonts_monospace = "Consolas".to_string();
+        }
         preferences
     }
 }

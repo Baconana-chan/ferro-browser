@@ -551,19 +551,13 @@ impl SegmentParser {
         }
         
         let data = std::mem::take(&mut self.pending_data);
-        let mut segments = Vec::new();
-        
-        match self.format {
-            ContainerFormat::Mp4 => {
-                segments = self.parse_mp4_media_segment(data)?;
-            }
-            ContainerFormat::WebM => {
-                segments = self.parse_webm_media_segment(data)?;
-            }
+        let segments = match self.format {
+            ContainerFormat::Mp4 => self.parse_mp4_media_segment(data)?,
+            ContainerFormat::WebM => self.parse_webm_media_segment(data)?,
             ContainerFormat::Unknown => {
                 return Err(MediaError::ParseError("Unknown container format".to_string()));
             }
-        }
+        };
         
         // Update buffered ranges
         for segment in &segments {

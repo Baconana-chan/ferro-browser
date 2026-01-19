@@ -104,6 +104,75 @@ fn is_valid_media_format(data: &[u8]) -> bool {
     debug!("is_valid_media_format: Unknown format, first bytes: {:02X?}", &data[0..12.min(data.len())]);
     false
 }
+
+/// Returns true if the format supports progressive decoding with partial data.
+fn is_streaming_friendly_format(data: &[u8]) -> bool {
+    if data.len() < 4 {
+        return false;
+    }
+
+    // WebM/Matroska (EBML)
+    if data.len() >= 4 && data[0..4] == [0x1A, 0x45, 0xDF, 0xA3] {
+        return true;
+    }
+
+    // Ogg
+    if data.len() >= 4 && &data[0..4] == b"OggS" {
+        return true;
+    }
+
+    // MPEG Transport Stream
+    if data[0] == 0x47 {
+        return true;
+    }
+
+    // MPEG Program Stream / MPEG-1/2
+    if data.len() >= 4 && data[0..3] == [0x00, 0x00, 0x01] && (data[3] == 0xBA || data[3] == 0xB3) {
+        return true;
+    }
+
+    // MP3 / AAC ADTS can be streamed.
+    if data.len() >= 3 && &data[0..3] == b"ID3" {
+        return true;
+    }
+    if data.len() >= 2 && data[0] == 0xFF && ((data[1] & 0xE0) == 0xE0 || data[1] == 0xF1 || data[1] == 0xF9) {
+        return true;
+    }
+
+    false
+}
+
+/// For MP4, ensure the moov box is present before attempting to decode.
+fn mp4_has_moov(data: &[u8]) -> bool {
+    if data.len() < 16 {
+        return false;
+    }
+
+    // Basic box walk: [size: u32][type: 4 bytes]
+    let mut offset = 0usize;
+    let len = data.len();
+    while offset + 8 <= len {
+        let size = u32::from_be_bytes([
+            data[offset],
+            data[offset + 1],
+            data[offset + 2],
+            data[offset + 3],
+        ]) as usize;
+        let box_type = &data[offset + 4..offset + 8];
+
+        if box_type == b"moov" {
+            return true;
+        }
+
+        if size < 8 {
+            break;
+        }
+
+        offset = offset.saturating_add(size);
+    }
+
+    false
+}
 use servo_media::{Backend, BackendInit, ClientContextId, MediaInstance, SupportsMediaType};
 use servo_media::player::context::PlayerGLContext;
 use servo_media::player::{Player, PlayerError, PlayerEvent, StreamType};
@@ -492,18 +561,19 @@ impl FerroPlayer {
         let mut temp_file: Option<(std::fs::File, std::path::PathBuf)> = None;
         
         // Track if we've requested data
-        let mut need_data_sent = false;
+        let mut need_data_sent = true;
         let mut enough_data = false;
-        const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024; // 10 MB buffer threshold
+        const MIN_BUFFER_FOR_DECODER: usize = 512 * 1024; // 512 KB to attempt early decode
+        const MAX_BUFFER_SIZE: usize = 64 * 1024 * 1024; // 64 MB buffer threshold
         
         // Flag to skip invalid media streams early
         let mut format_checked = false;
         let mut is_valid_format = true;
+        let mut allow_early_decode = false;
         
         // Immediately signal that we need data to start receiving media content
         debug!("FerroPlayer: Sending initial NeedData");
         let _ = event_sender.send(PlayerEvent::NeedData);
-        need_data_sent = true;
         
         while running.load(Ordering::SeqCst) {
             // Process commands
@@ -679,10 +749,84 @@ impl FerroPlayer {
                             }
                             debug!("FerroPlayer: Format check passed, continuing to buffer");
                         }
+
+                        if format_checked && is_valid_format && !allow_early_decode {
+                            allow_early_decode = is_streaming_friendly_format(&buffer) ||
+                                (buffer.len() >= 8 && &buffer[4..8] == b"ftyp" && mp4_has_moov(&buffer));
+                        }
                         
                         debug!("FerroPlayer: Received {} bytes, total buffered: {}", data.len(), buffer.len());
                         buffer.len()
                     };
+
+                    // If we have enough buffered data, try to start decoding early.
+                    // We write to a temp file and let FFmpeg read from it, appending new data as it arrives.
+                    let mut started_decoder_now = false;
+                    #[cfg(feature = "ffmpeg")]
+                    if decoder.is_none() && format_checked && is_valid_format && allow_early_decode && buffer_len >= MIN_BUFFER_FOR_DECODER {
+                        let buffer_snapshot = data_buffer.lock().unwrap().clone();
+                        let temp_path = std::env::temp_dir().join(format!("ferro_media_{}.tmp", std::process::id()));
+                        match std::fs::File::create(&temp_path) {
+                            Ok(mut file) => {
+                                if file.write_all(&buffer_snapshot).is_ok() {
+                                    let _ = file.flush();
+                                    match ferro_media::decoder::MediaDecoder::open(temp_path.to_str().unwrap_or("")) {
+                                        Ok(dec) => {
+                                            if let Some(dur) = dec.duration() {
+                                                duration_us.store(dur.as_micros() as u64, Ordering::SeqCst);
+                                            }
+
+                                            if dec.has_audio() {
+                                                let sample_rate = dec.audio_sample_rate().unwrap_or(44100);
+                                                let channels = dec.audio_channels().unwrap_or(2);
+                                                audio_output = ferro_media::audio::AudioOutput::new(sample_rate, channels).ok();
+                                            }
+
+                                            let video_size = dec.video_size();
+                                            let metadata = servo_media::player::metadata::Metadata {
+                                                duration: dec.duration(),
+                                                width: video_size.map(|s| s.width).unwrap_or(0),
+                                                height: video_size.map(|s| s.height).unwrap_or(0),
+                                                format: String::new(),
+                                                is_seekable: true,
+                                                video_tracks: if dec.has_video() { vec!["Video".into()] } else { vec![] },
+                                                audio_tracks: if dec.has_audio() { vec!["Audio".into()] } else { vec![] },
+                                                is_live: false,
+                                                title: None,
+                                            };
+                                            let _ = event_sender.send(PlayerEvent::MetadataUpdated(metadata));
+
+                                            decoder = Some(dec);
+                                            temp_file = Some((file, temp_path));
+                                            *state.lock().unwrap() = InternalState::Paused;
+                                            let _ = event_sender.send(PlayerEvent::StateChanged(
+                                                servo_media::player::PlaybackState::Paused
+                                            ));
+                                            started_decoder_now = true;
+                                        }
+                                        Err(e) => {
+                                            warn!("FerroPlayer: Failed to open media early: {}", e);
+                                            let _ = std::fs::remove_file(&temp_path);
+                                        }
+                                    }
+                                } else {
+                                    let _ = std::fs::remove_file(&temp_path);
+                                }
+                            }
+                            Err(e) => warn!("FerroPlayer: Failed to create temp media file: {}", e),
+                        }
+                    }
+
+                    // Append new data to temp file if we are decoding from it already.
+                    if !started_decoder_now {
+                        if let Some((ref mut file, _)) = temp_file {
+                            if let Err(e) = file.write_all(&data) {
+                                warn!("FerroPlayer: Failed to append media data: {}", e);
+                            } else {
+                                let _ = file.flush();
+                            }
+                        }
+                    }
                     
                     // Update buffered ranges (simple approximation)
                     {

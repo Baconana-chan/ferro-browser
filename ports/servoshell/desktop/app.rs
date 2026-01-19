@@ -55,6 +55,114 @@ const WEB_ANIMATIONS_POLYFILL: &str = r#"
 })();
 "#;
 
+const GITHUB_REDUCED_MOTION_SCRIPT: &str = r#"
+(() => {
+    const host = location.hostname;
+    if (host !== 'github.com' && !host.endsWith('.github.com')) {
+        return;
+    }
+
+    const style = document.createElement('style');
+    style.setAttribute('data-ferro', 'reduced-motion');
+    style.textContent = `
+        *, *::before, *::after {
+            animation-duration: 0.001ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.001ms !important;
+            transition-delay: 0s !important;
+            scroll-behavior: auto !important;
+        }
+    `;
+    document.documentElement.appendChild(style);
+
+    const pauseVideos = () => {
+        document.querySelectorAll('video').forEach(video => {
+            try {
+                video.autoplay = false;
+                video.loop = false;
+                if (!video.paused) {
+                    video.pause();
+                }
+            } catch (_) {}
+        });
+    };
+
+    pauseVideos();
+    const observer = new MutationObserver(() => pauseVideos());
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+})();
+"#;
+
+const VIEWPORT_FIRST_LOAD_SCRIPT: &str = r#"
+(() => {
+    const host = location.hostname;
+    if (host !== 'github.com' && !host.endsWith('.github.com')) {
+        return;
+    }
+
+    const isInViewport = (el) => {
+        const rect = el.getBoundingClientRect();
+        return rect.bottom >= -200 && rect.right >= -200 &&
+               rect.top <= (window.innerHeight + 200) &&
+               rect.left <= (window.innerWidth + 200);
+    };
+
+    const handleMedia = () => {
+        document.querySelectorAll('img').forEach(img => {
+            if (!img.loading) {
+                img.loading = isInViewport(img) ? 'eager' : 'lazy';
+            }
+            if (!isInViewport(img)) {
+                img.decoding = 'async';
+            }
+        });
+
+        document.querySelectorAll('video').forEach(video => {
+            if (!video.preload || video.preload === 'auto') {
+                video.preload = isInViewport(video) ? 'auto' : 'metadata';
+            }
+            if (!isInViewport(video)) {
+                if (video.autoplay) {
+                    video.dataset.ferroAutoplay = '1';
+                }
+                video.autoplay = false;
+                if (!video.paused) {
+                    try { video.pause(); } catch (_) {}
+                }
+            } else if (video.dataset.ferroAutoplay === '1') {
+                try { video.play(); } catch (_) {}
+            }
+        });
+    };
+
+    if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver(() => handleMedia(), {
+            rootMargin: '200px',
+            threshold: 0.01,
+        });
+        observer.observe(document.documentElement);
+    } else {
+        let scheduled = false;
+        const onScroll = () => {
+            if (scheduled) return;
+            scheduled = true;
+            requestAnimationFrame(() => {
+                scheduled = false;
+                handleMedia();
+            });
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('resize', onScroll);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', handleMedia, { once: true });
+    } else {
+        handleMedia();
+    }
+})();
+"#;
+
 pub(crate) enum AppState {
     Initializing,
     Running(Rc<RunningAppState>),
@@ -116,6 +224,8 @@ impl App {
     pub fn init(&mut self, active_event_loop: Option<&ActiveEventLoop>) {
         let mut user_content_manager = UserContentManager::new();
         user_content_manager.add_script(UserScript::from(WEB_ANIMATIONS_POLYFILL));
+        user_content_manager.add_script(UserScript::from(GITHUB_REDUCED_MOTION_SCRIPT));
+        user_content_manager.add_script(UserScript::from(VIEWPORT_FIRST_LOAD_SCRIPT));
         for script in load_userscripts(self.servoshell_preferences.userscripts_directory.as_deref())
             .expect("Loading userscripts failed")
         {
