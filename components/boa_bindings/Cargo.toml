@@ -1,0 +1,29 @@
+[package]
+name = "boa_bindings"
+version = "0.1.0"
+authors = ["Ferro Browser Contributors"]
+license = "MIT"
+edition = "2024"
+publish = false
+rust-version = "1.86.0"
+description = "Boa JavaScript engine bindings for Ferro Browser"
+repository = "https://github.com/AstroSkyOff/ferro-browser"
+
+[lib]
+name = "boa_bindings"
+path = "lib.rs"
+
+[dependencies]
+# Boa JavaScript Engine 0.21
+boa_engine = { workspace = true }
+boa_parser = { workspace = true }
+boa_ast = { workspace = true }
+boa_gc = { workspace = true }
+boa_interner = { workspace = true }
+boa_runtime = { workspace = true }
+
+# Logging
+log = { workspace = true }
+
+[features]
+default = []

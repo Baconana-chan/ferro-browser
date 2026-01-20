@@ -231,3 +231,150 @@ brew install ffmpeg
 - [ ] ResizeObserver — отслеживание изменений размера
 - [ ] IntersectionObserver улучшения
 - [ ] Web Workers / Service Workers полная поддержка
+
+---
+
+## 🦀 Миграция JavaScript: SpiderMonkey → Boa
+
+**Статус: В РАЗРАБОТКЕ 🚧 | Приоритет: ВЫСОКИЙ**
+
+### Лицензирование:
+- Файлы от Servo: MPL-2.0 (сохраняем оригинальную лицензию)
+- Новые файлы Ferro (boa_bindings, ferro_media): MIT
+- Двойная лицензия позволяет максимальную гибкость для разработчиков
+
+### Причины миграции:
+- SpiderMonkey — C++ legacy код Mozilla, сложный FFI через mozjs crate
+- Компиляция mozjs занимает 10-15 минут, требует Clang/LLVM
+- Отладка JS ошибок практически невозможна (C++ <-> Rust boundary)
+- Высокая нагрузка даже на простых страницах из-за SM overhead
+- Boa — чистый Rust, единая экосистема с Servo
+- Boa имеет встроенный GC на Rust (boa_gc), совместимый с нашей архитектурой
+
+### Boa 0.21 Features (октябрь 2025):
+- **94.12% ECMAScript conformance** (Test262)
+- NaN-boxing — меньше памяти для JsValue
+- Register-based VM — быстрее выполнение
+- boa_runtime: fetch, setTimeout, setInterval, queueMicrotask
+- Temporal proposal ~97% conformance
+- Error.isError, новые Set методы, Float16 support
+
+### Boa Crates (https://github.com/boa-dev/boa):
+- `boa_engine` — основной движок, builtin objects, execution
+- `boa_parser` — lexer и parser для ECMAScript
+- `boa_ast` — Abstract Syntax Tree
+- `boa_gc` — сборщик мусора на Rust
+- `boa_interner` — string interner для оптимизации
+- `boa_runtime` — WebAPI features (console, fetch, setTimeout, etc.)
+- `boa_icu_provider` — ICU4X для интернационализации
+
+### Текущее состояние SpiderMonkey в Servo:
+```
+Cargo.toml:
+  js = { package = "mozjs", git = "https://github.com/servo/mozjs" }
+
+Ключевые модули:
+  components/script/           — DOM implementation, использует js:: напрямую
+  components/script_bindings/  — WebIDL bindings, генерация кода для SM
+  components/script_bindings/codegen/ — генератор Bindings из WebIDL
+  
+Зависимости от mozjs:
+  - js::jsapi::* — низкоуровневые SM API
+  - js::rust::* — Rust wrappers для SM
+  - js::gc::* — SM garbage collector интеграция
+  - js::typedarray::* — TypedArray bindings
+```
+
+### План миграции (фазы):
+
+#### Фаза 0: Подготовка и исследование [✅ ЗАВЕРШЕНА]
+- [x] Создать TODO план миграции
+- [x] Добавить Boa 0.21 crates в workspace dependencies
+- [x] Создать components/boa_bindings модуль (MIT лицензия)
+- [x] Реализовать JsRuntime wrapper для Context
+- [x] Реализовать базовые type conversions
+- [x] Реализовать error handling
+- [x] Реализовать GC интеграцию (DomRef, DomCell)
+- [x] Пройти базовые тесты (eval, functions, strings)
+
+#### Фаза 1: Базовая интеграция Boa [ТЕКУЩАЯ]
+- [x] Добавить boa_engine, boa_parser, boa_gc в workspace dependencies
+- [ ] Создать components/boa_bindings/ — новый модуль биндингов
+- [ ] Реализовать базовый JsRuntime на Boa (аналог script_runtime.rs)
+- [ ] Реализовать Reflector/DomObject для Boa GC
+- [ ] Простые тесты: eval("1+1"), console.log(), setTimeout()
+
+#### Фаза 2: WebIDL Code Generation
+- [ ] Модифицировать components/script_bindings/codegen/ для Boa
+  - Или создать отдельный codegen для Boa
+- [ ] Генерация Rust bindings из .webidl файлов для Boa
+- [ ] Реализовать конверсии типов (DOMString, Uint8Array, etc.)
+- [ ] Интерфейсы: Window, Document, Element, Node (базовые)
+
+#### Фаза 3: DOM Bindings Core
+- [ ] Перенести htmlelement.rs, document.rs, window.rs
+- [ ] Event system (addEventListener, dispatchEvent)
+- [ ] DOM manipulation (createElement, appendChild, etc.)
+- [ ] CSS Object Model (getComputedStyle, classList)
+
+#### Фаза 4: Web APIs
+- [ ] Console API (console.log/warn/error)
+- [ ] Fetch API (с использованием existing net stack)
+- [ ] Timers (setTimeout, setInterval, requestAnimationFrame)
+- [ ] Storage (localStorage, sessionStorage)
+- [ ] IndexedDB (existing implementation)
+
+#### Фаза 5: Advanced Features
+- [ ] ES Modules (import/export)
+- [ ] async/await, Promises
+- [ ] Web Workers
+- [ ] WebGL/WebGPU bindings
+- [ ] MediaSource Extensions
+
+#### Фаза 6: Полное удаление SpiderMonkey
+- [ ] Удалить mozjs из dependencies
+- [ ] Удалить components/script_bindings (старый)
+- [ ] Переименовать boa_bindings → script_bindings
+- [ ] Обновить все imports в components/script
+
+### Ключевые файлы для миграции:
+```
+components/script_bindings/
+├── script_runtime.rs     → JsRuntime на Boa
+├── reflector.rs          → Boa GC интеграция
+├── root.rs               → Rooted pointers для Boa
+├── trace.rs              → Boa::Trace вместо JSTraceable
+├── conversions.rs        → Type conversions для Boa
+├── error.rs              → JS Error handling
+├── codegen/              → WebIDL → Boa bindings generator
+└── webidls/              → WebIDL определения (не меняются)
+```
+
+### Совместимость Boa (Test262):
+- ~80% ECMAScript compliance (vs SM ~95%)
+- Основные gaps: некоторые edge-cases в Proxy, WeakRef, FinalizationRegistry
+- Для большинства сайтов этого достаточно
+- Активная разработка, compliance растёт
+
+### Feature Flags (для постепенной миграции):
+```toml
+[features]
+default = ["js-spidermonkey"]  # Текущий default
+js-spidermonkey = ["mozjs"]    # Legacy SpiderMonkey
+js-boa = ["boa_engine", "boa_parser", "boa_gc"]  # Новый Boa
+```
+
+### Оценка времени:
+- Фаза 0-1: 2-4 недели
+- Фаза 2-3: 6-10 недель
+- Фаза 4-5: 4-8 недель
+- Фаза 6: 1-2 недели
+- **Итого: ~3-6 месяцев**
+
+### Ресурсы:
+- Boa docs: https://docs.rs/boa_engine/
+- Boa GitHub: https://github.com/boa-dev/boa
+- Boa playground: https://boajs.dev/playground/
+- Test262 status: https://test262.fyi/
+
+---

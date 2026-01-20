@@ -4,6 +4,7 @@ members = [
     "components/xpath",
     "components/ferro_media",
     "components/servo_media_ferro",
+    "components/boa_bindings",
     "ports/servoshell",
     "tests/unit/*",
 ]
@@ -128,6 +129,16 @@ profile_traits = { path = "components/shared/profile" }
 quote = "1"
 rand = "0.9"
 raw-window-handle = "0.6"
+
+# Boa JavaScript Engine (pure Rust alternative to SpiderMonkey)
+# v0.21 has 94% ECMAScript conformance, NaN-boxing, register-based VM
+# and boa_runtime includes fetch, setTimeout, queueMicrotask
+boa_engine = "0.21"
+boa_parser = "0.21"
+boa_ast = "0.21"
+boa_gc = "0.21"
+boa_interner = "0.21"
+boa_runtime = "0.21"
 rayon = "1"
 read-fonts = "0.35.0"
 regex = "1.12"
