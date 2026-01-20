@@ -1,13 +1,31 @@
 # Code of Conduct
 
-The Servo Project follows the [**Rust Code of Conduct**](https://www.rust-lang.org/policies/code-of-conduct), with the differences below.
+Ferro Browser is built on the [Servo](https://servo.org/) project and follows the [**Rust Code of Conduct**](https://www.rust-lang.org/policies/code-of-conduct).
 
-Our code of conduct applies to the [Servo Zulip channels](https://servo.zulipchat.com/), [GitHub repositories](https://github.com/servo), and all official Servo venues, rather than the Rust project.
+This code of conduct applies to:
+- Our [GitHub repositories](https://github.com/Baconana-chan/ferro-browser)
+- All official Ferro Browser venues and discussions
+- Developer communications and issue discussions
 
-If you are subject to or witness unacceptable behavior, or have any other concerns, please notify one of our designated contacts:
-* Delan Azabani (she/her) <dazabani@igalia.com>
-* Martin Robinson (he/him) <mrobinson@igalia.com>
-* Manuel Rego Casasnovas (he/him) <rego@igalia.com>
+## Expected Behavior
 
-*Note: If you modify this file, please keep this file in sync with <https://servo.org/coc/>.*
+Participants in the Ferro Browser community are expected to:
+- Be respectful and inclusive
+- Accept constructive criticism gracefully
+- Focus on what is best for the community
+- Show empathy towards other community members
+
+## Reporting Issues
+
+If you are subject to or witness unacceptable behavior, or have any other concerns, please report it via:
+- GitHub Issues: https://github.com/Baconana-chan/ferro-browser/issues
+- Direct contact through project channels
+
+All reports will be treated confidentially and investigated thoroughly.
+
+## Diversity and Inclusion
+
+Ferro Browser welcomes contributors from all backgrounds and experiences. We are committed to providing a welcoming and inclusive environment for everyone.
+
+For upstream Servo project CoC and contacts, see <https://servo.org/coc/>.
 
