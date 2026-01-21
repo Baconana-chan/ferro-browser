@@ -6,7 +6,7 @@ license = "MIT"
 edition = "2024"
 publish = false
 rust-version = "1.86.0"
-description = "Boa JavaScript engine bindings for Ferro Browser"
+description = "Boa JavaScript engine bindings for Ferro Browser - pure Rust alternative to SpiderMonkey"
 repository = "https://github.com/AstroSkyOff/ferro-browser"
 
 [lib]
@@ -14,7 +14,8 @@ name = "boa_bindings"
 path = "lib.rs"
 
 [dependencies]
-# Boa JavaScript Engine 0.21
+# Boa JavaScript Engine 0.21 - pure Rust, no C++ dependencies
+# 94% ECMAScript conformance, NaN-boxing, register-based VM
 boa_engine = { workspace = true }
 boa_parser = { workspace = true }
 boa_ast = { workspace = true }
@@ -22,11 +23,11 @@ boa_gc = { workspace = true }
 boa_interner = { workspace = true }
 boa_runtime = { workspace = true }
 
-# URL parsing
+# URL parsing (shared with servo)
 url = { workspace = true }
 form_urlencoded = "1.2"
 
-# HTTP client for fetch
+# HTTP client for fetch API
 ureq = "3"
 
 # Cryptographically secure random number generation
@@ -35,5 +36,19 @@ getrandom = "0.3"
 # Logging
 log = { workspace = true }
 
+# Shared dependencies with script_bindings for compatibility
+indexmap = { workspace = true }
+smallvec = { workspace = true }
+
 [features]
 default = []
+# Feature flags for optional Web APIs
+bluetooth = []
+webgpu = []
+webxr = []
+
+[dev-dependencies]
+
+[package.metadata]
+# This crate replaces script_bindings when using Boa instead of SpiderMonkey
+replaces = "script_bindings"

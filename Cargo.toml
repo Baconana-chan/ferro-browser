@@ -11,6 +11,13 @@ members = [
 default-members = ["ports/servoshell"]
 exclude = [".cargo", "support/crown"]
 
+# Ferro Browser: JavaScript Engine Selection
+# Use `js-boa` for pure Rust Boa engine (no C++ dependencies, faster builds)
+# Use `js-spidermonkey` for Mozilla SpiderMonkey (better compatibility, slower builds)
+# By default, we use Boa for easier builds and testing
+[workspace.metadata]
+default-js-engine = "boa"
+
 [workspace.package]
 version = "0.0.1"
 authors = ["Ferro Browser Contributors", "The Servo Project Developers"]
@@ -96,6 +103,9 @@ imsz = "0.4"
 indexmap = { version = "2.11.4", features = ["std"] }
 ipc-channel = "0.20.2"
 itertools = "0.14"
+# SpiderMonkey JS engine (used with js-spidermonkey feature in components/script)
+# Ferro Browser defaults to Boa for faster builds and no C++ dependencies
+# To use SpiderMonkey: cargo build --features js-spidermonkey --no-default-features
 js = { package = "mozjs", git = "https://github.com/servo/mozjs", default-features = false, features = ["libz-sys", "intl"] }
 keyboard-types = { version = "0.8.3", features = ["serde", "webdriver"] }
 kurbo = { version = "0.12", features = ["euclid"] }
@@ -139,6 +149,7 @@ boa_ast = "0.21"
 boa_gc = "0.21"
 boa_interner = "0.21"
 boa_runtime = "0.21"
+boa_bindings = { path = "components/boa_bindings" }
 rayon = "1"
 read-fonts = "0.35.0"
 regex = "1.12"

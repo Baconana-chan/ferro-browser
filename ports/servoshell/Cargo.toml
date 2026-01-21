@@ -35,12 +35,23 @@ OriginalFilename = "ferro.exe"
 ProductName = "Ferro Browser"
 
 [features]
-default = ["libservo/clipboard", "js_jit", "max_log_level", "webgpu", "webxr", "media-ferro"]
+# Ferro Browser: Use Boa JS engine by default (pure Rust, fast builds)
+# To use SpiderMonkey instead: cargo build --features js-spidermonkey --no-default-features
+default = ["libservo/clipboard", "max_log_level", "webgpu", "webxr", "media-ferro", "js-boa"]
+
+# JavaScript Engine Selection (mutually exclusive)
+# js-boa: Pure Rust Boa engine - no C++ dependencies, faster builds, 94% ES conformance
+# js-spidermonkey: Mozilla SpiderMonkey - full compatibility, slower builds, requires C++ toolchain
+js-boa = ["libservo/js-boa"]
+js-spidermonkey = ["libservo/js-spidermonkey", "js_jit"]
+
+# SpiderMonkey-specific features (only work with js-spidermonkey)
 crown = ["libservo/crown"]
 debugmozjs = ["libservo/debugmozjs"]
 jitspew = ["libservo/jitspew"]
 js_backtrace = ["libservo/js_backtrace"]
 js_jit = ["libservo/js_jit"]
+
 max_log_level = ["log/release_max_level_info"]
 # GStreamer removed - using FFmpeg via ferro_media
 media-ferro = ["libservo/media-ferro"]

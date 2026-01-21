@@ -21,8 +21,11 @@ from .base import Base
 from .build_target import BuildTarget
 
 DEPS_URL = "https://github.com/servo/servo-build-deps/releases/download/msvc-deps"
+
+# Ferro Browser: moztools removed - only needed for SpiderMonkey builds
+# We use Boa (pure Rust) so no GNU/Mozilla build tools required
 DEPENDENCIES = {
-    "moztools": "4.0",
+    # Empty - all SpiderMonkey-related dependencies removed
 }
 
 GSTREAMER_URL = f"{DEPS_URL}/gstreamer-1.0-msvc-x86_64-1.22.8.msi"
@@ -129,7 +132,30 @@ class Windows(Base):
                 os.makedirs(parent_dir)
 
             self.download_and_extract_dependency(package_dir + ".zip", full_spec)
-            os.rename(os.path.join(parent_dir, full_spec), package_dir)
+            
+            # Windows sometimes locks files after extraction, retry with delay
+            source_dir = os.path.join(parent_dir, full_spec)
+            max_retries = 5
+            for attempt in range(max_retries):
+                try:
+                    if os.path.exists(package_dir):
+                        import shutil
+                        shutil.rmtree(package_dir)
+                    os.rename(source_dir, package_dir)
+                    break
+                except PermissionError as e:
+                    if attempt < max_retries - 1:
+                        import time
+                        print(f"  Waiting for files to be released (attempt {attempt + 1}/{max_retries})...")
+                        time.sleep(2)
+                    else:
+                        # Last resort: try copy instead of rename
+                        try:
+                            import shutil
+                            shutil.copytree(source_dir, package_dir)
+                            shutil.rmtree(source_dir)
+                        except Exception:
+                            raise e
 
         return True
 

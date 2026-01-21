@@ -13,19 +13,27 @@ name = "script"
 path = "lib.rs"
 
 [features]
-bluetooth = ['bluetooth_traits', 'script_bindings/bluetooth']
-crown = ['js/crown']
-debugmozjs = ['js/debugmozjs']
-jitspew = ['js/jitspew']
+# Ferro Browser: JavaScript Engine Selection
+# js-boa: Pure Rust Boa engine (default) - no C++ dependencies, faster builds
+# js-spidermonkey: Mozilla SpiderMonkey - full compatibility but requires C++ toolchain
+default = ["js-boa"]
+js-boa = ["dep:boa_bindings"]
+js-spidermonkey = ["dep:js", "dep:script_bindings"]
+
+bluetooth = ['bluetooth_traits', 'script_bindings?/bluetooth']
+# SpiderMonkey-specific features (only work with js-spidermonkey)
+crown = ['js?/crown']
+debugmozjs = ['js?/debugmozjs']
+jitspew = ['js?/jitspew']
 js_backtrace = []
-js_jit = ["js/jit"]
-profilemozjs = ['js/profilemozjs']
+js_jit = ["js?/jit"]
+profilemozjs = ['js?/profilemozjs']
 refcell_backtrace = ["accountable-refcell"]
-testbinding = ["script_bindings/testbinding"]
-tracing = ["dep:tracing", "script_bindings/tracing"]
+testbinding = ["script_bindings?/testbinding"]
+tracing = ["dep:tracing", "script_bindings?/tracing"]
 webgl_backtrace = ["canvas_traits/webgl_backtrace"]
-webgpu = ["script_bindings/webgpu", "script_traits/webgpu"]
-webxr = ["webxr-api", "script_bindings/webxr"]
+webgpu = ["script_bindings?/webgpu", "script_traits/webgpu"]
+webxr = ["webxr-api", "script_bindings?/webxr"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(crown)'] }
@@ -85,7 +93,10 @@ image = { workspace = true }
 indexmap = { workspace = true }
 ipc-channel = { workspace = true }
 itertools = { workspace = true }
-js = { workspace = true }
+# SpiderMonkey JS engine (optional - use js-spidermonkey feature)
+js = { workspace = true, optional = true }
+# Boa JS engine bindings (optional - use js-boa feature)
+boa_bindings = { workspace = true, optional = true }
 jstraceable_derive = { path = "../jstraceable_derive" }
 keyboard-types = { workspace = true }
 kurbo = { workspace = true }
@@ -117,7 +128,8 @@ rand = { workspace = true }
 range = { path = "../range" }
 regex = { workspace = true }
 rustc-hash = { workspace = true }
-script_bindings = { path = "../script_bindings" }
+# SpiderMonkey bindings (optional - use js-spidermonkey feature)
+script_bindings = { path = "../script_bindings", optional = true }
 script_traits = { workspace = true }
 sec1 = { workspace = true }
 selectors = { workspace = true }

@@ -15,7 +15,15 @@ crate-type = ["rlib"]
 [features]
 # Note: Servoshell does not use the default features of libservo, so you also
 # need to add features that should be default to ports/servoshell/Cargo.toml
-default = ["clipboard", "js_jit", "vello_cpu"]
+# Ferro Browser: Default to Boa JS engine (pure Rust, no C++ dependencies)
+default = ["clipboard", "vello_cpu", "js-boa"]
+
+# JavaScript Engine Selection (mutually exclusive)
+# js-boa: Pure Rust Boa engine - faster builds, 94% ECMAScript conformance
+# js-spidermonkey: Mozilla SpiderMonkey - full compatibility but requires C++ toolchain
+js-boa = ["script/js-boa", "dep:boa_bindings"]
+js-spidermonkey = ["script/js-spidermonkey"]
+
 background_hang_monitor = ["background_hang_monitor/sampler"]
 bluetooth = [
     "bluetooth_traits",
@@ -26,6 +34,7 @@ bluetooth = [
     "script_traits/bluetooth",
 ]
 clipboard = ["dep:arboard"]
+# SpiderMonkey-specific features (only work with js-spidermonkey)
 crown = ["script/crown"]
 debugmozjs = ["script/debugmozjs"]
 dynamic_freetype = ["webrender/dynamic_freetype"]
@@ -70,6 +79,9 @@ webxr = [
 ]
 
 [dependencies]
+# Boa JavaScript Engine bindings (optional, used when js-boa feature is enabled)
+boa_bindings = { workspace = true, optional = true }
+
 background_hang_monitor = { path = "../background_hang_monitor" }
 base = { workspace = true }
 bincode = { workspace = true }

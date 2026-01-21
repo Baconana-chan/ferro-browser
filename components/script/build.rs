@@ -6,10 +6,22 @@ use std::env;
 use std::path::{Path, PathBuf};
 
 fn main() {
+    // Ferro Browser: Check which JS engine is being used
+    // If using Boa (js-boa feature), script_bindings is not available
+    // and we skip copying its generated files
+    let script_bindings_out_dir = env::var_os("DEP_SCRIPT_BINDINGS_CRATE_OUT_DIR");
+    
+    // If script_bindings is not available (using Boa), skip the copy step
+    let Some(script_bindings_out_dir) = script_bindings_out_dir else {
+        // When using Boa, we don't need script_bindings generated files
+        // The boa_bindings crate provides its own implementation
+        println!("cargo::warning=Using Boa JS engine, skipping script_bindings files");
+        return;
+    };
+    
     // copy include! files from script_bindings's OUT_DIR, to script's OUT_DIR
     // this is done to bypass limitation of Rust Analyzer: https://github.com/rust-lang/rust-analyzer/issues/17040
-    let script_bindings_out_dir =
-        PathBuf::from(env::var_os("DEP_SCRIPT_BINDINGS_CRATE_OUT_DIR").unwrap());
+    let script_bindings_out_dir = PathBuf::from(script_bindings_out_dir);
     let out_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
     // copy concrete files
     [
