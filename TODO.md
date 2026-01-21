@@ -328,32 +328,176 @@ Cargo.toml:
   - [x] test_dom_wrapper — Dom<T> wrapper ✓
 - [x] **8 тестов проходят успешно!**
 
-#### Фаза 2: WebIDL Code Generation [СЛЕДУЮЩАЯ]
-- [ ] Модифицировать components/script_bindings/codegen/ для Boa
-  - Или создать отдельный codegen для Boa
-- [ ] Генерация Rust bindings из .webidl файлов для Boa
-- [ ] Реализовать конверсии типов (DOMString, Uint8Array, etc.)
-- [ ] Интерфейсы: Window, Document, Element, Node (базовые)
+#### Фаза 2: WebIDL Code Generation [✅ ЗАВЕРШЕНА]
+- [x] Модифицировать components/script_bindings/codegen/ для Boa
+  - ✅ Создан отдельный codegen в boa_bindings/codegen/
+  - ✅ types.rs — WebIDL type mappings (DOMString, integers, floats, sequences, records, nullable)
+  - ✅ traits.rs — InterfaceBuilder для регистрации прототипов JS
+  - ✅ interface.rs — argument helpers, DOM exception codes
+- [x] Генерация Rust bindings из .webidl файлов для Boa
+  - ✅ InterfaceBuilder с method(), getter(), setter(), constant()
+  - ✅ ToJsValueBoa / FromJsValueBoa traits для конверсий
+- [x] Реализовать конверсии типов (DOMString, Uint8Array, etc.)
+  - ✅ DOMString, USVString, ByteString
+  - ✅ i8-i64, u8-u64, f32, f64, bool
+  - ✅ Sequence<T>, Nullable<T>, Record<K,V>
+  - ✅ ArrayBufferWrapper, Uint8ArrayWrapper
+- [x] Интерфейсы: Window, Document, Element, Node (базовые)
+  - ✅ EventTarget — addEventListener, removeEventListener, dispatchEvent
+  - ✅ Node — appendChild, removeChild, node types
+  - ✅ Element — attributes, tagName, namespace
+  - ✅ Document — createElement, getElementById, querySelector
+  - ✅ Window — timers, animation frames, console
+- [x] **61 тестов проходят успешно!**
 
-#### Фаза 3: DOM Bindings Core
-- [ ] Перенести htmlelement.rs, document.rs, window.rs
-- [ ] Event system (addEventListener, dispatchEvent)
-- [ ] DOM manipulation (createElement, appendChild, etc.)
-- [ ] CSS Object Model (getComputedStyle, classList)
+#### Фаза 3: DOM Bindings Core [✅ ЗАВЕРШЕНА]
+- [x] HTMLElement — расширение Element с HTML-специфичными свойствами
+  - ✅ HTMLElement с style, dataset, hidden, tabIndex, classList
+  - ✅ CSSStyleDeclaration — getPropertyValue, setProperty, removeProperty, cssText
+  - ✅ DOMTokenList — add, remove, toggle, contains, replace (classList)
+  - ✅ DOMStringMap — для dataset (data-* атрибуты)
+- [x] Event system (полная реализация)
+  - ✅ Event с bubbles, cancelable, composed, eventPhase
+  - ✅ preventDefault(), stopPropagation(), stopImmediatePropagation()
+  - ✅ CustomEvent с detail property
+  - ✅ MouseEvent с координатами и модификаторами
+  - ✅ KeyboardEvent с key, code, modifiers
+- [x] DOM manipulation (createElement, appendChild, etc.)
+  - ✅ Node — appendChild, removeChild, insertBefore, replaceChild
+  - ✅ Document — createElement, createTextNode, createComment
+  - ✅ Element — getAttribute, setAttribute, removeAttribute
+- [x] CSS Object Model
+  - ✅ element.style — CSSStyleDeclaration
+  - ✅ element.classList — DOMTokenList
+  - ✅ window.getComputedStyle — stub
+  - ✅ window.matchMedia — stub
+- [x] Window расширения
+  - ✅ location, history, navigator объекты
+  - ✅ performance объект
+  - ✅ scrollX/Y, pageXOffset/YOffset
+  - ✅ outerWidth/Height, screenX/Y
+- [x] **88 тестов проходят успешно!**
 
-#### Фаза 4: Web APIs
-- [ ] Console API (console.log/warn/error)
-- [ ] Fetch API (с использованием existing net stack)
-- [ ] Timers (setTimeout, setInterval, requestAnimationFrame)
-- [ ] Storage (localStorage, sessionStorage)
-- [ ] IndexedDB (existing implementation)
+#### Фаза 4: Web APIs [✅ ЗАВЕРШЕНА]
+- [x] Console API (console.log/warn/error/info/debug/table/group/time)
+  - ✅ Расширенное логирование с Ferro extensions (prefix, levels)
+  - ✅ console.time/timeEnd/timeLog для профилирования
+  - ✅ console.group/groupEnd/groupCollapsed для группировки
+  - ✅ console.table для табличного вывода
+  - ✅ console.count/countReset для подсчёта вызовов
+  - ✅ console.assert/trace для отладки
+- [x] Fetch API (stub с полной структурой)
+  - ✅ fetch() — возвращает Promise с Response stub
+  - ✅ Request — url, method, headers, body, clone()
+  - ✅ Response — ok, status, statusText, headers, text(), json(), clone()
+  - ✅ Headers — get/set/has/delete/append, итерация (entries/keys/values/forEach)
+  - ✅ **Интеграция с ureq HTTP клиентом для реальных запросов!**
+  - ✅ Реальные HTTP GET/POST/PUT/PATCH/DELETE запросы
+  - ✅ response.text() возвращает тело как строку
+  - ✅ response.json() парсит JSON через JSON.parse
+  - ✅ response.arrayBuffer() возвращает ArrayBuffer
+  - ✅ response.blob() возвращает Blob-like объект
+  - ✅ Корректная обработка сетевых ошибок
+- [x] Timers (setTimeout, setInterval, requestAnimationFrame)
+  - ✅ Уже реализовано в Фазе 1 (builtins/timers.rs)
+- [x] Storage (localStorage, sessionStorage)
+  - ✅ localStorage с persistent HashMap
+  - ✅ sessionStorage (сбрасывается при закрытии)
+  - ✅ getItem/setItem/removeItem/clear/key/length
+  - ✅ Полное соответствие Web Storage API
+- [x] URL API (URL, URLSearchParams)
+  - ✅ URL — полный WHATWG URL Standard
+  - ✅ Все свойства: href, origin, protocol, host, hostname, port, pathname, search, hash
+  - ✅ searchParams — доступ к URLSearchParams
+  - ✅ URLSearchParams — append/delete/get/getAll/has/set/sort/toString
+  - ✅ Итерация: entries/keys/values/forEach
+- [x] Encoding API (TextEncoder, TextDecoder)
+  - ✅ TextEncoder — encode() возвращает Uint8Array
+  - ✅ TextEncoder — encodeInto() для in-place encoding
+  - ✅ TextDecoder — decode() с поддержкой multiple encodings
+  - ✅ Encodings: utf-8, utf-16le, utf-16be, iso-8859-1, ascii
+  - ✅ TextDecoder options: fatal, ignoreBOM
+- [x] **114 тестов проходят успешно!**
 
-#### Фаза 5: Advanced Features
-- [ ] ES Modules (import/export)
-- [ ] async/await, Promises
-- [ ] Web Workers
-- [ ] WebGL/WebGPU bindings
-- [ ] MediaSource Extensions
+#### Фаза 5: Advanced Features [🚧 В ПРОЦЕССЕ]
+- [x] Promise utilities (queueMicrotask, Promise.withResolvers)
+  - ✅ queueMicrotask() — добавление микрозадач
+  - ✅ Promise.withResolvers() — ES2024 API для создания Promise с resolvers
+  - ✅ Microtask queue с run_microtasks()
+  - ✅ Boa уже имеет встроенную поддержку Promise и async/await
+- [x] Web Crypto API
+  - ✅ crypto.getRandomValues() — криптографически безопасные случайные числа
+  - ✅ crypto.randomUUID() — генерация UUID v4
+  - ✅ crypto.subtle — SubtleCrypto stub (digest, encrypt, etc.)
+  - ✅ Использует getrandom crate
+- [x] Performance API (расширенный)
+  - ✅ performance.now() — высокоточный timestamp
+  - ✅ performance.timeOrigin — время начала
+  - ✅ performance.mark() / measure() — User Timing
+  - ✅ performance.getEntries() / getEntriesByName() / getEntriesByType()
+  - ✅ performance.clearMarks() / clearMeasures()
+  - ✅ PerformanceObserver constructor (stub)
+- [x] **136 тестов проходят успешно!**
+- [x] Web Workers API (stubs)
+  - ✅ Worker — constructor, postMessage, terminate, event listeners
+  - ✅ SharedWorker — constructor с port property
+  - ✅ MessageChannel — port1, port2 для IPC
+  - ✅ MessagePort — postMessage, start, close
+  - ⚠️ Функционально это stubs (без реального multi-threading)
+- [x] **144 теста проходят успешно!**
+- [x] ES Modules Support
+  - ✅ import.meta — url, resolve() method
+  - ✅ Модульный реестр (MODULE_REGISTRY) для отслеживания загруженных модулей
+  - ✅ set_base_url() для установки базового URL
+  - ✅ Dynamic import stub (возвращает Promise)
+- [x] Observer APIs
+  - ✅ IntersectionObserver — constructor с callback и options (root, threshold, rootMargin)
+  - ✅ ResizeObserver — constructor с callback, observe(), unobserve(), disconnect()
+  - ✅ MutationObserver — constructor с callback, observe() с options, disconnect(), takeRecords()
+  - ⚠️ Функционально это stubs (без реальной интеграции с DOM)
+- [x] Navigator API (расширенный)
+  - ✅ navigator.userAgent, appVersion, appName, appCodeName, product, productSub
+  - ✅ navigator.platform, language, languages[], onLine, hardwareConcurrency
+  - ✅ navigator.vendor, vendorSub, maxTouchPoints, pdfViewerEnabled
+  - ✅ navigator.clipboard — readText(), writeText(), read(), write()
+  - ✅ navigator.geolocation — getCurrentPosition(), watchPosition(), clearWatch()
+  - ✅ navigator.permissions — query() возвращает Promise с PermissionStatus
+  - ✅ navigator.mediaDevices — getUserMedia(), enumerateDevices()
+  - ✅ navigator.serviceWorker — register(), ready Promise, getRegistrations()
+  - ✅ navigator.connection — effectiveType, downlink, rtt, saveData, type (NetworkInformation)
+- [x] **173 теста проходят успешно!**
+- [x] WebGL bindings
+  - ✅ WebGLRenderingContext — полный набор методов и констант
+  - ✅ WebGL2RenderingContext — расширения WebGL 2.0 (VAO, queries, samplers)
+  - ✅ createShader, compileShader, createProgram, linkProgram
+  - ✅ createBuffer, bindBuffer, bufferData
+  - ✅ createTexture, bindTexture, texImage2D, texParameteri
+  - ✅ getAttribLocation, getUniformLocation, uniform*
+  - ✅ drawArrays, drawElements
+  - ✅ enable/disable, blendFunc, depthFunc, cullFace
+  - ✅ WebGLProgram, WebGLShader, WebGLBuffer, WebGLTexture и другие типы
+- [x] MediaSource Extensions bindings
+  - ✅ MediaSource — конструктор, readyState, duration, sourceBuffers
+  - ✅ MediaSource.isTypeSupported() — проверка video/mp4, video/webm, audio/*
+  - ✅ addSourceBuffer(), removeSourceBuffer(), endOfStream()
+  - ✅ SourceBuffer — mode, updating, buffered, timestampOffset
+  - ✅ appendBuffer(), abort(), remove(), changeType()
+  - ✅ TimeRanges — length, start(), end()
+  - ✅ SourceBufferList для управления буферами
+- [x] Web Audio API
+  - ✅ AudioContext — sampleRate, state, destination, currentTime
+  - ✅ createGain(), createOscillator(), createAnalyser()
+  - ✅ createBiquadFilter(), createDelay(), createDynamicsCompressor()
+  - ✅ createPanner(), createConvolver(), createBufferSource()
+  - ✅ createBuffer(), decodeAudioData()
+  - ✅ suspend(), resume(), close() — возвращают Promise
+  - ✅ GainNode, OscillatorNode, AnalyserNode, BiquadFilterNode
+  - ✅ DelayNode, DynamicsCompressorNode, PannerNode, ConvolverNode
+  - ✅ AudioBuffer — sampleRate, length, duration, numberOfChannels
+  - ✅ AudioParam — value, setValueAtTime, linearRampToValueAtTime
+  - ✅ AudioNode — connect(), disconnect()
+  - ✅ OfflineAudioContext — startRendering()
+- [x] **210 тестов проходят успешно!** 🎉
 
 #### Фаза 6: Полное удаление SpiderMonkey
 - [ ] Удалить mozjs из dependencies

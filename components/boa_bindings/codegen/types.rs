@@ -399,7 +399,7 @@ impl ToJsValueBoa for Uint8ArrayWrapper {
 }
 
 impl FromJsValueBoa for Uint8ArrayWrapper {
-    fn from_js_value(value: &JsValue, ctx: &mut Context) -> JsResult<Self> {
+    fn from_js_value(value: &JsValue, _ctx: &mut Context) -> JsResult<Self> {
         // Try to extract bytes from typed array or array buffer
         if let Some(obj) = value.as_object() {
             if let Ok(buffer) = JsArrayBuffer::from_object(obj.clone()) {

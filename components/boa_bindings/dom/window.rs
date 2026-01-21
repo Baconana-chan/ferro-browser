@@ -335,8 +335,62 @@ pub fn init_window_prototype(context: &mut Context) -> JsResult<JsObject> {
     console.set(js_string!("error"), JsValue::from(empty_func.clone()), false, context)?;
     console.set(js_string!("warn"), JsValue::from(empty_func.clone()), false, context)?;
     console.set(js_string!("info"), JsValue::from(empty_func.clone()), false, context)?;
-    console.set(js_string!("debug"), JsValue::from(empty_func), false, context)?;
+    console.set(js_string!("debug"), JsValue::from(empty_func.clone()), false, context)?;
     prototype.set(js_string!("console"), JsValue::from(console), false, context)?;
+
+    // getComputedStyle - returns a CSSStyleDeclaration stub
+    prototype.set(js_string!("getComputedStyle"), JsValue::from(empty_func.clone()), false, context)?;
+    
+    // matchMedia - returns MediaQueryList stub
+    prototype.set(js_string!("matchMedia"), JsValue::from(empty_func.clone()), false, context)?;
+    
+    // scrollX/scrollY
+    prototype.set(js_string!("scrollX"), JsValue::from(0), false, context)?;
+    prototype.set(js_string!("scrollY"), JsValue::from(0), false, context)?;
+    prototype.set(js_string!("pageXOffset"), JsValue::from(0), false, context)?;
+    prototype.set(js_string!("pageYOffset"), JsValue::from(0), false, context)?;
+    
+    // screen dimensions
+    prototype.set(js_string!("outerWidth"), JsValue::from(1024), false, context)?;
+    prototype.set(js_string!("outerHeight"), JsValue::from(768), false, context)?;
+    prototype.set(js_string!("screenX"), JsValue::from(0), false, context)?;
+    prototype.set(js_string!("screenY"), JsValue::from(0), false, context)?;
+    prototype.set(js_string!("screenLeft"), JsValue::from(0), false, context)?;
+    prototype.set(js_string!("screenTop"), JsValue::from(0), false, context)?;
+    
+    // location, history, navigator stubs
+    let location = JsObject::with_null_proto();
+    location.set(js_string!("href"), JsValue::from(js_string!("about:blank")), false, context)?;
+    location.set(js_string!("origin"), JsValue::from(js_string!("")), false, context)?;
+    location.set(js_string!("protocol"), JsValue::from(js_string!("about:")), false, context)?;
+    location.set(js_string!("host"), JsValue::from(js_string!("")), false, context)?;
+    location.set(js_string!("hostname"), JsValue::from(js_string!("")), false, context)?;
+    location.set(js_string!("port"), JsValue::from(js_string!("")), false, context)?;
+    location.set(js_string!("pathname"), JsValue::from(js_string!("blank")), false, context)?;
+    location.set(js_string!("search"), JsValue::from(js_string!("")), false, context)?;
+    location.set(js_string!("hash"), JsValue::from(js_string!("")), false, context)?;
+    prototype.set(js_string!("location"), JsValue::from(location), false, context)?;
+    
+    // history stub
+    let history = JsObject::with_null_proto();
+    history.set(js_string!("length"), JsValue::from(1), false, context)?;
+    history.set(js_string!("scrollRestoration"), JsValue::from(js_string!("auto")), false, context)?;
+    history.set(js_string!("state"), JsValue::null(), false, context)?;
+    prototype.set(js_string!("history"), JsValue::from(history), false, context)?;
+    
+    // navigator stub
+    let navigator = JsObject::with_null_proto();
+    navigator.set(js_string!("userAgent"), JsValue::from(js_string!("Mozilla/5.0 Ferro/1.0")), false, context)?;
+    navigator.set(js_string!("language"), JsValue::from(js_string!("en-US")), false, context)?;
+    navigator.set(js_string!("platform"), JsValue::from(js_string!("Win32")), false, context)?;
+    navigator.set(js_string!("cookieEnabled"), JsValue::from(true), false, context)?;
+    navigator.set(js_string!("onLine"), JsValue::from(true), false, context)?;
+    prototype.set(js_string!("navigator"), JsValue::from(navigator), false, context)?;
+    
+    // performance stub
+    let performance = JsObject::with_null_proto();
+    performance.set(js_string!("timeOrigin"), JsValue::from(0.0), false, context)?;
+    prototype.set(js_string!("performance"), JsValue::from(performance), false, context)?;
 
     Ok(prototype)
 }

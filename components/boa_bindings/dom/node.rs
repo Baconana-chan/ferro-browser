@@ -38,7 +38,7 @@ impl From<NodeType> for u16 {
 /// Node implementation
 pub struct Node {
     /// Base EventTarget functionality
-    event_target: EventTarget,
+    _event_target: EventTarget,
     
     /// Node type
     node_type: NodeType,
@@ -66,7 +66,7 @@ impl Node {
     /// Create a new Node with the given type
     pub fn new(node_type: NodeType, node_name: &str) -> Self {
         Node {
-            event_target: EventTarget::new(),
+            _event_target: EventTarget::new(),
             node_type,
             node_name: node_name.to_string(),
             base_uri: String::new(),

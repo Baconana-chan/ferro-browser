@@ -176,7 +176,7 @@ impl<'ctx> InterfaceBuilder<'ctx> {
         self,
         name: &'static str,
         func: NativeFunctionPointer,
-        length: u32,
+        _length: u32,
     ) -> Self {
         let js_func = NativeFunction::from_fn_ptr(func)
             .to_js_function(self.ctx.realm());
@@ -233,7 +233,7 @@ impl<'ctx> InterfaceBuilder<'ctx> {
                 .to_js_function(self.ctx.realm())
         } else {
             // Create a throwing constructor for non-constructable interfaces
-            let name = self.name;
+            let _name = self.name;
             NativeFunction::from_fn_ptr(|_, _, _| {
                 Err(JsNativeError::typ()
                     .with_message("Illegal constructor")
