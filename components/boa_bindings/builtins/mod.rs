@@ -10,20 +10,25 @@
 //! - fetch API
 //! - queueMicrotask
 //!
-//! This module provides Ferro-specific extensions.
+//! This module provides Ferro-specific extensions and implementations
+//! that integrate with Servo's architecture.
 
 pub mod console;
 pub mod events;
+pub mod timers;
 
 use boa_engine::{Context, JsResult};
 
 /// Register Ferro-specific builtins on a context.
 pub fn register_builtins(context: &mut Context) -> JsResult<()> {
-    // boa_runtime already provides console, setTimeout, fetch, etc.
-    // We only register Ferro-specific extensions here
-
+    // Register Ferro-specific console extensions
     console::register(context)?;
+    
+    // Register event system placeholders
     events::register(context)?;
+    
+    // Register timer functions (setTimeout, setInterval, etc.)
+    timers::register(context)?;
 
     log::info!("Registered Ferro-specific Boa builtins");
     Ok(())

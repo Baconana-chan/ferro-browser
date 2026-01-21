@@ -4,6 +4,9 @@
 
 **Status**: Active development • **Platforms**: macOS, Linux, Windows, OpenHarmony, Android
 
+⚠️ Ferro Browser aims to become an everyday browser in the future. At its current stage, it intentionally uses experimental and evolving technologies, which makes it unsuitable for daily or security-critical browsing.
+
+
 ## About
 
 Ferro Browser is a research project exploring a more streamlined browser experience. Rather than bloat, we focus on:

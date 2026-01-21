@@ -31,6 +31,7 @@
 //! - **Pure Rust**: No C++ dependencies, no mozjs build complexity
 //! - **Boa 0.21**: 94% ECMAScript conformance, NaN-boxing, register-based VM
 //! - **Web APIs**: setTimeout, fetch, console via boa_runtime
+//! - **DOM Integration**: Reflector pattern for connecting Rust DOM objects to JS
 //!
 //! ## Architecture
 //!
@@ -38,13 +39,17 @@
 //! - `gc` - Garbage collection integration with DOM
 //! - `conversions` - Type conversions between Rust and JavaScript
 //! - `error` - JavaScript error handling
+//! - `reflector` - DOM object reflection (Rust ↔ JS binding)
 //! - `builtins` - Servo-specific Web API extensions
 
 pub mod runtime;
 pub mod gc;
 pub mod conversions;
 pub mod error;
+pub mod reflector;
 pub mod builtins;
+pub mod codegen;
+pub mod dom;
 
 // Re-export key Boa types
 pub use boa_engine::{
@@ -55,6 +60,17 @@ pub use boa_engine::{
 };
 
 pub use boa_gc::{Finalize, Trace, Gc, GcRefCell};
+
+// Re-export our types
+pub use reflector::{Reflector, DomObject, Dom, DomRefCell};
+pub use runtime::JsRuntime;
+pub use error::JsException;
+pub use conversions::{ToJsValue, FromJsValue};
+
+// Re-export codegen types
+pub use codegen::types::{DOMString, USVString, ByteString, ToJsValueBoa, FromJsValueBoa};
+pub use codegen::traits::{WebIdlInterface, WebIdlConstructable, InterfaceBuilder, ConstantValue};
+pub use codegen::interface::{check_args_length, get_arg, get_optional_arg, get_arg_with_default};
 
 /// Initialize the Boa JavaScript engine.
 pub fn init() {
