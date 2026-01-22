@@ -164,6 +164,8 @@ pub(crate) mod xmlname;
 pub(crate) use script_bindings::{callback, iterable, num};
 
 /// Generated JS-Rust bindings.
+/// Only available when using SpiderMonkey (js-spidermonkey feature)
+#[cfg(feature = "js-spidermonkey")]
 #[allow(missing_docs, non_snake_case)]
 pub(crate) mod codegen {
     pub(crate) mod DomTypeHolder {
@@ -185,4 +187,12 @@ pub(crate) mod codegen {
     pub(crate) mod UnionTypes {
         include!(concat!(env!("OUT_DIR"), "/UnionTypes.rs"));
     }
+}
+
+/// Stub codegen module for Boa engine
+/// When using Boa, we don't generate SpiderMonkey bindings
+#[cfg(feature = "js-boa")]
+#[allow(missing_docs, non_snake_case)]
+pub(crate) mod codegen {
+    // Stub types for Boa - real bindings are in boa_bindings::dom
 }

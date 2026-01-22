@@ -106,6 +106,7 @@ itertools = "0.14"
 # SpiderMonkey JS engine (used with js-spidermonkey feature in components/script)
 # Ferro Browser defaults to Boa for faster builds and no C++ dependencies
 # To use SpiderMonkey: cargo build --features js-spidermonkey --no-default-features
+# Note: This is kept in workspace.dependencies for components that still use SpiderMonkey
 js = { package = "mozjs", git = "https://github.com/servo/mozjs", default-features = false, features = ["libz-sys", "intl"] }
 keyboard-types = { version = "0.8.3", features = ["serde", "webdriver"] }
 kurbo = { version = "0.12", features = ["euclid"] }

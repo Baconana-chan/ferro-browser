@@ -29,12 +29,28 @@ use std::default::Default;
 use std::hash::{Hash, Hasher};
 use std::{mem, ptr};
 
+// JS engine imports - conditional based on feature
+#[cfg(feature = "js-spidermonkey")]
 use js::jsapi::{Heap, JSObject, JSTracer, Value};
+#[cfg(feature = "js-spidermonkey")]
 use js::rust::HandleValue;
+
+#[cfg(feature = "js-boa")]
+use boa_bindings::js_compat::jsapi::{Heap, JSObject, JSTracer, Value};
+#[cfg(feature = "js-boa")]
+use boa_bindings::js_compat::rust::HandleValue;
+
 use layout_api::TrustedNodeAddress;
 use malloc_size_of::{MallocSizeOf, MallocSizeOfOps};
+#[cfg(feature = "js-spidermonkey")]
 pub(crate) use script_bindings::root::*;
 use style::thread_state;
+
+// Boa stubs for types and functions from script_bindings::root
+#[cfg(feature = "js-boa")]
+pub(crate) fn assert_in_script() {
+    debug_assert!(thread_state::get().is_script());
+}
 
 use crate::dom::bindings::conversions::DerivedFrom;
 use crate::dom::bindings::inheritance::Castable;

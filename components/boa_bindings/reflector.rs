@@ -86,6 +86,44 @@ pub trait DomObject: Trace + Finalize + 'static {
     }
 }
 
+/// Trait for DOM objects that can be mutated.
+/// This extends DomObject with the ability to initialize the reflector.
+pub trait MutDomObject: DomObject {
+    /// Get a mutable reference to the reflector.
+    fn reflector_mut(&mut self) -> &mut Reflector;
+    
+    /// Initialize the reflector with a JS object.
+    /// This should be called during DOM object construction.
+    /// 
+    /// # Safety
+    /// The provided pointer must point to a valid JSObject.
+    unsafe fn init_reflector(&self, obj: *mut crate::js_compat::jsapi::JSObject);
+}
+
+impl DomObject for Reflector {
+    fn reflector(&self) -> &Self {
+        self
+    }
+}
+
+impl MutDomObject for Reflector {
+    fn reflector_mut(&mut self) -> &mut Reflector {
+        self
+    }
+    
+    unsafe fn init_reflector(&self, obj: *mut crate::js_compat::jsapi::JSObject) {
+        // In Boa, we wrap the raw pointer as a JsObject
+        // The JSObject in js_compat is just a type alias, so we need to 
+        // convert it properly. For now, we use a placeholder.
+        // In full implementation, this would extract the JsObject from the raw pointer.
+        if !obj.is_null() {
+            // obj is actually a wrapped JsObject pointer
+            // For Boa compatibility, we would need to extract it
+            // This is a stub - full implementation requires unsafe FFI
+        }
+    }
+}
+
 /// A GC-managed reference to a DOM object.
 #[derive(Clone)]
 pub struct Dom<T: Trace + Finalize + 'static> {
@@ -95,6 +133,11 @@ pub struct Dom<T: Trace + Finalize + 'static> {
 impl<T: Trace + Finalize + 'static> Dom<T> {
     pub fn new(value: T) -> Self {
         Self { inner: Gc::new(value) }
+    }
+    
+    /// Create a Dom<T> from an existing Gc<T>.
+    pub fn from_gc(gc: Gc<T>) -> Self {
+        Self { inner: gc }
     }
 
     pub fn get(&self) -> &T {
@@ -237,6 +280,49 @@ pub fn define_accessor(
     )?;
     Ok(())
 }
+
+/// Marker trait for types that define the DOM type system.
+/// This is similar to script_bindings DomTypes trait.
+pub trait DomTypes: 'static {
+    /// The GlobalScope type for this DOM.
+    type GlobalScope: DomObject;
+}
+
+/// A trait to provide a function pointer to wrap function for DOM objects.
+/// This enables generating JavaScript wrappers for Rust DOM objects.
+pub trait DomObjectWrap<D: DomTypes>: Sized + DomObject {
+    /// The wrap function that creates a JavaScript wrapper for this DOM object.
+    /// 
+    /// # Safety
+    /// This function is unsafe because it creates JavaScript objects.
+    unsafe fn wrap(
+        context: &mut Context,
+        global: &D::GlobalScope,
+        obj: Box<Self>,
+    ) -> crate::root::DomRoot<Self>;
+}
+
+/// A trait to provide information about interface inheritance.
+/// Used by codegen to generate proper prototype chains.
+pub trait Castable: DomObject {
+    /// Check if this object can be cast to the specified interface.
+    fn is<T: DomObject>(&self) -> bool;
+    
+    /// Downcast this object to a specific type.
+    fn downcast<T: DomObject>(&self) -> Option<&T>;
+    
+    /// Upcast this object to a parent type.
+    fn upcast<T: DomObject>(&self) -> &T
+    where
+        Self: DerivedFrom<T>;
+}
+
+/// Marker trait for interface inheritance.
+/// `T: DerivedFrom<U>` means T inherits from U.
+pub trait DerivedFrom<T: DomObject>: DomObject {}
+
+// Self always derives from self
+impl<T: DomObject> DerivedFrom<T> for T {}
 
 #[cfg(test)]
 mod tests {

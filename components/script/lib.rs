@@ -8,9 +8,18 @@
 // Register the linter `crown`, which is the Servo-specific linter for the script crate.
 #![cfg_attr(crown, register_tool(crown))]
 
-// These are used a lot so let's keep them for now
+// JavaScript engine integration:
+// When using js-spidermonkey feature: use mozjs extern crate
+#[cfg(feature = "js-spidermonkey")]
 #[macro_use]
 extern crate js;
+
+// When using js-boa feature: create local js module from boa_bindings
+// This allows existing `use js::...` imports to work without changes
+#[cfg(feature = "js-boa")]
+#[path = "js_boa_shim.rs"]
+pub mod js;
+
 #[macro_use]
 extern crate jstraceable_derive;
 #[macro_use]

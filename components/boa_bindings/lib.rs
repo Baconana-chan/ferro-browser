@@ -50,6 +50,13 @@ pub mod reflector;
 pub mod builtins;
 pub mod codegen;
 pub mod dom;
+pub mod js_compat;
+pub mod root;
+pub mod trace;
+pub mod weakref;
+pub mod cell;
+pub mod dom_conversions;
+pub mod settings_stack;
 
 // Re-export key Boa types
 pub use boa_engine::{
@@ -61,16 +68,78 @@ pub use boa_engine::{
 
 pub use boa_gc::{Finalize, Trace, Gc, GcRefCell};
 
+// Re-export js_compat as 'js' for SpiderMonkey API compatibility
+// This allows existing code using `use js::*` to work with Boa
+pub use js_compat as js;
+
 // Re-export our types
-pub use reflector::{Reflector, DomObject, Dom, DomRefCell};
+// Note: root::Dom uses NonNull<T> for SpiderMonkey API compatibility
+// reflector::Dom uses Gc<T> for Boa-native usage (aliased as GcDom)
+pub use reflector::{Reflector, DomObject, MutDomObject, DomRefCell};
+pub use reflector::{DomTypes, DomObjectWrap, Castable, DerivedFrom};
+pub use reflector::Dom as GcDom;  // Boa-native GC-managed Dom
+pub use root::{Dom, DomRoot, Root, RootCollection, MaybeUnreflectedDom, assert_in_script, trace_roots};
+pub use trace::BoaTraceable;
+pub use weakref::{WeakRef, WeakBox, WeakReferenceable, MutableWeakRef};
+pub use cell::{MutDom, MutNullableDom, DomOnceCell, LayoutDom, assert_in_layout};
 pub use runtime::JsRuntime;
 pub use error::JsException;
 pub use conversions::{ToJsValue, FromJsValue};
+pub use dom_conversions::{
+    ConversionResult, StringificationBehavior, IDLInterface,
+    ToJSValConvertible, FromJSValConvertible, NativeFromObject,
+};
+pub use settings_stack::{
+    StackEntryKind, StackEntry, SettingsStackAccess,
+    AutoEntryScript, AutoIncumbentScript,
+    entry_global, incumbent_global, has_entry_global, is_stack_empty,
+};
 
 // Re-export codegen types
 pub use codegen::types::{DOMString, USVString, ByteString, ToJsValueBoa, FromJsValueBoa};
 pub use codegen::traits::{WebIdlInterface, WebIdlConstructable, InterfaceBuilder, ConstantValue};
 pub use codegen::interface::{check_args_length, get_arg, get_optional_arg, get_arg_with_default};
+pub use codegen::prototype_list::{
+    ID as ProtoId, Constructor as ConstructorId, InterfaceChain,
+    MAX_PROTO_CHAIN_LENGTH, proto_count, constructor_count, proto_or_iface_length,
+    allocate_proto_id, allocate_constructor_id, proto_id_to_name, register_interface_name,
+    well_known as well_known_protos,
+};
+pub use codegen::register_bindings::{
+    InterfaceDescriptor, RegisterBinding, ProtoAndIfaceCache,
+    register_interface, get_interface_by_name, get_interface_by_proto_id,
+    get_all_interfaces, register_all_bindings, register_window_bindings, register_worker_bindings,
+    init as init_bindings,
+};
+
+// Also re-export as PrototypeList for SpiderMonkey API compatibility
+pub mod PrototypeList {
+    pub use super::codegen::prototype_list::{
+        ID, Constructor, InterfaceChain,
+        MAX_PROTO_CHAIN_LENGTH, 
+        proto_count, constructor_count, proto_or_iface_length,
+        allocate_proto_id, allocate_constructor_id,
+        proto_id_to_name, register_interface_name,
+        well_known,
+    };
+    
+    /// Alias for proto_or_iface_length() for SpiderMonkey compatibility
+    pub fn PROTO_OR_IFACE_LENGTH() -> usize {
+        proto_or_iface_length()
+    }
+}
+
+// Also re-export as RegisterBindings for SpiderMonkey API compatibility
+pub mod RegisterBindings {
+    pub use super::codegen::register_bindings::{
+        InterfaceDescriptor, RegisterBinding, ProtoAndIfaceCache,
+        RegisterFn, CreatePrototypeFn, CreateConstructorFn,
+        register_interface, get_interface_by_name, get_interface_by_proto_id,
+        get_interface_by_constructor_id, get_all_interfaces,
+        register_all_bindings, register_window_bindings, register_worker_bindings,
+        init,
+    };
+}
 
 /// Initialize the Boa JavaScript engine.
 pub fn init() {
