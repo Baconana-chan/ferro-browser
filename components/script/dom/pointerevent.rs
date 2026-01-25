@@ -6,7 +6,7 @@ use std::cell::Cell;
 
 use dom_struct::dom_struct;
 use euclid::Point2D;
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use keyboard_types::Modifiers;
 use style_traits::CSSPixel;
 

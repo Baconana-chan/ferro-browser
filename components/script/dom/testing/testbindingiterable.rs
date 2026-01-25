@@ -5,7 +5,7 @@
 // check-tidy: no specs after this line
 
 use dom_struct::dom_struct;
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 
 use crate::dom::bindings::cell::DomRefCell;
 use crate::dom::bindings::codegen::Bindings::TestBindingIterableBinding::TestBindingIterableMethods;

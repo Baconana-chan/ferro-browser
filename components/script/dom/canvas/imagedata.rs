@@ -10,10 +10,10 @@ use constellation_traits::SerializableImageData;
 use dom_struct::dom_struct;
 use euclid::default::{Rect, Size2D};
 use ipc_channel::ipc::IpcSharedMemory;
-use js::gc::CustomAutoRooterGuard;
-use js::jsapi::JSObject;
-use js::rust::HandleObject;
-use js::typedarray::{ClampedU8, Uint8ClampedArray};
+use crate::js::gc::CustomAutoRooterGuard;
+use crate::js::jsapi::JSObject;
+use crate::js::rust::HandleObject;
+use crate::js::typedarray::{ClampedU8, Uint8ClampedArray};
 use pixels::{Snapshot, SnapshotAlphaMode, SnapshotPixelFormat};
 use rustc_hash::FxHashMap;
 

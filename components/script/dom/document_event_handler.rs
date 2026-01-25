@@ -19,7 +19,7 @@ use embedder_traits::{
 };
 use euclid::{Point2D, Vector2D};
 use ipc_channel::ipc;
-use js::jsapi::JSAutoRealm;
+use crate::js::jsapi::JSAutoRealm;
 use keyboard_types::{Code, Key, KeyState, Modifiers, NamedKey};
 use layout_api::{ScrollContainerQueryFlags, node_id_from_scroll_id};
 use script_bindings::codegen::GenericBindings::DocumentBinding::DocumentMethods;

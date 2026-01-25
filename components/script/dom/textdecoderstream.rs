@@ -6,9 +6,9 @@ use std::rc::Rc;
 
 use dom_struct::dom_struct;
 use encoding_rs::Encoding;
-use js::conversions::{FromJSValConvertible, ToJSValConvertible};
-use js::jsval::UndefinedValue;
-use js::rust::{HandleObject as SafeHandleObject, HandleValue as SafeHandleValue};
+use crate::js::conversions::{FromJSValConvertible, ToJSValConvertible};
+use crate::js::jsval::UndefinedValue;
+use crate::js::rust::{HandleObject as SafeHandleObject, HandleValue as SafeHandleValue};
 
 use crate::DomTypes;
 use crate::dom::bindings::codegen::Bindings::TextDecoderBinding;

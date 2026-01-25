@@ -14,8 +14,8 @@ use std::ptr;
 use std::sync::Arc;
 
 #[cfg(feature = "webgpu")]
-use js::jsapi::NewExternalArrayBuffer;
-use js::jsapi::{
+use crate::js::jsapi::NewExternalArrayBuffer;
+use crate::js::jsapi::{
     ArrayBufferClone, ArrayBufferCopyData, GetArrayBufferByteLength,
     HasDefinedArrayBufferDetachKey, Heap, IsArrayBufferObject, IsDetachedArrayBufferObject,
     JS_ClearPendingException, JS_GetArrayBufferViewBuffer, JS_GetArrayBufferViewByteLength,
@@ -28,15 +28,15 @@ use js::jsapi::{
     JS_NewUint32ArrayWithBuffer, JSObject, NewArrayBuffer, NewArrayBufferWithContents,
     StealArrayBufferContents, Type,
 };
-use js::jsval::{ObjectValue, UndefinedValue};
-use js::rust::wrappers::DetachArrayBuffer;
-use js::rust::{
+use crate::js::jsval::{ObjectValue, UndefinedValue};
+use crate::js::rust::wrappers::DetachArrayBuffer;
+use crate::js::rust::{
     CustomAutoRooterGuard, Handle, MutableHandleObject,
     MutableHandleValue as SafeMutableHandleValue,
 };
 #[cfg(feature = "webgpu")]
-use js::typedarray::{ArrayBuffer, HeapArrayBuffer};
-use js::typedarray::{
+use crate::js::typedarray::{ArrayBuffer, HeapArrayBuffer};
+use crate::js::typedarray::{
     ArrayBufferU8, ArrayBufferViewU8, CreateWith, TypedArray, TypedArrayElement,
     TypedArrayElementCreator,
 };

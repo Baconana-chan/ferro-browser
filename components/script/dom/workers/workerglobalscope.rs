@@ -22,10 +22,10 @@ use encoding_rs::UTF_8;
 use fonts::FontContext;
 use headers::{HeaderMapExt, ReferrerPolicy as ReferrerPolicyHeader};
 use ipc_channel::ipc::IpcSender;
-use js::jsapi::JS_AddInterruptCallback;
-use js::jsval::UndefinedValue;
-use js::panic::maybe_resume_unwind;
-use js::rust::{CompileOptionsWrapper, HandleValue, MutableHandleValue, ParentRuntime};
+use crate::js::jsapi::JS_AddInterruptCallback;
+use crate::js::jsval::UndefinedValue;
+use crate::js::panic::maybe_resume_unwind;
+use crate::js::rust::{CompileOptionsWrapper, HandleValue, MutableHandleValue, ParentRuntime};
 use mime::Mime;
 use net_traits::policy_container::PolicyContainer;
 use net_traits::request::{

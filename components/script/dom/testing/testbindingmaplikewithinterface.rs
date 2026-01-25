@@ -6,7 +6,7 @@
 
 use dom_struct::dom_struct;
 use indexmap::IndexMap;
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 
 use crate::dom::bindings::cell::DomRefCell;
 use crate::dom::bindings::codegen::Bindings::TestBindingMaplikeWithInterfaceBinding::TestBindingMaplikeWithInterfaceMethods;

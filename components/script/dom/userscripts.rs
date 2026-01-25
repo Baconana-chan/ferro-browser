@@ -4,7 +4,7 @@
 
 use std::rc::Rc;
 
-use js::jsval::UndefinedValue;
+use crate::js::jsval::UndefinedValue;
 use script_bindings::root::DomRoot;
 
 use crate::dom::bindings::str::DOMString;

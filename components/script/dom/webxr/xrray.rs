@@ -4,8 +4,8 @@
 
 use dom_struct::dom_struct;
 use euclid::{Angle, RigidTransform3D, Rotation3D, Vector3D};
-use js::rust::HandleObject;
-use js::typedarray::{Float32, Float32Array};
+use crate::js::rust::HandleObject;
+use crate::js::typedarray::{Float32, Float32Array};
 use webxr_api::{ApiSpace, Ray};
 
 use crate::dom::bindings::buffer_source::HeapBufferSource;

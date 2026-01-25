@@ -3,8 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 use dom_struct::dom_struct;
-use js::jsapi::JSContext;
-use js::rust::MutableHandleValue;
+use crate::js::jsapi::JSContext;
+use crate::js::rust::MutableHandleValue;
 use webxr_api::{FingerJoint, Hand, Joint};
 
 use crate::dom::bindings::codegen::Bindings::XRHandBinding::{XRHandJoint, XRHandMethods};

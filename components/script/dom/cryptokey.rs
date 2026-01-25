@@ -6,7 +6,7 @@ use std::cell::Cell;
 use std::ptr::NonNull;
 
 use dom_struct::dom_struct;
-use js::jsapi::{Heap, JSObject, Value};
+use crate::js::jsapi::{Heap, JSObject, Value};
 use malloc_size_of::MallocSizeOf;
 use script_bindings::conversions::SafeToJSValConvertible;
 

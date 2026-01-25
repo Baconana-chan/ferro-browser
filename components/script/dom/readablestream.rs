@@ -11,13 +11,13 @@ use base::id::{MessagePortId, MessagePortIndex};
 use constellation_traits::MessagePortImpl;
 use dom_struct::dom_struct;
 use ipc_channel::ipc::IpcSharedMemory;
-use js::jsapi::{Heap, JSObject};
-use js::jsval::{JSVal, ObjectValue, UndefinedValue};
-use js::rust::{
+use crate::js::jsapi::{Heap, JSObject};
+use crate::js::jsval::{JSVal, ObjectValue, UndefinedValue};
+use crate::js::rust::{
     HandleObject as SafeHandleObject, HandleValue as SafeHandleValue,
     MutableHandleValue as SafeMutableHandleValue,
 };
-use js::typedarray::ArrayBufferViewU8;
+use crate::js::typedarray::ArrayBufferViewU8;
 use rustc_hash::FxHashMap;
 use script_bindings::conversions::SafeToJSValConvertible;
 

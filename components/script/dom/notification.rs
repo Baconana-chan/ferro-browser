@@ -12,9 +12,9 @@ use embedder_traits::{
     EmbedderMsg, Notification as EmbedderNotification,
     NotificationAction as EmbedderNotificationAction,
 };
-use js::jsapi::Heap;
-use js::jsval::JSVal;
-use js::rust::{HandleObject, MutableHandleValue};
+use crate::js::jsapi::Heap;
+use crate::js::jsval::JSVal;
+use crate::js::rust::{HandleObject, MutableHandleValue};
 use net_traits::http_status::HttpStatus;
 use net_traits::image_cache::{
     ImageCache, ImageCacheResponseMessage, ImageCacheResult, ImageLoadListener,

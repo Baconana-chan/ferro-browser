@@ -2,10 +2,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-use js::conversions::ToJSValConvertible;
-use js::jsapi::Heap;
-use js::jsval::JSVal;
-use js::rust::MutableHandleValue;
+use crate::js::conversions::ToJSValConvertible;
+use crate::js::jsapi::Heap;
+use crate::js::jsval::JSVal;
+use crate::js::rust::MutableHandleValue;
 
 use crate::dom::bindings::cell::DomRefCell;
 use crate::dom::bindings::utils::to_frozen_array;

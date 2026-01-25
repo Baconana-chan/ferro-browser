@@ -4,9 +4,12 @@
 
 use std::cell::RefCell;
 
-use js::jsapi::{GetScriptedCallerGlobal, JSTracer};
-use js::rust::Runtime;
+use crate::js::jsapi::{GetScriptedCallerGlobal, JSTracer};
+use crate::js::rust::Runtime;
+#[cfg(feature = "js-spidermonkey")]
 use script_bindings::settings_stack::*;
+#[cfg(feature = "js-boa")]
+use crate::script_bindings::settings_stack::*;
 
 // use script_bindings::interfaces::{DomHelpers, GlobalScopeHelpers};
 use crate::dom::bindings::root::DomRoot;

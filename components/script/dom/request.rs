@@ -10,7 +10,7 @@ use dom_struct::dom_struct;
 use http::Method as HttpMethod;
 use http::header::{HeaderName, HeaderValue};
 use http::method::InvalidMethod;
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use net_traits::ReferrerPolicy as MsgReferrerPolicy;
 use net_traits::fetch::headers::is_forbidden_method;
 use net_traits::request::{

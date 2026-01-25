@@ -9,7 +9,7 @@ use std::default::Default;
 use dom_struct::dom_struct;
 use html5ever::{LocalName, Prefix, local_name, ns};
 use ipc_channel::ipc::IpcSharedMemory;
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use net_traits::image_cache::{
     Image, ImageCache, ImageCacheResponseCallback, ImageCacheResult, ImageLoadListener,
     ImageOrMetadataAvailable, ImageResponse, PendingImageId,

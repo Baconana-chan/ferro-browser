@@ -5,7 +5,7 @@ use std::cell::Cell;
 
 use dom_struct::dom_struct;
 use html5ever::{LocalName, Prefix, local_name, ns};
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use script_bindings::error::{Error, ErrorResult};
 
 use crate::dom::bindings::cell::DomRefCell;

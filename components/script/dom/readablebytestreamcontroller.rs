@@ -8,10 +8,10 @@ use std::collections::VecDeque;
 use std::rc::Rc;
 
 use dom_struct::dom_struct;
-use js::jsapi::{Heap, Type};
-use js::jsval::UndefinedValue;
-use js::rust::{HandleObject, HandleValue as SafeHandleValue, HandleValue};
-use js::typedarray::{ArrayBufferU8, ArrayBufferViewU8};
+use crate::js::jsapi::{Heap, Type};
+use crate::js::jsval::UndefinedValue;
+use crate::js::rust::{HandleObject, HandleValue as SafeHandleValue, HandleValue};
+use crate::js::typedarray::{ArrayBufferU8, ArrayBufferViewU8};
 
 use super::bindings::buffer_source::HeapBufferSource;
 use super::bindings::cell::DomRefCell;

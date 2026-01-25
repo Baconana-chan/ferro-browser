@@ -6,7 +6,7 @@ use std::cell::Cell;
 use std::f32;
 
 use dom_struct::dom_struct;
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use servo_media::audio::buffer_source_node::{
     AudioBufferSourceNodeMessage, AudioBufferSourceNodeOptions,
 };

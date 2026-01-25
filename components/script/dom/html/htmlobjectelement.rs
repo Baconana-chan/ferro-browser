@@ -6,7 +6,7 @@ use std::default::Default;
 
 use dom_struct::dom_struct;
 use html5ever::{LocalName, Prefix, local_name, ns};
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use pixels::RasterImage;
 use servo_arc::Arc;
 

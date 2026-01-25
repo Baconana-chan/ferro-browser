@@ -7,7 +7,7 @@ use std::str::FromStr;
 use compositing_traits::viewport_description::ViewportDescription;
 use dom_struct::dom_struct;
 use html5ever::{LocalName, Prefix, local_name, ns};
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use net_traits::ReferrerPolicy;
 use servo_config::pref;
 use style::str::HTML_SPACE_CHARACTERS;

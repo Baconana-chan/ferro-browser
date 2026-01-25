@@ -7,8 +7,8 @@ use std::cmp::{Ordering, PartialOrd};
 use std::iter;
 
 use dom_struct::dom_struct;
-use js::jsapi::JSTracer;
-use js::rust::HandleObject;
+use crate::js::jsapi::JSTracer;
+use crate::js::rust::HandleObject;
 
 use crate::dom::abstractrange::{AbstractRange, BoundaryPoint, bp_position};
 use crate::dom::bindings::cell::DomRefCell;

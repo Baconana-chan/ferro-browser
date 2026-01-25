@@ -11,10 +11,10 @@ use std::time::Duration;
 
 use constellation_traits::BlobImpl;
 use dom_struct::dom_struct;
-use js::jsapi::{Heap, JS_NewPlainObject, JSObject};
-use js::jsval::JSVal;
-use js::rust::{CustomAutoRooterGuard, HandleObject, HandleValue, MutableHandleValue};
-use js::typedarray::{self, Uint8ClampedArray};
+use crate::js::jsapi::{Heap, JS_NewPlainObject, JSObject};
+use crate::js::jsval::JSVal;
+use crate::js::rust::{CustomAutoRooterGuard, HandleObject, HandleValue, MutableHandleValue};
+use crate::js::typedarray::{self, Uint8ClampedArray};
 use script_bindings::interfaces::TestBindingHelpers;
 use script_bindings::record::Record;
 use servo_config::prefs;

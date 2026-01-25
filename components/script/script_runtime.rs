@@ -19,15 +19,15 @@ use std::time::{Duration, Instant};
 use std::{os, ptr, thread};
 
 use background_hang_monitor_api::ScriptHangAnnotation;
-use js::conversions::jsstr_to_string;
-use js::gc::StackGCVector;
-use js::glue::{
+use crate::js::conversions::jsstr_to_string;
+use crate::js::gc::StackGCVector;
+use crate::js::glue::{
     CollectServoSizes, CreateJobQueue, DeleteJobQueue, DispatchablePointer, DispatchableRun,
     JS_GetReservedSlot, JobQueueTraps, RUST_js_GetErrorMessage, SetBuildId,
     StreamConsumerConsumeChunk, StreamConsumerNoteResponseURLs, StreamConsumerStreamEnd,
     StreamConsumerStreamError,
 };
-use js::jsapi::{
+use crate::js::jsapi::{
     AsmJSOption, BuildIdCharVector, CompilationType, Dispatchable_MaybeShuttingDown, GCDescription,
     GCOptions, GCProgress, GCReason, GetPromiseUserInputEventHandlingState, Handle as RawHandle,
     HandleObject, HandleString, HandleValue as RawHandleValue, Heap, JS_NewObject,
@@ -38,18 +38,18 @@ use js::jsapi::{
     PromiseUserInputEventHandlingState, RuntimeCode, SetProcessBuildIdOp,
     StreamConsumer as JSStreamConsumer,
 };
-use js::jsval::{JSVal, ObjectValue, UndefinedValue};
-use js::panic::wrap_panic;
-pub(crate) use js::rust::ThreadSafeJSContext;
-use js::rust::wrappers::{GetPromiseIsHandled, JS_GetPromiseResult};
-use js::rust::wrappers2::{
+use crate::js::jsval::{JSVal, ObjectValue, UndefinedValue};
+use crate::js::panic::wrap_panic;
+pub(crate) use crate::js::rust::ThreadSafeJSContext;
+use crate::js::rust::wrappers::{GetPromiseIsHandled, JS_GetPromiseResult};
+use crate::js::rust::wrappers2::{
     ContextOptionsRef, InitConsumeStreamCallback, JS_AddExtraGCRootsTracer,
     JS_InitDestroyPrincipalsCallback, JS_InitReadPrincipalsCallback, JS_SetGCCallback,
     JS_SetGCParameter, JS_SetGlobalJitCompilerOption, JS_SetOffthreadIonCompilationEnabled,
     JS_SetSecurityCallbacks, SetDOMCallbacks, SetGCSliceCallback, SetJobQueue,
     SetPreserveWrapperCallbacks, SetPromiseRejectionTrackerCallback, SetUpEventLoopDispatch,
 };
-use js::rust::{
+use crate::js::rust::{
     Handle, HandleObject as RustHandleObject, HandleValue, IntoHandle, JSEngine, JSEngineHandle,
     ParentRuntime, Runtime as RustRuntime,
 };
@@ -1130,7 +1130,7 @@ unsafe extern "C" fn servo_build_id(build_id: *mut BuildIdCharVector) -> bool {
 #[expect(unsafe_code)]
 #[cfg(feature = "debugmozjs")]
 unsafe fn set_gc_zeal_options(cx: *mut RawJSContext) {
-    use js::jsapi::SetGCZeal;
+    use crate::js::jsapi::SetGCZeal;
 
     let level = match pref!(js_mem_gc_zeal_level) {
         level @ 0..=14 => level as u8,

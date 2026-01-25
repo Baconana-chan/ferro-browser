@@ -9,7 +9,7 @@ use std::str::FromStr;
 use dom_struct::dom_struct;
 use http::header::HeaderMap as HyperHeaders;
 use hyper_serde::Serde;
-use js::rust::{HandleObject, HandleValue};
+use crate::js::rust::{HandleObject, HandleValue};
 use net_traits::http_status::HttpStatus;
 use servo_url::ServoUrl;
 use url::Position;

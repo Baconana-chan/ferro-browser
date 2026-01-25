@@ -11,9 +11,9 @@ use std::rc::Rc;
 use base::id::{MessagePortId, MessagePortIndex};
 use constellation_traits::MessagePortImpl;
 use dom_struct::dom_struct;
-use js::jsapi::{Heap, JSObject};
-use js::jsval::{JSVal, ObjectValue, UndefinedValue};
-use js::rust::{
+use crate::js::jsapi::{Heap, JSObject};
+use crate::js::jsval::{JSVal, ObjectValue, UndefinedValue};
+use crate::js::rust::{
     HandleObject as SafeHandleObject, HandleValue as SafeHandleValue,
     MutableHandleValue as SafeMutableHandleValue,
 };

@@ -5,8 +5,8 @@
 use base::IpcSend;
 use dom_struct::dom_struct;
 use ipc_channel::router::ROUTER;
-use js::jsval::UndefinedValue;
-use js::rust::HandleValue;
+use crate::js::jsval::UndefinedValue;
+use crate::js::rust::HandleValue;
 use profile_traits::ipc;
 use script_bindings::conversions::SafeToJSValConvertible;
 use storage_traits::indexeddb::{BackendResult, IndexedDBThreadMsg, SyncOperation};

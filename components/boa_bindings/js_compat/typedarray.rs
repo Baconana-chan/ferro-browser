@@ -238,6 +238,20 @@ impl TypedArray for Uint8ClampedArray {
     }
 }
 
+impl ArrayBufferView for Uint8ClampedArray {
+    fn underlying_object(&self) -> *mut JSObject {
+        self.obj
+    }
+    
+    fn len(&self) -> usize {
+        self.data.len()
+    }
+    
+    fn byte_length(&self) -> usize {
+        self.data.len()
+    }
+}
+
 /// Int8Array
 pub struct Int8Array {
     obj: *mut JSObject,
@@ -719,5 +733,114 @@ impl From<f64> for ClampedU8 {
         } else {
             ClampedU8(v.round() as u8)
         }
+    }
+}
+// ============================================================================
+// Additional type aliases and traits for SpiderMonkey compatibility
+// ============================================================================
+
+/// Type alias for Uint8 typed array (SpiderMonkey compatibility)
+pub type Uint8 = Uint8Array;
+
+/// Type alias for Float32 typed array (SpiderMonkey compatibility)
+pub type Float32 = Float32Array;
+
+/// Type alias for Float64 typed array (SpiderMonkey compatibility)
+pub type Float64 = Float64Array;
+
+/// Type alias for Int8 typed array (SpiderMonkey compatibility)
+pub type Int8 = Int8Array;
+
+/// Type alias for Int16 typed array (SpiderMonkey compatibility)
+pub type Int16 = Int16Array;
+
+/// Type alias for Int32 typed array (SpiderMonkey compatibility)
+pub type Int32 = Int32Array;
+
+/// Type alias for Uint16 typed array (SpiderMonkey compatibility)
+pub type Uint16 = Uint16Array;
+
+/// Type alias for Uint32 typed array (SpiderMonkey compatibility)
+pub type Uint32 = Uint32Array;
+
+/// Type alias for BigInt64 typed array (SpiderMonkey compatibility)
+pub type BigInt64 = BigInt64Array;
+
+/// Type alias for BigUint64 typed array (SpiderMonkey compatibility)
+pub type BigUint64 = BigUint64Array;
+
+/// ArrayBufferViewU8 - trait for views that expose u8 data
+pub trait ArrayBufferViewU8: ArrayBufferView {
+    fn to_vec(&self) -> Vec<u8>;
+}
+
+impl ArrayBufferViewU8 for Uint8Array {
+    fn to_vec(&self) -> Vec<u8> {
+        self.data.clone()
+    }
+}
+
+impl ArrayBufferViewU8 for Uint8ClampedArray {
+    fn to_vec(&self) -> Vec<u8> {
+        self.data.clone()
+    }
+}
+
+/// TypedArrayElement - marker trait for typed array element types
+pub trait TypedArrayElement: Copy + Default {
+    /// Type of the typed array for this element
+    type ArrayType;
+}
+
+impl TypedArrayElement for u8 {
+    type ArrayType = Uint8Array;
+}
+
+impl TypedArrayElement for i8 {
+    type ArrayType = Int8Array;
+}
+
+impl TypedArrayElement for u16 {
+    type ArrayType = Uint16Array;
+}
+
+impl TypedArrayElement for i16 {
+    type ArrayType = Int16Array;
+}
+
+impl TypedArrayElement for u32 {
+    type ArrayType = Uint32Array;
+}
+
+impl TypedArrayElement for i32 {
+    type ArrayType = Int32Array;
+}
+
+impl TypedArrayElement for f32 {
+    type ArrayType = Float32Array;
+}
+
+impl TypedArrayElement for f64 {
+    type ArrayType = Float64Array;
+}
+
+impl TypedArrayElement for i64 {
+    type ArrayType = BigInt64Array;
+}
+
+impl TypedArrayElement for u64 {
+    type ArrayType = BigUint64Array;
+}
+
+/// TypedArrayElementCreator - trait for creating typed arrays from elements
+pub trait TypedArrayElementCreator: TypedArrayElement {
+    /// Create a typed array of this element type
+    fn create_array(cx: *mut RawJSContext, len: usize, res: MutableHandleObject<'_>) -> bool;
+}
+
+impl<T: TypedArrayElement> TypedArrayElementCreator for T {
+    fn create_array(_cx: *mut RawJSContext, _len: usize, _res: MutableHandleObject<'_>) -> bool {
+        // Stub - actual creation handled by Boa
+        true
     }
 }

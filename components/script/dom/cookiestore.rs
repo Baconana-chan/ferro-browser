@@ -15,7 +15,7 @@ use ipc_channel::ipc;
 use ipc_channel::ipc::IpcSender;
 use ipc_channel::router::ROUTER;
 use itertools::Itertools;
-use js::jsval::NullValue;
+use crate::js::jsval::NullValue;
 use net_traits::CookieSource::NonHTTP;
 use net_traits::{CookieAsyncResponse, CookieData, CoreResourceMsg};
 use script_bindings::script_runtime::CanGc;

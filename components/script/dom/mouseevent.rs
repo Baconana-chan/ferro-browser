@@ -7,7 +7,7 @@ use std::default::Default;
 
 use dom_struct::dom_struct;
 use euclid::Point2D;
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use keyboard_types::Modifiers;
 use script_bindings::codegen::GenericBindings::WindowBinding::WindowMethods;
 use script_bindings::match_domstring_ascii;

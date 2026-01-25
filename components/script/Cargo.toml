@@ -14,11 +14,16 @@ path = "lib.rs"
 
 [features]
 # Ferro Browser: JavaScript Engine Selection
-# js-boa: Pure Rust Boa engine (default) - no C++ dependencies, faster builds
-# js-spidermonkey: Mozilla SpiderMonkey - full compatibility but requires C++ toolchain
-default = ["js-boa"]
-js-boa = ["dep:boa_bindings"]
-js-spidermonkey = ["dep:js", "dep:script_bindings"]
+# 
+# js-spidermonkey (default): Mozilla SpiderMonkey - full DOM compatibility 
+# js-boa: Pure Rust Boa engine - experimental, faster builds but limited DOM support
+#
+# Note: The js-boa feature requires the script_bindings crate to be refactored
+# to support both engines. Currently, js-boa only works for boa_bindings crate.
+# For full browser builds, use js-spidermonkey.
+default = ["js-spidermonkey"]
+js-boa = ["dep:boa_bindings", "dep:boa_engine", "dep:boa_gc"]
+js-spidermonkey = ["dep:js", "dep:script_bindings", "dep:mozangle"]
 
 bluetooth = ['bluetooth_traits', 'script_bindings?/bluetooth']
 # SpiderMonkey-specific features (only work with js-spidermonkey)
@@ -97,6 +102,9 @@ itertools = { workspace = true }
 js = { workspace = true, optional = true }
 # Boa JS engine bindings (optional - use js-boa feature)
 boa_bindings = { workspace = true, optional = true }
+# Boa engine core (needed for js_boa_shim and script_bindings_boa_shim)
+boa_engine = { workspace = true, optional = true }
+boa_gc = { workspace = true, optional = true }
 jstraceable_derive = { path = "../jstraceable_derive" }
 keyboard-types = { workspace = true }
 kurbo = { workspace = true }
@@ -174,5 +182,7 @@ x25519-dalek = { workspace = true }
 xml5ever = { workspace = true }
 xpath = { workspace = true }
 
+# mozangle is only needed for WebGL on Windows
+# It's pulled in by js-spidermonkey feature through webgl support
 [target.'cfg(not(target_os = "ios"))'.dependencies]
-mozangle = { workspace = true }
+mozangle = { workspace = true, optional = true }

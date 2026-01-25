@@ -3,9 +3,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 use dom_struct::dom_struct;
-use js::jsapi::{JSObject, Type};
-use js::rust::CustomAutoRooterGuard;
-use js::typedarray::{ArrayBufferView, ArrayBufferViewU8, TypedArray};
+use crate::js::jsapi::{JSObject, Type};
+use crate::js::rust::CustomAutoRooterGuard;
+use crate::js::typedarray::{ArrayBufferView, ArrayBufferViewU8, TypedArray};
 use rand::TryRngCore;
 use rand::rngs::OsRng;
 use uuid::Uuid;

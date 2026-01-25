@@ -10,8 +10,8 @@ use std::sync::{Arc, Mutex};
 
 use base::id::PipelineId;
 use dom_struct::dom_struct;
-use js::rust::CustomAutoRooterGuard;
-use js::typedarray::ArrayBuffer;
+use crate::js::rust::CustomAutoRooterGuard;
+use crate::js::typedarray::ArrayBuffer;
 use servo_media::audio::context::{
     AudioContext, AudioContextOptions, OfflineAudioContextOptions, ProcessingState,
     RealTimeAudioContextOptions,

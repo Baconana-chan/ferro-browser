@@ -11,9 +11,9 @@ use crossbeam_channel::{Sender, unbounded};
 use devtools_traits::{DevtoolsPageInfo, ScriptToDevtoolsControlMsg, WorkerId};
 use dom_struct::dom_struct;
 use ipc_channel::ipc;
-use js::jsapi::{Heap, JSObject};
-use js::jsval::UndefinedValue;
-use js::rust::{CustomAutoRooter, CustomAutoRooterGuard, HandleObject, HandleValue};
+use crate::js::jsapi::{Heap, JSObject};
+use crate::js::jsval::UndefinedValue;
+use crate::js::rust::{CustomAutoRooter, CustomAutoRooterGuard, HandleObject, HandleValue};
 use net_traits::request::Referrer;
 use uuid::Uuid;
 

@@ -5,9 +5,9 @@
 use std::cell::Cell;
 
 use dom_struct::dom_struct;
-use js::jsapi::Heap;
-use js::jsval::JSVal;
-use js::rust::{HandleObject, HandleValue, MutableHandleValue};
+use crate::js::jsapi::Heap;
+use crate::js::jsval::JSVal;
+use crate::js::rust::{HandleObject, HandleValue, MutableHandleValue};
 use stylo_atoms::Atom;
 
 use crate::dom::bindings::cell::DomRefCell;

@@ -7,7 +7,7 @@ use std::cell::Cell;
 
 use dom_struct::dom_struct;
 use encoding_rs::Encoding;
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 
 use crate::dom::bindings::codegen::Bindings::TextDecoderBinding;
 use crate::dom::bindings::codegen::Bindings::TextDecoderBinding::{

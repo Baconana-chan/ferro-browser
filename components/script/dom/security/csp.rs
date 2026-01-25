@@ -15,7 +15,7 @@ use content_security_policy::{
 };
 use http::header::{HeaderMap, HeaderValue, ValueIter};
 use hyper_serde::Serde;
-use js::rust::describe_scripted_caller;
+use crate::js::rust::describe_scripted_caller;
 use log::warn;
 
 use super::csppolicyviolationreport::CSPViolationReportBuilder;

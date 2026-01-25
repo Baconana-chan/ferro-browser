@@ -6,7 +6,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use dom_struct::dom_struct;
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use rustc_hash::FxHashMap;
 use servo_media::ServoMedia;
 use servo_media::streams::MediaStreamType;

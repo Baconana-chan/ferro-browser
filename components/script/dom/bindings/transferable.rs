@@ -9,7 +9,10 @@ use std::hash::Hash;
 
 use base::id::NamespaceIndex;
 use rustc_hash::FxHashMap;
+#[cfg(feature = "js-spidermonkey")]
 use script_bindings::structuredclone::MarkedAsTransferableInIdl;
+#[cfg(feature = "js-boa")]
+use crate::script_bindings::structuredclone::MarkedAsTransferableInIdl;
 
 use crate::dom::bindings::error::Fallible;
 use crate::dom::bindings::reflector::DomObject;

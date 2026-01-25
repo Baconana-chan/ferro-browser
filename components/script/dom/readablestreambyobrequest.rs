@@ -3,8 +3,8 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 use dom_struct::dom_struct;
-use js::gc::CustomAutoRooterGuard;
-use js::typedarray::{ArrayBufferView, ArrayBufferViewU8};
+use crate::js::gc::CustomAutoRooterGuard;
+use crate::js::typedarray::{ArrayBufferView, ArrayBufferViewU8};
 
 use super::bindings::buffer_source::HeapBufferSource;
 use super::bindings::cell::DomRefCell;

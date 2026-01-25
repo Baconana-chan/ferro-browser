@@ -8,11 +8,11 @@ use std::ptr;
 use std::rc::Rc;
 
 use dom_struct::dom_struct;
-use js::jsapi::{Heap, JSObject};
-use js::jsval::{JSVal, UndefinedValue};
-use js::rust::wrappers::JS_GetPendingException;
-use js::rust::{HandleObject, HandleValue as SafeHandleValue, HandleValue, MutableHandleValue};
-use js::typedarray::Uint8;
+use crate::js::jsapi::{Heap, JSObject};
+use crate::js::jsval::{JSVal, UndefinedValue};
+use crate::js::rust::wrappers::JS_GetPendingException;
+use crate::js::rust::{HandleObject, HandleValue as SafeHandleValue, HandleValue, MutableHandleValue};
+use crate::js::typedarray::Uint8;
 use script_bindings::conversions::SafeToJSValConvertible;
 
 use super::bindings::codegen::Bindings::QueuingStrategyBinding::QueuingStrategySize;

@@ -6,7 +6,7 @@ use std::rc::Rc;
 
 use dom_struct::dom_struct;
 use fonts::FontContextWebFontMethods;
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 
 use super::fontface::FontFace;
 use crate::dom::bindings::codegen::Bindings::FontFaceSetBinding::FontFaceSetMethods;

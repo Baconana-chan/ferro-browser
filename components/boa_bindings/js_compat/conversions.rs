@@ -47,6 +47,20 @@ impl Default for ConversionBehavior {
     }
 }
 
+/// StringificationBehavior - how to handle string conversion
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StringificationBehavior {
+    Default,
+    Empty,
+    Null,
+}
+
+impl Default for StringificationBehavior {
+    fn default() -> Self {
+        StringificationBehavior::Default
+    }
+}
+
 /// ToJSValConvertible - trait for types that can be converted to JS values
 pub trait ToJSValConvertible {
     unsafe fn to_jsval(&self, cx: *mut RawJSContext, rval: MutableHandleValue<'_>);
@@ -410,4 +424,57 @@ impl<T> std::ops::DerefMut for RootedTraceableBox<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.value
     }
+}
+
+/// FromJSValConvertibleRc - trait for converting from JS values to Rc types
+pub trait FromJSValConvertibleRc: Sized {
+    /// Convert from a JS value to an Rc
+    unsafe fn from_jsval_rc(
+        cx: *mut RawJSContext,
+        val: HandleValue<'_>,
+    ) -> ConversionResult<std::rc::Rc<Self>>;
+}
+
+/// root_from_handlevalue - get root from handle value
+pub unsafe fn root_from_handlevalue<T>(
+    _val: HandleValue<'_>,
+    _cx: *mut RawJSContext,
+) -> Option<T> {
+    // Stub - would extract DOM object from JS value
+    None
+}
+
+/// root_from_object - get root from object
+pub unsafe fn root_from_object<T>(
+    _obj: *mut JSObject,
+    _cx: *mut RawJSContext,
+) -> Option<T> {
+    // Stub - would extract DOM object from JS object
+    None
+}
+
+/// is_array_like - check if value is array-like
+pub unsafe fn is_array_like(
+    _cx: *mut RawJSContext,
+    _val: HandleValue<'_>,
+) -> bool {
+    false
+}
+
+/// Get DOM class from object
+pub unsafe fn get_dom_class(_obj: *mut JSObject) -> Option<&'static super::rust::DOMClass> {
+    None
+}
+
+/// Get private from object (DOM object pointer)
+pub unsafe fn private_from_object(_obj: *mut JSObject) -> *const std::ffi::c_void {
+    std::ptr::null()
+}
+
+/// Convert jsid to string
+pub unsafe fn jsid_to_string(
+    _cx: *mut RawJSContext,
+    _id: super::glue::HandleId<'_>,
+) -> Option<String> {
+    None
 }

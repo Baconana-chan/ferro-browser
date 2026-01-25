@@ -13,7 +13,7 @@ use html5ever::tokenizer::{
     Tag, TagKind, Token, TokenSink, TokenSinkResult, Tokenizer as HtmlTokenizer,
 };
 use html5ever::{Attribute, LocalName, local_name};
-use js::jsapi::JSTracer;
+use crate::js::jsapi::JSTracer;
 use markup5ever::TokenizerResult;
 use net_traits::policy_container::PolicyContainer;
 use net_traits::request::{

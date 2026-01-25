@@ -5,7 +5,7 @@
 use std::cell::Cell;
 
 use dom_struct::dom_struct;
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 
 use super::bindings::codegen::Bindings::IntersectionObserverEntryBinding::{
     IntersectionObserverEntryInit, IntersectionObserverEntryMethods,

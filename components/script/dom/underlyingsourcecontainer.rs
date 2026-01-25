@@ -6,9 +6,9 @@ use std::ptr;
 use std::rc::Rc;
 
 use dom_struct::dom_struct;
-use js::jsapi::{Heap, IsPromiseObject, JSObject};
-use js::jsval::{JSVal, UndefinedValue};
-use js::rust::{Handle as SafeHandle, HandleObject, HandleValue as SafeHandleValue, IntoHandle};
+use crate::js::jsapi::{Heap, IsPromiseObject, JSObject};
+use crate::js::jsval::{JSVal, UndefinedValue};
+use crate::js::rust::{Handle as SafeHandle, HandleObject, HandleValue as SafeHandleValue, IntoHandle};
 
 use crate::dom::bindings::callback::ExceptionHandling;
 use crate::dom::bindings::codegen::Bindings::UnderlyingSourceBinding::UnderlyingSource as JsUnderlyingSource;

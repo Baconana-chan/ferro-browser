@@ -9,7 +9,7 @@ use dom_struct::dom_struct;
 use embedder_traits::{DualRumbleEffectParams, EmbedderMsg, GamepadSupportedHapticEffects};
 use ipc_channel::ipc;
 use ipc_channel::router::ROUTER;
-use js::rust::MutableHandleValue;
+use crate::js::rust::MutableHandleValue;
 
 use crate::dom::bindings::cell::DomRefCell;
 use crate::dom::bindings::codegen::Bindings::GamepadHapticActuatorBinding::{

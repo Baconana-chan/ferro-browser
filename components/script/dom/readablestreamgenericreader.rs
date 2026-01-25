@@ -4,8 +4,8 @@
 
 use std::rc::Rc;
 
-use js::jsval::UndefinedValue;
-use js::rust::HandleValue as SafeHandleValue;
+use crate::js::jsval::UndefinedValue;
+use crate::js::rust::HandleValue as SafeHandleValue;
 
 use super::readablestream::ReaderType;
 use super::types::ReadableStream;

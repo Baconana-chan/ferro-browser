@@ -29,9 +29,12 @@ use std::marker::PhantomData;
 use std::rc::Rc;
 use std::sync::{Arc, Weak};
 
-use js::jsapi::JSTracer;
+use crate::js::jsapi::JSTracer;
 use rustc_hash::FxHashMap;
+#[cfg(feature = "js-spidermonkey")]
 use script_bindings::script_runtime::CanGc;
+#[cfg(feature = "js-boa")]
+use crate::script_bindings::script_runtime::CanGc;
 
 use crate::dom::bindings::conversions::ToJSValConvertible;
 use crate::dom::bindings::error::Error;

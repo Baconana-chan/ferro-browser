@@ -7,7 +7,7 @@ use std::iter::FromIterator;
 use std::ptr::NonNull;
 
 use canvas_traits::webgl::{GlType, TexFormat, WebGLSLVersion, WebGLVersion};
-use js::jsapi::JSObject;
+use crate::js::jsapi::JSObject;
 use malloc_size_of::MallocSizeOf;
 use rustc_hash::{FxHashMap, FxHashSet};
 use script_bindings::str::DOMString;

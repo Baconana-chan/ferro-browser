@@ -7,7 +7,10 @@ use std::sync::LazyLock;
 
 use num_traits::Zero;
 use regex::Regex;
+#[cfg(feature = "js-spidermonkey")]
 pub use script_bindings::str::*;
+#[cfg(feature = "js-boa")]
+pub use crate::script_bindings::str::*;
 use time::{Date, Month, OffsetDateTime, Time, Weekday};
 
 /// <https://html.spec.whatwg.org/multipage/#parse-a-month-component>

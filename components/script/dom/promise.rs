@@ -16,20 +16,20 @@ use std::ptr;
 use std::rc::Rc;
 
 use dom_struct::dom_struct;
-use js::conversions::{ConversionResult, FromJSValConvertibleRc};
-use js::jsapi::{
+use crate::js::conversions::{ConversionResult, FromJSValConvertibleRc};
+use crate::js::jsapi::{
     AddRawValueRoot, CallArgs, GetFunctionNativeReserved, Heap, JS_ClearPendingException,
     JS_GetFunctionObject, JS_NewFunction, JSAutoRealm, JSContext, JSObject,
     NewFunctionWithReserved, PromiseState, PromiseUserInputEventHandlingState, RemoveRawValueRoot,
     SetFunctionNativeReserved,
 };
-use js::jsval::{Int32Value, JSVal, NullValue, ObjectValue, UndefinedValue};
-use js::rust::wrappers::{
+use crate::js::jsval::{Int32Value, JSVal, NullValue, ObjectValue, UndefinedValue};
+use crate::js::rust::wrappers::{
     AddPromiseReactions, CallOriginalPromiseReject, CallOriginalPromiseResolve,
     GetPromiseIsHandled, GetPromiseState, IsPromiseObject, NewPromiseObject, RejectPromise,
     ResolvePromise, SetAnyPromiseIsHandled, SetPromiseUserInputEventHandlingState,
 };
-use js::rust::{HandleObject, HandleValue, MutableHandleObject, Runtime};
+use crate::js::rust::{HandleObject, HandleValue, MutableHandleObject, Runtime};
 use script_bindings::conversions::SafeToJSValConvertible;
 
 use crate::dom::bindings::conversions::root_from_object;

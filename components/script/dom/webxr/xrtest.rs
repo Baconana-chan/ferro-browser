@@ -11,7 +11,7 @@ use std::rc::Rc;
 use dom_struct::dom_struct;
 use ipc_channel::ipc::IpcSender;
 use ipc_channel::router::ROUTER;
-use js::jsval::JSVal;
+use crate::js::jsval::JSVal;
 use profile_traits::ipc;
 use webxr_api::{self, Error as XRError, MockDeviceInit, MockDeviceMsg};
 

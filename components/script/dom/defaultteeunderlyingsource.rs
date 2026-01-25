@@ -6,9 +6,9 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use dom_struct::dom_struct;
-use js::jsapi::{HandleValueArray, Heap, NewArrayObject, Value};
-use js::jsval::{ObjectValue, UndefinedValue};
-use js::rust::HandleValue as SafeHandleValue;
+use crate::js::jsapi::{HandleValueArray, Heap, NewArrayObject, Value};
+use crate::js::jsval::{ObjectValue, UndefinedValue};
+use crate::js::rust::HandleValue as SafeHandleValue;
 
 use super::bindings::root::{DomRoot, MutNullableDom};
 use super::types::{ReadableStream, ReadableStreamDefaultReader};

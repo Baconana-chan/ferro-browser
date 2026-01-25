@@ -7,7 +7,7 @@ use std::cell::RefCell;
 use base64::Engine as _;
 use dom_struct::dom_struct;
 use html5ever::{LocalName, Prefix, local_name, ns};
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use layout_api::SVGElementData;
 use servo_url::ServoUrl;
 use style::attr::{AttrValue, parse_integer, parse_unsigned_integer};

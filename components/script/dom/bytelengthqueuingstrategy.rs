@@ -5,11 +5,11 @@
 use std::rc::Rc;
 
 use dom_struct::dom_struct;
-use js::error::throw_type_error;
-use js::gc::{HandleValue, MutableHandleValue};
-use js::jsapi::{CallArgs, JSContext};
-use js::jsval::{JSVal, UndefinedValue};
-use js::rust::HandleObject;
+use crate::js::error::throw_type_error;
+use crate::js::gc::{HandleValue, MutableHandleValue};
+use crate::js::jsapi::{CallArgs, JSContext};
+use crate::js::jsval::{JSVal, UndefinedValue};
+use crate::js::rust::HandleObject;
 
 use super::bindings::codegen::Bindings::FunctionBinding::Function;
 use super::bindings::codegen::Bindings::QueuingStrategyBinding::{

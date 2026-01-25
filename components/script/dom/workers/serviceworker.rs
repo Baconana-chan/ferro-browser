@@ -7,8 +7,8 @@ use std::cell::Cell;
 use base::id::ServiceWorkerId;
 use constellation_traits::{DOMMessage, ScriptToConstellationMessage};
 use dom_struct::dom_struct;
-use js::jsapi::{Heap, JSObject};
-use js::rust::{CustomAutoRooter, CustomAutoRooterGuard, HandleValue};
+use crate::js::jsapi::{Heap, JSObject};
+use crate::js::rust::{CustomAutoRooter, CustomAutoRooterGuard, HandleValue};
 use servo_url::ServoUrl;
 
 use crate::dom::abstractworker::SimpleWorkerErrorHandler;

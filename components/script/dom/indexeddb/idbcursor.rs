@@ -5,9 +5,9 @@
 use std::cell::Cell;
 
 use dom_struct::dom_struct;
-use js::jsapi::Heap;
-use js::jsval::{JSVal, UndefinedValue};
-use js::rust::MutableHandleValue;
+use crate::js::jsapi::Heap;
+use crate::js::jsval::{JSVal, UndefinedValue};
+use crate::js::rust::MutableHandleValue;
 use storage_traits::indexeddb::{IndexedDBKeyRange, IndexedDBKeyType, IndexedDBRecord};
 
 use crate::dom::bindings::cell::DomRefCell;

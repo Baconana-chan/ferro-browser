@@ -5,7 +5,7 @@
 use base::id::{DomQuadId, DomQuadIndex};
 use constellation_traits::{DomPoint, DomQuad};
 use dom_struct::dom_struct;
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use rustc_hash::FxHashMap;
 
 use crate::dom::bindings::codegen::Bindings::DOMPointBinding::{DOMPointInit, DOMPointMethods};

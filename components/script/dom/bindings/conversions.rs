@@ -34,15 +34,21 @@
 
 use std::ffi;
 
-pub(crate) use js::conversions::{
+pub(crate) use crate::js::conversions::{
     ConversionBehavior, ConversionResult, FromJSValConvertible, ToJSValConvertible,
 };
-use js::jsapi::{JS_IsExceptionPending, JSContext as RawJSContext, JSObject};
-use js::jsval::UndefinedValue;
-use js::rust::wrappers::{JS_GetProperty, JS_HasProperty};
-use js::rust::{HandleObject, MutableHandleValue};
+use crate::js::jsapi::{JS_IsExceptionPending, JSContext as RawJSContext, JSObject};
+use crate::js::jsval::UndefinedValue;
+use crate::js::rust::wrappers::{JS_GetProperty, JS_HasProperty};
+use crate::js::rust::{HandleObject, MutableHandleValue};
+#[cfg(feature = "js-spidermonkey")]
 pub(crate) use script_bindings::conversions::{is_dom_proxy, *};
+#[cfg(feature = "js-boa")]
+pub(crate) use crate::script_bindings::conversions::{is_dom_proxy, *};
+#[cfg(feature = "js-spidermonkey")]
 use script_bindings::script_runtime::JSContext;
+#[cfg(feature = "js-boa")]
+use crate::script_bindings::script_runtime::JSContext;
 
 use crate::dom::bindings::error::{Error, Fallible};
 use crate::dom::bindings::reflector::DomObject;

@@ -6,7 +6,7 @@ use std::cell::Cell;
 
 use constellation_traits::BroadcastChannelMsg;
 use dom_struct::dom_struct;
-use js::rust::{HandleObject, HandleValue};
+use crate::js::rust::{HandleObject, HandleValue};
 use uuid::Uuid;
 
 use crate::dom::bindings::codegen::Bindings::BroadcastChannelBinding::BroadcastChannelMethods;

@@ -5,7 +5,7 @@
 use constellation_traits::BlobImpl;
 use dom_struct::dom_struct;
 use html5ever::LocalName;
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 
 use super::bindings::trace::NoTrace;
 use crate::dom::bindings::cell::DomRefCell;

@@ -9,11 +9,11 @@ use constellation_traits::BlobImpl;
 use encoding_rs::{Encoding, UTF_8};
 use ipc_channel::ipc::{self, IpcReceiver, IpcSender, IpcSharedMemory};
 use ipc_channel::router::ROUTER;
-use js::jsapi::{Heap, JS_ClearPendingException, JSObject, Value as JSValue};
-use js::jsval::{JSVal, UndefinedValue};
-use js::rust::HandleValue;
-use js::rust::wrappers::{JS_GetPendingException, JS_ParseJSON};
-use js::typedarray::{ArrayBufferU8, Uint8};
+use crate::js::jsapi::{Heap, JS_ClearPendingException, JSObject, Value as JSValue};
+use crate::js::jsval::{JSVal, UndefinedValue};
+use crate::js::rust::HandleValue;
+use crate::js::rust::wrappers::{JS_GetPendingException, JS_ParseJSON};
+use crate::js::typedarray::{ArrayBufferU8, Uint8};
 use mime::{self, Mime};
 use net_traits::request::{
     BodyChunkRequest, BodyChunkResponse, BodySource as NetBodySource, RequestBody,

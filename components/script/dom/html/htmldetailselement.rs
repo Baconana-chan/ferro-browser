@@ -8,7 +8,7 @@ use std::collections::hash_map::Entry;
 
 use dom_struct::dom_struct;
 use html5ever::{LocalName, Prefix, QualName, local_name, ns};
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use script_bindings::domstring::DOMString;
 
 use crate::dom::attr::Attr;

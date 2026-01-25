@@ -5,8 +5,8 @@
 use std::cell::Cell;
 
 use dom_struct::dom_struct;
-use js::gc::CustomAutoRooterGuard;
-use js::typedarray::Float32Array;
+use crate::js::gc::CustomAutoRooterGuard;
+use crate::js::typedarray::Float32Array;
 use webxr_api::{Frame, LayerId, SubImages};
 
 use crate::dom::bindings::codegen::Bindings::XRFrameBinding::XRFrameMethods;

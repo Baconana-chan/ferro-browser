@@ -7,7 +7,7 @@ use std::ffi::c_void;
 use std::fmt;
 
 use embedder_traits::UntrustedNodeAddress;
-use js::rust::HandleValue;
+use crate::js::rust::HandleValue;
 use layout_api::ElementsFromPointFlags;
 use rustc_hash::FxBuildHasher;
 use script_bindings::error::{Error, ErrorResult};

@@ -5,8 +5,8 @@
 use dom_struct::dom_struct;
 use ipc_channel::ipc::{self, IpcReceiver};
 use ipc_channel::router::ROUTER;
-use js::rust::{CustomAutoRooterGuard, HandleObject};
-use js::typedarray::{Float32Array, Uint8Array};
+use crate::js::rust::{CustomAutoRooterGuard, HandleObject};
+use crate::js::typedarray::{Float32Array, Uint8Array};
 use servo_media::audio::analyser_node::AnalysisEngine;
 use servo_media::audio::block::Block;
 use servo_media::audio::node::AudioNodeInit;

@@ -12,10 +12,10 @@ use std::rc::Rc;
 
 use deny_public_fields::DenyPublicFields;
 use dom_struct::dom_struct;
-use js::jsapi::JS::CompileFunction;
-use js::jsapi::{JS_GetFunctionObject, SupportUnscopables};
-use js::jsval::JSVal;
-use js::rust::{CompileOptionsWrapper, HandleObject, transform_u16_to_source_text};
+use crate::js::jsapi::JS::CompileFunction;
+use crate::js::jsapi::{JS_GetFunctionObject, SupportUnscopables};
+use crate::js::jsval::JSVal;
+use crate::js::rust::{CompileOptionsWrapper, HandleObject, transform_u16_to_source_text};
 use libc::c_char;
 use rustc_hash::FxBuildHasher;
 use servo_url::ServoUrl;

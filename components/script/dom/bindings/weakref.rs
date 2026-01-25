@@ -6,9 +6,12 @@ use std::cell::UnsafeCell;
 use std::mem;
 use std::ops::{Deref, DerefMut, Drop};
 
-use js::jsapi::JSTracer;
+use crate::js::jsapi::JSTracer;
 use malloc_size_of::{MallocSizeOf, MallocSizeOfOps};
+#[cfg(feature = "js-spidermonkey")]
 pub(crate) use script_bindings::weakref::*;
+#[cfg(feature = "js-boa")]
+pub(crate) use crate::script_bindings::weakref::*;
 
 use crate::dom::bindings::cell::DomRefCell;
 use crate::dom::bindings::root::DomRoot;

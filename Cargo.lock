@@ -7728,6 +7728,8 @@ dependencies = [
  "bitflags 2.10.0",
  "bluetooth_traits",
  "boa_bindings",
+ "boa_engine",
+ "boa_gc",
  "brotli",
  "canvas_traits",
  "cbc",

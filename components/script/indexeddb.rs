@@ -7,15 +7,15 @@ use std::ptr;
 
 use ipc_channel::ipc::IpcSender;
 use itertools::Itertools;
-use js::conversions::jsstr_to_string;
-use js::jsapi::{
+use crate::js::conversions::jsstr_to_string;
+use crate::js::jsapi::{
     ClippedTime, ESClass, GetArrayLength, GetBuiltinClass, Heap, IsArrayBufferObject,
     JS_GetStringLength, JS_HasOwnPropertyById, JS_IndexToId, JS_IsArrayBufferViewObject,
     JS_NewObject, NewDateObject, PropertyKey,
 };
-use js::jsval::{DoubleValue, JSVal, UndefinedValue};
-use js::rust::wrappers::{IsArrayObject, JS_GetProperty, JS_HasOwnProperty, JS_IsIdentifier};
-use js::rust::{HandleValue, IntoHandle, IntoMutableHandle, MutableHandleValue};
+use crate::js::jsval::{DoubleValue, JSVal, UndefinedValue};
+use crate::js::rust::wrappers::{IsArrayObject, JS_GetProperty, JS_HasOwnProperty, JS_IsIdentifier};
+use crate::js::rust::{HandleValue, IntoHandle, IntoMutableHandle, MutableHandleValue};
 use profile_traits::ipc;
 use profile_traits::ipc::IpcReceiver;
 use script_bindings::script_runtime::CanGc;

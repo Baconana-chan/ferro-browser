@@ -6,7 +6,7 @@ use std::cell::Cell;
 
 use dom_struct::dom_struct;
 use embedder_traits::{GamepadSupportedHapticEffects, GamepadUpdateType};
-use js::typedarray::{Float64, Float64Array};
+use crate::js::typedarray::{Float64, Float64Array};
 
 use super::gamepadbuttonlist::GamepadButtonList;
 use super::gamepadhapticactuator::GamepadHapticActuator;

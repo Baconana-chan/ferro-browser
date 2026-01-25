@@ -3,8 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 use dom_struct::dom_struct;
-use js::jsapi::JSContext;
-use js::rust::HandleValue;
+use crate::js::jsapi::JSContext;
+use crate::js::rust::HandleValue;
 use malloc_size_of::MallocSizeOf;
 
 use crate::dom::bindings::reflector::{Reflector, reflect_dom_object};

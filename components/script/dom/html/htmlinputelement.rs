@@ -20,13 +20,13 @@ use encoding_rs::Encoding;
 use html5ever::{LocalName, Prefix, QualName, local_name, ns};
 use ipc_channel::ipc::IpcSender;
 use itertools::Itertools;
-use js::jsapi::{
+use crate::js::jsapi::{
     ClippedTime, DateGetMsecSinceEpoch, Handle, JS_ClearPendingException, JSObject, NewDateObject,
     NewUCRegExpObject, ObjectIsDate, RegExpFlag_UnicodeSets, RegExpFlags,
 };
-use js::jsval::UndefinedValue;
-use js::rust::wrappers::{CheckRegExpSyntax, ExecuteRegExpNoStatics, ObjectIsRegExp};
-use js::rust::{HandleObject, MutableHandleObject};
+use crate::js::jsval::UndefinedValue;
+use crate::js::rust::wrappers::{CheckRegExpSyntax, ExecuteRegExpNoStatics, ObjectIsRegExp};
+use crate::js::rust::{HandleObject, MutableHandleObject};
 use net_traits::blob_url_store::get_blob_origin;
 use script_bindings::codegen::GenericBindings::CharacterDataBinding::CharacterDataMethods;
 use script_bindings::codegen::GenericBindings::DOMRectBinding::DOMRectMethods;

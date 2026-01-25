@@ -19,23 +19,26 @@ use constellation_traits::{
     SerializableQuotaExceededError, StructuredSerializedData, TransferableOffscreenCanvas,
     Transferrable as TransferrableInterface, TransformStreamData,
 };
-use js::gc::RootedVec;
-use js::glue::{
+use crate::js::gc::RootedVec;
+use crate::js::glue::{
     CopyJSStructuredCloneData, GetLengthOfJSStructuredCloneData, WriteBytesToJSStructuredCloneData,
 };
-use js::jsapi::{
+use crate::js::jsapi::{
     CloneDataPolicy, HandleObject as RawHandleObject, Heap, JS_IsExceptionPending,
     JS_ReadUint32Pair, JS_STRUCTURED_CLONE_VERSION, JS_WriteUint32Pair, JSContext, JSObject,
     JSStructuredCloneCallbacks, JSStructuredCloneReader, JSStructuredCloneWriter,
     MutableHandleObject as RawMutableHandleObject, StructuredCloneScope, TransferableOwnership,
 };
-use js::jsval::UndefinedValue;
-use js::rust::wrappers::{JS_ReadStructuredClone, JS_WriteStructuredClone};
-use js::rust::{
+use crate::js::jsval::UndefinedValue;
+use crate::js::rust::wrappers::{JS_ReadStructuredClone, JS_WriteStructuredClone};
+use crate::js::rust::{
     CustomAutoRooterGuard, HandleValue, JSAutoStructuredCloneBufferWrapper, MutableHandleValue,
 };
 use rustc_hash::FxHashMap;
+#[cfg(feature = "js-spidermonkey")]
 use script_bindings::conversions::{IDLInterface, SafeToJSValConvertible};
+#[cfg(feature = "js-boa")]
+use crate::script_bindings::conversions::{IDLInterface, SafeToJSValConvertible};
 use strum::IntoEnumIterator;
 
 use crate::dom::bindings::conversions::root_from_object;

@@ -18,12 +18,12 @@ use dom_struct::dom_struct;
 use html5ever::local_name;
 use indexmap::map::IndexMap;
 use ipc_channel::ipc;
-use js::JSCLASS_IS_GLOBAL;
-use js::glue::{
+use crate::js::JSCLASS_IS_GLOBAL;
+use crate::js::glue::{
     CreateWrapperProxyHandler, DeleteWrapperProxyHandler, GetProxyPrivate, GetProxyReservedSlot,
     ProxyTraps, SetProxyReservedSlot,
 };
-use js::jsapi::{
+use crate::js::jsapi::{
     GCContext, Handle as RawHandle, HandleId as RawHandleId, HandleObject as RawHandleObject,
     HandleValue as RawHandleValue, JS_DefinePropertyById, JS_ForwardGetPropertyTo,
     JS_ForwardSetPropertyTo, JS_GetOwnPropertyDescriptorById, JS_HasOwnPropertyById,
@@ -32,9 +32,9 @@ use js::jsapi::{
     MutableHandleObject as RawMutableHandleObject, MutableHandleValue as RawMutableHandleValue,
     ObjectOpResult, PropertyDescriptor,
 };
-use js::jsval::{NullValue, PrivateValue, UndefinedValue};
-use js::rust::wrappers::{JS_TransplantObject, NewWindowProxy, SetWindowProxy};
-use js::rust::{Handle, MutableHandle, MutableHandleValue, get_object_class};
+use crate::js::jsval::{NullValue, PrivateValue, UndefinedValue};
+use crate::js::rust::wrappers::{JS_TransplantObject, NewWindowProxy, SetWindowProxy};
+use crate::js::rust::{Handle, MutableHandle, MutableHandleValue, get_object_class};
 use malloc_size_of::{MallocSizeOf, MallocSizeOfOps};
 use net_traits::request::Referrer;
 use script_traits::NewPipelineInfo;

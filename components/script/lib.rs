@@ -14,11 +14,21 @@
 #[macro_use]
 extern crate js;
 
-// When using js-boa feature: create local js module from boa_bindings
-// This allows existing `use js::...` imports to work without changes
+// When using js-boa feature: create a `js` module that re-exports boa_bindings::js_compat
+// This module provides SpiderMonkey-compatible API backed by Boa
 #[cfg(feature = "js-boa")]
 #[path = "js_boa_shim.rs"]
 pub mod js;
+
+// Script bindings integration:
+// When using js-spidermonkey: use the script_bindings crate
+#[cfg(feature = "js-spidermonkey")]
+extern crate script_bindings;
+
+// When using js-boa: use our compatibility shim
+#[cfg(feature = "js-boa")]
+#[path = "script_bindings_boa_shim.rs"]
+pub mod script_bindings;
 
 #[macro_use]
 extern crate jstraceable_derive;
@@ -84,7 +94,10 @@ mod drag_data_store;
 mod links;
 
 pub use init::init;
+#[cfg(feature = "js-spidermonkey")]
 pub(crate) use script_bindings::DomTypes;
+#[cfg(feature = "js-boa")]
+pub(crate) use crate::script_bindings::DomTypes;
 pub use script_runtime::JSEngineSetup;
 pub use script_thread::ScriptThread;
 pub use serviceworker_manager::ServiceWorkerManager;

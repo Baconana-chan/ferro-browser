@@ -8,9 +8,9 @@ use std::mem;
 use std::rc::Rc;
 
 use dom_struct::dom_struct;
-use js::jsapi::Heap;
-use js::jsval::{JSVal, UndefinedValue};
-use js::rust::{HandleObject as SafeHandleObject, HandleValue as SafeHandleValue};
+use crate::js::jsapi::Heap;
+use crate::js::jsval::{JSVal, UndefinedValue};
+use crate::js::rust::{HandleObject as SafeHandleObject, HandleValue as SafeHandleValue};
 
 use super::bindings::reflector::reflect_dom_object;
 use super::bindings::root::MutNullableDom;

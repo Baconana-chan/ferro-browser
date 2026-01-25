@@ -9,7 +9,7 @@ use base::id::{OffscreenCanvasId, OffscreenCanvasIndex};
 use constellation_traits::{BlobImpl, TransferableOffscreenCanvas};
 use dom_struct::dom_struct;
 use euclid::default::Size2D;
-use js::rust::{HandleObject, HandleValue};
+use crate::js::rust::{HandleObject, HandleValue};
 use pixels::{EncodedImageType, Snapshot};
 use rustc_hash::FxHashMap;
 use script_bindings::match_domstring_ascii;

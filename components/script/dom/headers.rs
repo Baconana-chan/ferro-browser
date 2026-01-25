@@ -7,7 +7,7 @@ use std::str::{self, FromStr};
 
 use dom_struct::dom_struct;
 use http::header::{HeaderMap as HyperHeaders, HeaderName, HeaderValue};
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use net_traits::fetch::headers::{
     extract_mime_type, get_decode_and_split_header_value, get_value_from_header_list,
     is_forbidden_method,

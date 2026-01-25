@@ -11,7 +11,7 @@ use base::cross_process_instant::CrossProcessInstant;
 use cssparser::{Parser, ParserInput};
 use dom_struct::dom_struct;
 use euclid::default::{Rect, SideOffsets2D, Size2D};
-use js::rust::{HandleObject, MutableHandleValue};
+use crate::js::rust::{HandleObject, MutableHandleValue};
 use layout_api::BoxAreaType;
 use style::context::QuirksMode;
 use style::parser::{Parse, ParserContext};

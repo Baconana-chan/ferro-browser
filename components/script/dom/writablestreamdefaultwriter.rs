@@ -6,8 +6,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use dom_struct::dom_struct;
-use js::jsval::UndefinedValue;
-use js::rust::{HandleObject as SafeHandleObject, HandleValue as SafeHandleValue};
+use crate::js::jsval::UndefinedValue;
+use crate::js::rust::{HandleObject as SafeHandleObject, HandleValue as SafeHandleValue};
 
 use crate::dom::bindings::codegen::Bindings::WritableStreamDefaultWriterBinding::WritableStreamDefaultWriterMethods;
 use crate::dom::bindings::error::{Error, ErrorToJsval};

@@ -6,7 +6,7 @@ use std::cell::Cell;
 
 use dom_struct::dom_struct;
 use euclid::RigidTransform3D;
-use js::typedarray::{Float32, Float32Array};
+use crate::js::typedarray::{Float32, Float32Array};
 use webxr_api::{ApiSpace, View};
 
 use crate::dom::bindings::buffer_source::HeapBufferSource;

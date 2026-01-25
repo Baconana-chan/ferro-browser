@@ -34,20 +34,20 @@ use fonts::FontContext;
 use indexmap::IndexSet;
 use ipc_channel::ipc::{self, IpcSender};
 use ipc_channel::router::ROUTER;
-use js::glue::{IsWrapper, UnwrapObjectDynamic};
-use js::jsapi::{
+use crate::js::glue::{IsWrapper, UnwrapObjectDynamic};
+use crate::js::jsapi::{
     Compile1, CurrentGlobalOrNull, DelazificationOption, GetNonCCWObjectGlobal, HandleObject, Heap,
     InstantiateGlobalStencil, InstantiateOptions, JSContext, JSObject, JSScript, SetScriptPrivate,
 };
-use js::jsval::{PrivateValue, UndefinedValue};
-use js::panic::maybe_resume_unwind;
-use js::realm::CurrentRealm;
-use js::rust::wrappers::{JS_ExecuteScript, JS_GetScriptPrivate};
-use js::rust::{
+use crate::js::jsval::{PrivateValue, UndefinedValue};
+use crate::js::panic::maybe_resume_unwind;
+use crate::js::realm::CurrentRealm;
+use crate::js::rust::wrappers::{JS_ExecuteScript, JS_GetScriptPrivate};
+use crate::js::rust::{
     CompileOptionsWrapper, CustomAutoRooter, CustomAutoRooterGuard, HandleValue,
     MutableHandleValue, ParentRuntime, Runtime, get_object_class, transform_str_to_source_text,
 };
-use js::{JSCLASS_IS_DOMJSCLASS, JSCLASS_IS_GLOBAL};
+use crate::js::{JSCLASS_IS_DOMJSCLASS, JSCLASS_IS_GLOBAL};
 use net_traits::blob_url_store::{BlobBuf, get_blob_origin};
 use net_traits::filemanager_thread::{
     FileManagerResult, FileManagerThreadMsg, ReadFileProgress, RelativePos,

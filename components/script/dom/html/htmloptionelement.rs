@@ -7,7 +7,7 @@ use std::convert::TryInto;
 
 use dom_struct::dom_struct;
 use html5ever::{LocalName, Prefix, QualName, local_name, ns};
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use style::str::{split_html_space_chars, str_join};
 use stylo_dom::ElementState;
 

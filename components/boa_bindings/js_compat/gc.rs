@@ -277,3 +277,5 @@ pub unsafe fn IsMarkedUnbarriered(_obj: *mut JSObject) -> bool {
 /// TraceEdge - trace a GC edge
 pub unsafe fn TraceEdge(_tracer: *mut JSTracer, _ptr: *mut Value, _name: *const i8) {
 }
+// Re-export Handle types for convenience (some code imports them from gc)
+pub use super::rust::{Handle, MutableHandle, HandleObject, HandleValue, MutableHandleValue, MutableHandleObject};

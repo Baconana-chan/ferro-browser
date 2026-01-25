@@ -21,7 +21,7 @@ use http::StatusCode;
 use http::header::{self, HeaderMap, HeaderValue};
 use ipc_channel::ipc::{self, IpcSharedMemory};
 use ipc_channel::router::ROUTER;
-use js::jsapi::JSAutoRealm;
+use crate::js::jsapi::JSAutoRealm;
 use layout_api::MediaFrame;
 use media::{GLPlayerMsg, GLPlayerMsgForward, WindowGLContext};
 use net_traits::request::{Destination, RequestId};

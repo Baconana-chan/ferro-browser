@@ -3,7 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 use dom_struct::dom_struct;
-use js::gc::HandleObject;
+use crate::js::gc::HandleObject;
 use script_bindings::codegen::GenericBindings::PasswordCredentialBinding::PasswordCredentialData;
 use script_bindings::error::{Error, Fallible};
 use script_bindings::str::USVString;

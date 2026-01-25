@@ -37,6 +37,9 @@ pub fn register(context: &mut Context) -> JsResult<()> {
     // Register Response constructor
     register_response(context)?;
     
+    // Register AbortController and AbortSignal (Phase C1)
+    register_abort_controller(context)?;
+    
     Ok(())
 }
 
@@ -1627,6 +1630,241 @@ fn set_header_entries(obj: &JsObject, entries: Vec<(String, String)>, context: &
     Ok(())
 }
 
+// ============================================================================
+// Phase C1: AbortController and AbortSignal
+// ============================================================================
+
+// Counter for unique signal IDs
+thread_local! {
+    static SIGNAL_COUNTER: RefCell<u64> = const { RefCell::new(0) };
+    static ABORT_STATES: RefCell<HashMap<u64, AbortState>> = RefCell::new(HashMap::new());
+}
+
+/// State of an abort signal
+#[derive(Debug, Clone)]
+struct AbortState {
+    aborted: bool,
+    reason: Option<String>,
+}
+
+fn next_signal_id() -> u64 {
+    SIGNAL_COUNTER.with(|c| {
+        let mut counter = c.borrow_mut();
+        *counter += 1;
+        *counter
+    })
+}
+
+fn set_abort_state(id: u64, state: AbortState) {
+    ABORT_STATES.with(|states| {
+        states.borrow_mut().insert(id, state);
+    });
+}
+
+fn get_abort_state(id: u64) -> Option<AbortState> {
+    ABORT_STATES.with(|states| {
+        states.borrow().get(&id).cloned()
+    })
+}
+
+fn register_abort_controller(context: &mut Context) -> JsResult<()> {
+    // Register AbortController constructor
+    let abort_controller_fn = NativeFunction::from_fn_ptr(abort_controller_constructor);
+    
+    context.global_object().define_property_or_throw(
+        JsString::from("AbortController"),
+        PropertyDescriptor::builder()
+            .value(abort_controller_fn.to_js_function(context.realm()))
+            .writable(true)
+            .enumerable(false)
+            .configurable(true)
+            .build(),
+        context,
+    )?;
+    
+    // Register AbortSignal constructor (not typically user-constructable, but expose it)
+    let abort_signal_fn = NativeFunction::from_fn_ptr(abort_signal_constructor);
+    
+    context.global_object().define_property_or_throw(
+        JsString::from("AbortSignal"),
+        PropertyDescriptor::builder()
+            .value(abort_signal_fn.to_js_function(context.realm()))
+            .writable(true)
+            .enumerable(false)
+            .configurable(true)
+            .build(),
+        context,
+    )?;
+    
+    Ok(())
+}
+
+fn abort_controller_constructor(_this: &JsValue, _args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let controller = JsObject::with_null_proto();
+    
+    // Create a new signal
+    let signal_id = next_signal_id();
+    set_abort_state(signal_id, AbortState {
+        aborted: false,
+        reason: None,
+    });
+    
+    // Create the AbortSignal object
+    let signal = create_abort_signal(signal_id, context)?;
+    
+    // Set signal property
+    controller.define_property_or_throw(
+        JsString::from("signal"),
+        PropertyDescriptor::builder()
+            .value(signal.clone())
+            .writable(false)
+            .enumerable(true)
+            .configurable(false)
+            .build(),
+        context,
+    )?;
+    
+    // Store signal ID on controller for abort()
+    controller.define_property_or_throw(
+        JsString::from("__signal_id__"),
+        PropertyDescriptor::builder()
+            .value(JsValue::from(signal_id as f64))
+            .writable(false)
+            .enumerable(false)
+            .configurable(false)
+            .build(),
+        context,
+    )?;
+    
+    // Add abort() method
+    let abort_fn = NativeFunction::from_copy_closure(move |_this, args, ctx| {
+        let reason = args.get_or_undefined(0);
+        
+        // Mark the signal as aborted
+        let reason_str = if reason.is_undefined() {
+            None
+        } else {
+            Some(reason.to_string(ctx)?.to_std_string_escaped())
+        };
+        
+        set_abort_state(signal_id, AbortState {
+            aborted: true,
+            reason: reason_str,
+        });
+        
+        Ok(JsValue::undefined())
+    });
+    
+    controller.define_property_or_throw(
+        JsString::from("abort"),
+        PropertyDescriptor::builder()
+            .value(abort_fn.to_js_function(context.realm()))
+            .writable(true)
+            .enumerable(true)
+            .configurable(true)
+            .build(),
+        context,
+    )?;
+    
+    Ok(JsValue::from(controller))
+}
+
+fn create_abort_signal(signal_id: u64, context: &mut Context) -> JsResult<JsObject> {
+    let signal = JsObject::with_null_proto();
+    
+    // Store the signal ID
+    signal.define_property_or_throw(
+        JsString::from("__signal_id__"),
+        PropertyDescriptor::builder()
+            .value(JsValue::from(signal_id as f64))
+            .writable(false)
+            .enumerable(false)
+            .configurable(false)
+            .build(),
+        context,
+    )?;
+    
+    // Add aborted getter (using a property that reads from thread-local state)
+    let aborted_getter = NativeFunction::from_copy_closure(move |this, _args, _ctx| {
+        let state = get_abort_state(signal_id);
+        Ok(JsValue::from(state.map(|s| s.aborted).unwrap_or(false)))
+    });
+    
+    // For simplicity, we'll use a method that acts like a getter
+    signal.define_property_or_throw(
+        JsString::from("aborted"),
+        PropertyDescriptor::builder()
+            .get(aborted_getter.to_js_function(context.realm()))
+            .enumerable(true)
+            .configurable(true)
+            .build(),
+        context,
+    )?;
+    
+    // Add reason getter
+    let reason_getter = NativeFunction::from_copy_closure(move |_this, _args, _ctx| {
+        let state = get_abort_state(signal_id);
+        match state.and_then(|s| s.reason) {
+            Some(reason) => Ok(JsValue::from(JsString::from(reason.as_str()))),
+            None => Ok(JsValue::undefined()),
+        }
+    });
+    
+    signal.define_property_or_throw(
+        JsString::from("reason"),
+        PropertyDescriptor::builder()
+            .get(reason_getter.to_js_function(context.realm()))
+            .enumerable(true)
+            .configurable(true)
+            .build(),
+        context,
+    )?;
+    
+    // Add throwIfAborted() method
+    let throw_if_aborted = NativeFunction::from_copy_closure(move |_this, _args, _ctx| {
+        let state = get_abort_state(signal_id);
+        if state.map(|s| s.aborted).unwrap_or(false) {
+            Err(JsNativeError::error()
+                .with_message("Aborted")
+                .into())
+        } else {
+            Ok(JsValue::undefined())
+        }
+    });
+    
+    signal.define_property_or_throw(
+        JsString::from("throwIfAborted"),
+        PropertyDescriptor::builder()
+            .value(throw_if_aborted.to_js_function(context.realm()))
+            .writable(true)
+            .enumerable(true)
+            .configurable(true)
+            .build(),
+        context,
+    )?;
+    
+    Ok(signal)
+}
+
+fn abort_signal_constructor(_this: &JsValue, _args: &[JsValue], _context: &mut Context) -> JsResult<JsValue> {
+    // AbortSignal is not typically user-constructable
+    Err(JsNativeError::typ()
+        .with_message("AbortSignal is not a constructor. Use AbortController instead.")
+        .into())
+}
+
+/// Check if a signal is aborted (utility function for fetch integration)
+pub fn is_signal_aborted(signal: &JsObject, context: &mut Context) -> JsResult<bool> {
+    let signal_id_val = signal.get(JsString::from("__signal_id__"), context)?;
+    if let Some(id) = signal_id_val.as_number() {
+        let state = get_abort_state(id as u64);
+        Ok(state.map(|s| s.aborted).unwrap_or(false))
+    } else {
+        // Not a valid AbortSignal
+        Ok(false)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1720,6 +1958,52 @@ mod tests {
         )).unwrap();
         
         assert_eq!(result.as_number().unwrap(), 404.0);
+    }
+    
+    #[test]
+    fn test_abort_controller_creation() {
+        let mut context = Context::default();
+        register(&mut context).unwrap();
+        
+        let result = context.eval(boa_engine::Source::from_bytes(
+            r#"
+            const controller = AbortController();
+            typeof controller.signal !== 'undefined'
+            "#
+        )).unwrap();
+        
+        assert!(result.to_boolean());
+    }
+    
+    #[test]
+    fn test_abort_controller_abort() {
+        let mut context = Context::default();
+        register(&mut context).unwrap();
+        
+        let result = context.eval(boa_engine::Source::from_bytes(
+            r#"
+            const controller = AbortController();
+            controller.abort();
+            controller.signal.aborted
+            "#
+        )).unwrap();
+        
+        assert!(result.to_boolean());
+    }
+    
+    #[test]
+    fn test_abort_signal_not_aborted_initially() {
+        let mut context = Context::default();
+        register(&mut context).unwrap();
+        
+        let result = context.eval(boa_engine::Source::from_bytes(
+            r#"
+            const controller = AbortController();
+            controller.signal.aborted
+            "#
+        )).unwrap();
+        
+        assert!(!result.to_boolean());
     }
 }
 

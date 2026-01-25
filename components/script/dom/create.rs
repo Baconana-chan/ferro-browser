@@ -3,7 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 use html5ever::{LocalName, Prefix, QualName, local_name, ns};
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 
 use crate::dom::bindings::error::{report_pending_exception, throw_dom_exception};
 use crate::dom::bindings::reflector::DomGlobal;

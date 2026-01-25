@@ -5,7 +5,7 @@
 use dom_struct::dom_struct;
 use embedder_traits::Cursor;
 use euclid::Point2D;
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use style_traits::CSSPixel;
 
 use crate::dom::bindings::codegen::Bindings::InputEventBinding::{self, InputEventMethods};

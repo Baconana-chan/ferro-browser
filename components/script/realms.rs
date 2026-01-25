@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-use js::jsapi::JSAutoRealm;
+use crate::js::jsapi::JSAutoRealm;
 pub(crate) use script_bindings::realms::{AlreadyInRealm, InRealm};
 use script_bindings::reflector::DomObject;
 

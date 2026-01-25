@@ -8,7 +8,7 @@ use std::collections::hash_map::Entry;
 
 use dom_struct::dom_struct;
 use html5ever::serialize::TraversalScope;
-use js::rust::{HandleValue, MutableHandleValue};
+use crate::js::rust::{HandleValue, MutableHandleValue};
 use script_bindings::error::{ErrorResult, Fallible};
 use script_bindings::script_runtime::JSContext;
 use servo_arc::Arc;

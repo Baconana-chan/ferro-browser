@@ -5,9 +5,9 @@
 use base::id::PipelineId;
 use constellation_traits::{ScriptToConstellationMessage, StructuredSerializedData};
 use dom_struct::dom_struct;
-use js::jsapi::{Heap, JSObject};
-use js::jsval::UndefinedValue;
-use js::rust::{CustomAutoRooter, CustomAutoRooterGuard, HandleValue, MutableHandleValue};
+use crate::js::jsapi::{Heap, JSObject};
+use crate::js::jsval::UndefinedValue;
+use crate::js::rust::{CustomAutoRooter, CustomAutoRooterGuard, HandleValue, MutableHandleValue};
 use servo_url::ServoUrl;
 
 use crate::dom::bindings::codegen::Bindings::DissimilarOriginWindowBinding;

@@ -277,3 +277,38 @@ pub mod dom {
         "DataCloneError",
     ];
 }
+// ============================================================================
+// Additional error functions for SpiderMonkey compatibility
+// ============================================================================
+
+/// Throw a type error
+pub unsafe fn throw_type_error(_cx: *mut RawJSContext, _message: &str) -> bool {
+    // In Boa, we would set a pending exception
+    // For now, just return false to indicate error
+    false
+}
+
+/// Throw a range error
+pub unsafe fn throw_range_error(_cx: *mut RawJSContext, _message: &str) -> bool {
+    false
+}
+
+/// Throw a syntax error
+pub unsafe fn throw_syntax_error(_cx: *mut RawJSContext, _message: &str) -> bool {
+    false
+}
+
+/// Throw a reference error
+pub unsafe fn throw_reference_error(_cx: *mut RawJSContext, _message: &str) -> bool {
+    false
+}
+
+/// Throw a URI error
+pub unsafe fn throw_uri_error(_cx: *mut RawJSContext, _message: &str) -> bool {
+    false
+}
+
+/// Throw an internal error
+pub unsafe fn throw_internal_error(_cx: *mut RawJSContext, _message: &str) -> bool {
+    false
+}

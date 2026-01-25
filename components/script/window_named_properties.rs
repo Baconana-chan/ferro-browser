@@ -6,9 +6,9 @@ use std::ptr;
 use std::ptr::NonNull;
 use std::sync::LazyLock;
 
-use js::conversions::jsstr_to_string;
-use js::glue::{AppendToIdVector, CreateProxyHandler, NewProxyObject, ProxyTraps};
-use js::jsapi::{
+use crate::js::conversions::jsstr_to_string;
+use crate::js::glue::{AppendToIdVector, CreateProxyHandler, NewProxyObject, ProxyTraps};
+use crate::js::jsapi::{
     GetWellKnownSymbol, Handle, HandleId, HandleObject, JS_SetImmutablePrototype,
     JSCLASS_DELAY_METADATA_BUILDER, JSCLASS_IS_PROXY, JSCLASS_RESERVED_SLOTS_MASK,
     JSCLASS_RESERVED_SLOTS_SHIFT, JSClass, JSClass_NON_NATIVE, JSContext, JSErrNum,
@@ -16,9 +16,9 @@ use js::jsapi::{
     PropertyDescriptor, ProxyClassExtension, ProxyClassOps, ProxyObjectOps, SymbolCode,
     UndefinedHandleValue,
 };
-use js::jsid::SymbolId;
-use js::jsval::UndefinedValue;
-use js::rust::{
+use crate::js::jsid::SymbolId;
+use crate::js::jsval::UndefinedValue;
+use crate::js::rust::{
     Handle as RustHandle, HandleObject as RustHandleObject, IntoHandle,
     MutableHandle as RustMutableHandle, MutableHandleObject as RustMutableHandleObject,
 };

@@ -7,7 +7,10 @@
 
 use base::id::{Index, NamespaceIndex, PipelineNamespaceId};
 use rustc_hash::FxHashMap;
+#[cfg(feature = "js-spidermonkey")]
 use script_bindings::structuredclone::MarkedAsSerializableInIdl;
+#[cfg(feature = "js-boa")]
+use crate::script_bindings::structuredclone::MarkedAsSerializableInIdl;
 
 use crate::dom::bindings::reflector::DomObject;
 use crate::dom::bindings::root::DomRoot;

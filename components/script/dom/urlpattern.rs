@@ -3,7 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 use dom_struct::dom_struct;
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use script_bindings::codegen::GenericBindings::URLPatternBinding::URLPatternResult;
 use script_bindings::codegen::GenericUnionTypes::USVStringOrURLPatternInit;
 use script_bindings::error::{Error, Fallible};

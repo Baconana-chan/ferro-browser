@@ -19,8 +19,8 @@ use dom_struct::dom_struct;
 use fonts::FontContext;
 use ipc_channel::ipc::IpcReceiver;
 use ipc_channel::router::ROUTER;
-use js::jsapi::{JS_AddInterruptCallback, JSContext};
-use js::jsval::UndefinedValue;
+use crate::js::jsapi::{JS_AddInterruptCallback, JSContext};
+use crate::js::jsval::UndefinedValue;
 use net_traits::CustomResponseMediator;
 use net_traits::request::{
     CredentialsMode, Destination, InsecureRequestsPolicy, ParserMetadata, Referrer, RequestBuilder,

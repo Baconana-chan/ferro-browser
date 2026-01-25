@@ -6,7 +6,7 @@ use std::cell::{Ref, RefCell};
 use std::rc::Rc;
 
 use dom_struct::dom_struct;
-use js::rust::{HandleObject, MutableHandleValue};
+use crate::js::rust::{HandleObject, MutableHandleValue};
 use net_traits::image_cache::Image;
 use script_bindings::match_domstring_ascii;
 

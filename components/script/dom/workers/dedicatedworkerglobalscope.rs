@@ -14,9 +14,9 @@ use dom_struct::dom_struct;
 use fonts::FontContext;
 use ipc_channel::ipc::IpcReceiver;
 use ipc_channel::router::ROUTER;
-use js::jsapi::{Heap, JSContext, JSObject};
-use js::jsval::UndefinedValue;
-use js::rust::{CustomAutoRooter, CustomAutoRooterGuard, HandleValue};
+use crate::js::jsapi::{Heap, JSContext, JSObject};
+use crate::js::jsval::UndefinedValue;
+use crate::js::rust::{CustomAutoRooter, CustomAutoRooterGuard, HandleValue};
 use net_traits::image_cache::ImageCache;
 use net_traits::policy_container::PolicyContainer;
 use net_traits::request::{

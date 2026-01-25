@@ -11,9 +11,9 @@ use std::time::{Duration, Instant};
 
 use base::id::PipelineId;
 use deny_public_fields::DenyPublicFields;
-use js::jsapi::Heap;
-use js::jsval::{JSVal, UndefinedValue};
-use js::rust::HandleValue;
+use crate::js::jsapi::Heap;
+use crate::js::jsval::{JSVal, UndefinedValue};
+use crate::js::rust::HandleValue;
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use servo_config::pref;

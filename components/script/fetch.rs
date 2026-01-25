@@ -9,10 +9,10 @@ use std::time::Duration;
 
 use base::id::WebViewId;
 use ipc_channel::ipc;
-use js::jsapi::{ExceptionStackBehavior, JS_IsExceptionPending};
-use js::jsval::UndefinedValue;
-use js::rust::HandleValue;
-use js::rust::wrappers::JS_SetPendingException;
+use crate::js::jsapi::{ExceptionStackBehavior, JS_IsExceptionPending};
+use crate::js::jsval::UndefinedValue;
+use crate::js::rust::HandleValue;
+use crate::js::rust::wrappers::JS_SetPendingException;
 use net_traits::policy_container::PolicyContainer;
 use net_traits::request::{
     CorsSettings, CredentialsMode, Destination, InsecureRequestsPolicy, Referrer,

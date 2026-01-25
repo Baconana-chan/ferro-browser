@@ -5,8 +5,14 @@
 //! Functions for validating names as defined in the DOM Standard: <https://dom.spec.whatwg.org/#namespaces>
 
 use html5ever::{LocalName, Namespace, Prefix, ns};
+#[cfg(feature = "js-spidermonkey")]
 use script_bindings::error::{Error, Fallible};
+#[cfg(feature = "js-boa")]
+use crate::script_bindings::error::{Error, Fallible};
+#[cfg(feature = "js-spidermonkey")]
 use script_bindings::str::DOMString;
+#[cfg(feature = "js-boa")]
+use crate::script_bindings::str::DOMString;
 
 /// <https://infra.spec.whatwg.org/#xml-namespace>
 const XML_NAMESPACE: &str = "http://www.w3.org/XML/1998/namespace";

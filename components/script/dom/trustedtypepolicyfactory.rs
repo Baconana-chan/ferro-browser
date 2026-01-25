@@ -5,8 +5,8 @@ use std::cell::RefCell;
 
 use dom_struct::dom_struct;
 use html5ever::{LocalName, Namespace, QualName, local_name, ns};
-use js::jsval::NullValue;
-use js::rust::HandleValue;
+use crate::js::jsval::NullValue;
+use crate::js::rust::HandleValue;
 use script_bindings::conversions::SafeToJSValConvertible;
 
 use crate::conversions::Convert;

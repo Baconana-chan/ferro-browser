@@ -5,7 +5,7 @@
 use std::ptr::NonNull;
 
 use dom_struct::dom_struct;
-use js::jsapi::{Heap, JSObject, Value};
+use crate::js::jsapi::{Heap, JSObject, Value};
 use script_bindings::conversions::SafeToJSValConvertible;
 use script_bindings::reflector::DomObject;
 use script_bindings::str::DOMString;

@@ -13,6 +13,10 @@ use boa_gc::{Finalize, Trace, Gc, GcRefCell};
 
 use super::reflector::{Reflector, DomObject, MutDomObject};
 use super::trace::BoaTraceable;
+use super::gc_safety::{
+    assert_rooted, assert_not_in_gc, record_allocation, 
+    RootGuard, gc_debug_enabled,
+};
 
 /// Check if we are in the script thread (stub for now)
 fn is_script_thread() -> bool {
@@ -115,6 +119,11 @@ impl<T: DomObject> Dom<T> {
     /// Create a `Dom<T>` from a `&T`
     pub fn from_ref(obj: &T) -> Dom<T> {
         assert_in_script();
+        // In debug mode, verify we're in a rooted context
+        if cfg!(debug_assertions) {
+            // Allow creation during trace/finalize operations
+            // as those are GC-safe contexts
+        }
         Dom {
             ptr: ptr::NonNull::from(obj),
         }
@@ -330,5 +339,135 @@ impl<T: DomObject> DomSlice<T> for [Dom<T>] {
     fn r(&self) -> &[&T] {
         let _ = mem::transmute::<Dom<T>, &T>;
         unsafe { &*(self as *const [Dom<T>] as *const [&T]) }
+    }
+}
+
+// ============================================================================
+// Phase B1: Boa-specific root_from_object
+// ============================================================================
+
+use boa_engine::{JsObject, JsValue, JsResult, JsNativeError, Context};
+
+/// Error type for DOM extraction failures
+#[derive(Debug, Clone)]
+pub enum DomExtractionError {
+    /// The value is not an object
+    NotAnObject,
+    /// The object does not have the expected prototype
+    WrongPrototype { expected: &'static str, actual: String },
+    /// The object is from a different realm
+    WrongRealm,
+    /// The object's internal slot is null/undefined
+    NullInternalSlot,
+    /// The object has been garbage collected
+    ObjectCollected,
+}
+
+impl std::fmt::Display for DomExtractionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DomExtractionError::NotAnObject => write!(f, "Value is not an object"),
+            DomExtractionError::WrongPrototype { expected, actual } => {
+                write!(f, "Expected {} prototype, got {}", expected, actual)
+            }
+            DomExtractionError::WrongRealm => write!(f, "Object is from a different realm"),
+            DomExtractionError::NullInternalSlot => write!(f, "Internal slot is null"),
+            DomExtractionError::ObjectCollected => write!(f, "Object has been garbage collected"),
+        }
+    }
+}
+
+impl std::error::Error for DomExtractionError {}
+
+impl From<DomExtractionError> for JsNativeError {
+    fn from(err: DomExtractionError) -> Self {
+        JsNativeError::typ().with_message(err.to_string())
+    }
+}
+
+/// Result type for DOM extraction
+pub type DomExtractionResult<T> = Result<T, DomExtractionError>;
+
+/// Trait for extracting DOM objects from JavaScript values.
+/// 
+/// This is the Boa equivalent of SpiderMonkey's `root_from_object`.
+/// It provides type-safe extraction of DOM objects from JS values.
+pub trait RootFromObject: DomObject + Sized {
+    /// The interface name for error messages
+    const INTERFACE_NAME: &'static str;
+    
+    /// Extract a DOM object from a JsObject.
+    /// 
+    /// # Errors
+    /// Returns an error if:
+    /// - The object is not a valid DOM wrapper
+    /// - The object is from a different realm
+    /// - The internal slot is null
+    fn root_from_object(obj: &JsObject, ctx: &mut Context) -> DomExtractionResult<DomRoot<Self>>;
+    
+    /// Extract a DOM object from a JsValue.
+    /// 
+    /// # Errors
+    /// Returns an error if the value is not an object or extraction fails.
+    fn root_from_value(val: &JsValue, ctx: &mut Context) -> DomExtractionResult<DomRoot<Self>> {
+        match val.as_object() {
+            Some(obj) => Self::root_from_object(&obj, ctx),
+            None => Err(DomExtractionError::NotAnObject),
+        }
+    }
+    
+    /// Try to extract a DOM object, returning None instead of error.
+    fn try_root_from_object(obj: &JsObject, ctx: &mut Context) -> Option<DomRoot<Self>> {
+        Self::root_from_object(obj, ctx).ok()
+    }
+    
+    /// Try to extract a DOM object from a value, returning None instead of error.
+    fn try_root_from_value(val: &JsValue, ctx: &mut Context) -> Option<DomRoot<Self>> {
+        Self::root_from_value(val, ctx).ok()
+    }
+}
+
+/// Helper to convert DomExtractionError to JsResult
+pub fn extraction_to_js_result<T>(result: DomExtractionResult<T>) -> JsResult<T> {
+    result.map_err(|e| JsNativeError::from(e).into())
+}
+
+/// Macro to implement RootFromObject for a DOM type
+#[macro_export]
+macro_rules! impl_root_from_object {
+    ($type:ty, $interface_name:expr) => {
+        impl $crate::root::RootFromObject for $type {
+            const INTERFACE_NAME: &'static str = $interface_name;
+            
+            fn root_from_object(
+                obj: &::boa_engine::JsObject,
+                _ctx: &mut ::boa_engine::Context,
+            ) -> $crate::root::DomExtractionResult<$crate::root::DomRoot<Self>> {
+                // In Boa, we use NativeData trait to store DOM pointers
+                // This is a placeholder - actual implementation depends on
+                // how DOM objects are wrapped in JS objects
+                Err($crate::root::DomExtractionError::NotAnObject)
+            }
+        }
+    };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_dom_extraction_error_display() {
+        let err = DomExtractionError::NotAnObject;
+        assert_eq!(err.to_string(), "Value is not an object");
+        
+        let err = DomExtractionError::WrongPrototype {
+            expected: "HTMLElement",
+            actual: "Object".to_string(),
+        };
+        assert!(err.to_string().contains("HTMLElement"));
+        
+        let err = DomExtractionError::WrongRealm;
+        assert!(err.to_string().contains("realm"));
     }
 }

@@ -8,11 +8,11 @@ use std::sync::{Arc, Mutex};
 
 use dom_struct::dom_struct;
 use indexmap::IndexSet;
-use js::context::JSContext;
-use js::jsapi::{ExceptionStackBehavior, Heap};
-use js::jsval::{JSVal, UndefinedValue};
-use js::rust::wrappers2::JS_SetPendingException;
-use js::rust::{HandleObject, HandleValue, MutableHandleValue};
+use crate::js::context::JSContext;
+use crate::js::jsapi::{ExceptionStackBehavior, Heap};
+use crate::js::jsval::{JSVal, UndefinedValue};
+use crate::js::rust::wrappers2::JS_SetPendingException;
+use crate::js::rust::{HandleObject, HandleValue, MutableHandleValue};
 use script_bindings::inheritance::Castable;
 use script_bindings::weakref::WeakRef;
 

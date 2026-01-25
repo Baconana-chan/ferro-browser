@@ -12,9 +12,9 @@ use devtools_traits::{
     NodeInfo, NodeStyle, RuleModification, TimelineMarker, TimelineMarkerType,
 };
 use ipc_channel::ipc::IpcSender;
-use js::conversions::jsstr_to_string;
-use js::jsval::UndefinedValue;
-use js::rust::ToString;
+use crate::js::conversions::jsstr_to_string;
+use crate::js::jsval::UndefinedValue;
+use crate::js::rust::ToString;
 use markup5ever::{LocalName, ns};
 use servo_config::pref;
 use style::attr::AttrValue;

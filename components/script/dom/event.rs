@@ -10,7 +10,7 @@ use bitflags::bitflags;
 use devtools_traits::{TimelineMarker, TimelineMarkerType};
 use dom_struct::dom_struct;
 use embedder_traits::InputEventResult;
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use stylo_atoms::Atom;
 
 use crate::dom::bindings::callback::ExceptionHandling;

@@ -4,8 +4,8 @@
 
 use canvas_traits::webgl::WebGLError::*;
 use canvas_traits::webgl::{TexDataType, TexFormat};
-use js::jsapi::Type;
-use js::typedarray::ArrayBufferView;
+use crate::js::jsapi::Type;
+use crate::js::typedarray::ArrayBufferView;
 
 use super::WebGLValidator;
 use super::tex_image_2d::TexImageValidationError;

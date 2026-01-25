@@ -32,7 +32,7 @@ use encoding_rs::{Encoding, UTF_8};
 use fonts::WebFontDocumentContext;
 use html5ever::{LocalName, Namespace, QualName, local_name, ns};
 use hyper_serde::Serde;
-use js::rust::{HandleObject, HandleValue, MutableHandleValue};
+use crate::js::rust::{HandleObject, HandleValue, MutableHandleValue};
 use layout_api::{
     PendingRestyle, ReflowGoal, ReflowPhasesRun, RestyleReason, ScrollContainerQueryFlags,
     TrustedNodeAddress,

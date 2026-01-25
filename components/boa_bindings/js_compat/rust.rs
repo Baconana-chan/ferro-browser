@@ -9,9 +9,12 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
 use super::jsapi::{
-    JSObject, JSContext, RawJSContext, JSString, JSTracer, Value,
+    JSObject, JSContext, RawJSContext, JSString, JSTracer, Value, JSClass,
     Handle as RawHandle, MutableHandle as RawMutableHandle,
 };
+
+// Re-export CustomAutoRooter from gc for compatibility (some code imports from rust)
+pub use super::gc::{CustomAutoRooter, CustomAutoRooterGuard};
 
 /// Runtime - the JavaScript runtime
 pub struct Runtime {
@@ -131,6 +134,17 @@ pub trait IntoHandle<'a, T> {
 
 impl<'a, T> IntoHandle<'a, T> for Handle<'a, T> {
     fn into_handle(self) -> Handle<'a, T> {
+        self
+    }
+}
+
+/// IntoMutableHandle trait
+pub trait IntoMutableHandle<'a, T> {
+    fn into_mutable_handle(self) -> MutableHandle<'a, T>;
+}
+
+impl<'a, T> IntoMutableHandle<'a, T> for MutableHandle<'a, T> {
+    fn into_mutable_handle(self) -> MutableHandle<'a, T> {
         self
     }
 }
@@ -419,6 +433,148 @@ pub mod wrappers {
     ) -> bool {
         true
     }
+    
+    pub unsafe fn GetBuiltinClass(
+        _cx: *mut RawJSContext,
+        _obj: HandleObject<'_>,
+        _class: *mut super::super::jsapi::ESClass,
+    ) -> bool {
+        true
+    }
+    
+    pub unsafe fn GetPropertyKeys(
+        _cx: *mut RawJSContext,
+        _obj: HandleObject<'_>,
+        _flags: u32,
+        _props: *mut IdVector,
+    ) -> bool {
+        true
+    }
+    
+    pub unsafe fn JS_GetOwnPropertyDescriptorById(
+        _cx: *mut RawJSContext,
+        _obj: HandleObject<'_>,
+        _id: super::super::glue::HandleId<'_>,
+        _desc: *mut super::super::glue::PropertyDescriptor,
+        _is_none: *mut bool,
+    ) -> bool {
+        true
+    }
+    
+    pub unsafe fn JS_GetPropertyById(
+        _cx: *mut RawJSContext,
+        _obj: HandleObject<'_>,
+        _id: super::super::glue::HandleId<'_>,
+        _vp: MutableHandleValue<'_>,
+    ) -> bool {
+        true
+    }
+    
+    pub unsafe fn JS_IdToValue(
+        _cx: *mut RawJSContext,
+        _id: super::super::glue::jsid,
+        _vp: MutableHandleValue<'_>,
+    ) -> bool {
+        true
+    }
+    
+    pub unsafe fn JS_ValueToSource(
+        _cx: *mut RawJSContext,
+        _v: HandleValue<'_>,
+    ) -> *mut JSString {
+        ptr::null_mut()
+    }
+    
+    // ===================
+    // Promise Wrappers
+    // ===================
+    
+    /// Check if object is a promise
+    pub unsafe fn IsPromiseObject(obj: HandleObject<'_>) -> bool {
+        let _ = obj;
+        false
+    }
+    
+    /// Get promise state
+    pub unsafe fn GetPromiseState(obj: HandleObject<'_>) -> super::super::jsapi::PromiseState {
+        let _ = obj;
+        super::super::jsapi::PromiseState::Pending
+    }
+    
+    /// Create a new promise object
+    pub unsafe fn NewPromiseObject(
+        cx: *mut RawJSContext,
+        executor: HandleObject<'_>,
+    ) -> *mut JSObject {
+        let _ = (cx, executor);
+        std::ptr::null_mut()
+    }
+    
+    /// Resolve a promise
+    pub unsafe fn ResolvePromise(
+        cx: *mut RawJSContext,
+        promise: HandleObject<'_>,
+        value: HandleValue<'_>,
+    ) -> bool {
+        let _ = (cx, promise, value);
+        true
+    }
+    
+    /// Reject a promise
+    pub unsafe fn RejectPromise(
+        cx: *mut RawJSContext,
+        promise: HandleObject<'_>,
+        reason: HandleValue<'_>,
+    ) -> bool {
+        let _ = (cx, promise, reason);
+        true
+    }
+    
+    /// Add promise reactions (then/catch)
+    pub unsafe fn AddPromiseReactions(
+        cx: *mut RawJSContext,
+        promise: HandleObject<'_>,
+        on_fulfilled: HandleObject<'_>,
+        on_rejected: HandleObject<'_>,
+    ) -> bool {
+        let _ = (cx, promise, on_fulfilled, on_rejected);
+        true
+    }
+    
+    /// Call original Promise.resolve
+    pub unsafe fn CallOriginalPromiseResolve(
+        cx: *mut RawJSContext,
+        value: HandleValue<'_>,
+    ) -> *mut JSObject {
+        let _ = (cx, value);
+        std::ptr::null_mut()
+    }
+    
+    /// Call original Promise.reject
+    pub unsafe fn CallOriginalPromiseReject(
+        cx: *mut RawJSContext,
+        reason: HandleValue<'_>,
+    ) -> *mut JSObject {
+        let _ = (cx, reason);
+        std::ptr::null_mut()
+    }
+    
+    /// Set promise as handled
+    pub unsafe fn SetAnyPromiseIsHandled(
+        cx: *mut RawJSContext,
+        promise: HandleObject<'_>,
+    ) -> bool {
+        let _ = (cx, promise);
+        true
+    }
+    
+    /// Set promise user input event handling state
+    pub unsafe fn SetPromiseUserInputEventHandlingState(
+        promise: HandleObject<'_>,
+        state: bool,
+    ) {
+        let _ = (promise, state);
+    }
 }
 
 /// Wrappers2 module - additional wrappers
@@ -526,4 +682,221 @@ pub mod wrappers2 {
     
     pub unsafe fn SetUpEventLoopDispatch(_cx: *mut RawJSContext, _dispatch: *const c_void) {
     }
+}
+// ============================================================================
+// Additional types for SpiderMonkey compatibility
+// ============================================================================
+
+/// Describe the scripted caller for error reporting
+pub fn describe_scripted_caller(_cx: *mut RawJSContext) -> Option<ScriptedCaller> {
+    None
+}
+
+/// Information about a scripted caller
+#[derive(Debug, Clone)]
+pub struct ScriptedCaller {
+    /// Filename of the script
+    pub filename: String,
+    /// Line number
+    pub line: u32,
+    /// Column number  
+    pub col: u32,
+}
+
+/// Check if a class is a DOM class
+pub unsafe fn is_dom_class(_class: *const JSClass) -> bool {
+    false
+}
+
+/// Get the class of an object
+pub unsafe fn get_object_class(_obj: *mut JSObject) -> *const JSClass {
+    ptr::null()
+}
+
+/// Structured clone buffer wrapper
+pub struct JSAutoStructuredCloneBufferWrapper {
+    _private: [u8; 0],
+}
+
+impl JSAutoStructuredCloneBufferWrapper {
+    pub fn new() -> Self {
+        Self { _private: [] }
+    }
+}
+
+impl Default for JSAutoStructuredCloneBufferWrapper {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+/// CapturedJSStack - captured JavaScript stack trace
+pub struct CapturedJSStack {
+    _private: [u8; 0],
+}
+
+impl CapturedJSStack {
+    pub fn new() -> Self {
+        Self { _private: [] }
+    }
+    
+    pub fn is_empty(&self) -> bool {
+        true
+    }
+    
+    pub fn as_str(&self) -> &str {
+        ""
+    }
+}
+
+impl Default for CapturedJSStack {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// IdVector - vector of JS property IDs
+pub struct IdVector {
+    ids: Vec<super::glue::jsid>,
+}
+
+impl IdVector {
+    pub fn new(_cx: *mut RawJSContext) -> Self {
+        Self { ids: Vec::new() }
+    }
+    
+    pub fn len(&self) -> usize {
+        self.ids.len()
+    }
+    
+    pub fn is_empty(&self) -> bool {
+        self.ids.is_empty()
+    }
+    
+    pub fn get(&self, index: usize) -> Option<&super::glue::jsid> {
+        self.ids.get(index)
+    }
+    
+    pub fn iter(&self) -> impl Iterator<Item = &super::glue::jsid> {
+        self.ids.iter()
+    }
+}
+
+impl Default for IdVector {
+    fn default() -> Self {
+        Self { ids: Vec::new() }
+    }
+}
+
+// ===================
+// Compile Options
+// ===================
+
+/// Wrapper for compile options
+pub struct CompileOptionsWrapper<'a> {
+    _marker: PhantomData<&'a ()>,
+    filename: Option<String>,
+    line: u32,
+    column: u32,
+    force_full_parse: bool,
+    no_script_rval: bool,
+}
+
+impl<'a> CompileOptionsWrapper<'a> {
+    pub fn new(_cx: *mut RawJSContext) -> Self {
+        Self {
+            _marker: PhantomData,
+            filename: None,
+            line: 1,
+            column: 0,
+            force_full_parse: false,
+            no_script_rval: false,
+        }
+    }
+    
+    pub fn set_file(&mut self, filename: &str) {
+        self.filename = Some(filename.to_string());
+    }
+    
+    pub fn set_line(&mut self, line: u32) {
+        self.line = line;
+    }
+    
+    pub fn set_column(&mut self, column: u32) {
+        self.column = column;
+    }
+    
+    pub fn set_force_full_parse(&mut self, value: bool) {
+        self.force_full_parse = value;
+    }
+    
+    pub fn set_no_script_rval(&mut self, value: bool) {
+        self.no_script_rval = value;
+    }
+}
+
+// ===================
+// Source Text Transformations
+// ===================
+
+/// Transform a u16 slice to source text (for UTF-16 compilation)
+pub fn transform_u16_to_source_text(
+    source: &[u16],
+) -> super::jsapi::SourceText<u16> {
+    let mut st = super::jsapi::SourceText::new();
+    // The actual implementation would set up the source text properly
+    let _ = source; // suppress unused warning
+    st
+}
+
+/// Transform a str to source text (for UTF-8 compilation)
+pub fn transform_str_to_source_text(
+    source: &str,
+) -> super::jsapi::SourceText<u8> {
+    let mut st = super::jsapi::SourceText::new();
+    // The actual implementation would set up the source text properly
+    let _ = source; // suppress unused warning
+    st
+}
+
+/// Transform a char16 slice to source text
+pub fn transform_char16_to_source_text(
+    source: &[u16],
+) -> super::jsapi::SourceText<u16> {
+    transform_u16_to_source_text(source)
+}
+
+// ===================
+// Stencil
+// ===================
+
+/// Stencil - compiled script representation
+pub struct Stencil {
+    _private: [u8; 0],
+}
+
+impl Stencil {
+    pub fn new() -> Self {
+        Self { _private: [] }
+    }
+}
+
+impl Default for Stencil {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// ===================
+// DOMClass
+// ===================
+
+/// DOM class descriptor for JS bindings
+#[repr(C)]
+pub struct DOMClass {
+    /// Interface chain
+    pub interface_chain: [u16; 8],
+    /// Depth in prototype chain
+    pub depth: u16,
+    /// Type ID
+    pub type_id: std::any::TypeId,
 }

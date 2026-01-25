@@ -6,9 +6,9 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use dom_struct::dom_struct;
-use js::jsapi::{Heap, JSAutoRealm};
-use js::jsval::{JSVal, UndefinedValue};
-use js::rust::HandleValue as SafeHandleValue;
+use crate::js::jsapi::{Heap, JSAutoRealm};
+use crate::js::jsval::{JSVal, UndefinedValue};
+use crate::js::rust::HandleValue as SafeHandleValue;
 
 use super::bindings::reflector::reflect_dom_object;
 use super::bindings::root::DomRoot;

@@ -6,7 +6,7 @@
 // This module provides the same API as `extern crate js` (mozjs)
 // but backed by boa_bindings::js_compat
 //
-// This allows existing code with `use js::...` to work unchanged.
+// This allows existing code with `use crate::js::...` to work unchanged.
 
 // Re-export all modules from js_compat
 pub use boa_bindings::js_compat::jsapi;
@@ -17,6 +17,13 @@ pub use boa_bindings::js_compat::typedarray;
 pub use boa_bindings::js_compat::conversions;
 pub use boa_bindings::js_compat::glue;
 pub use boa_bindings::js_compat::panic;
+pub use boa_bindings::js_compat::context;
+pub use boa_bindings::js_compat::error;
+
+// Realm is a sub-module of context in our compat layer
+pub mod realm {
+    pub use boa_bindings::js_compat::context::*;
+}
 
 // Re-export root-level types and constants
 pub use boa_bindings::js_compat::{
@@ -63,4 +70,30 @@ pub use boa_bindings::js_compat::jsapi::{
     HandleValueArray,
     JobQueue,
     CurrentGlobalOrNull,
+};
+// Re-export GC types that some code imports from js::rust
+pub use boa_bindings::js_compat::gc::CustomAutoRooter;
+pub use boa_bindings::js_compat::gc::CustomAutoRooterGuard;
+
+// Re-export jsid at root level
+pub use boa_bindings::js_compat::glue::jsid;
+
+// Re-export additional JSCLASS constants
+pub use boa_bindings::js_compat::{
+    JSCLASS_DELAY_METADATA_BUILDER,
+    JSCLASS_IS_PROXY,
+    JSClass_NON_NATIVE,
+    UndefinedHandleValue,
+    GetWellKnownSymbol,
+    SymbolCode,
+    Symbol,
+    JS_SetImmutablePrototype,
+    ProxyClassExtension,
+    ProxyClassOps,
+    ProxyObjectOps,
+    MutableHandleIdVector,
+    StreamConsumer,
+    SetProcessBuildIdOp,
+    GetPropertyKeys,
+    JS_GetPropertyById,
 };

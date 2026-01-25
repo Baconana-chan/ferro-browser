@@ -4,7 +4,7 @@
 
 use std::ptr::NonNull;
 
-use js::jsapi::JSObject;
+use crate::js::jsapi::JSObject;
 use malloc_size_of::MallocSizeOf;
 
 use super::{WebGLExtension, WebGLExtensionSpec, WebGLExtensions};

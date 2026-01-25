@@ -4,9 +4,9 @@
 
 use base::IpcSend;
 use dom_struct::dom_struct;
-use js::gc::MutableHandleValue;
-use js::jsval::NullValue;
-use js::rust::HandleValue;
+use crate::js::gc::MutableHandleValue;
+use crate::js::jsval::NullValue;
+use crate::js::rust::HandleValue;
 use profile_traits::ipc;
 use script_bindings::conversions::SafeToJSValConvertible;
 use script_bindings::error::ErrorResult;

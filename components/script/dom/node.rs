@@ -22,8 +22,8 @@ use euclid::Point2D;
 use euclid::default::{Rect, Size2D};
 use html5ever::serialize::HtmlSerializer;
 use html5ever::{Namespace, Prefix, QualName, ns, serialize as html_serialize};
-use js::jsapi::JSObject;
-use js::rust::HandleObject;
+use crate::js::jsapi::JSObject;
+use crate::js::rust::HandleObject;
 use keyboard_types::Modifiers;
 use layout_api::{
     BoxAreaType, GenericLayoutData, HTMLCanvasData, HTMLMediaData, LayoutElementType,

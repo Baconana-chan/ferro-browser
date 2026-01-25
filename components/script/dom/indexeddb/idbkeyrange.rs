@@ -3,8 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 use dom_struct::dom_struct;
-use js::gc::MutableHandleValue;
-use js::rust::HandleValue;
+use crate::js::gc::MutableHandleValue;
+use crate::js::rust::HandleValue;
 use script_bindings::codegen::GenericBindings::IDBKeyRangeBinding::IDBKeyRangeMethods;
 use script_bindings::root::DomRoot;
 use script_bindings::script_runtime::CanGc;

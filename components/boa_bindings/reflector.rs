@@ -19,6 +19,20 @@ pub struct Reflector {
     object: RefCell<Option<JsObject>>,
 }
 
+impl PartialEq for Reflector {
+    fn eq(&self, other: &Self) -> bool {
+        // Two reflectors are equal if they refer to the same JS object
+        // or if both are uninitialized
+        match (self.object.borrow().as_ref(), other.object.borrow().as_ref()) {
+            (Some(a), Some(b)) => std::ptr::eq(a.as_ref() as *const _, b.as_ref() as *const _),
+            (None, None) => true,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Reflector {}
+
 impl std::fmt::Debug for Reflector {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Reflector")

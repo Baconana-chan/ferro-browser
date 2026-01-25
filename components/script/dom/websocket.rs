@@ -10,10 +10,10 @@ use constellation_traits::BlobImpl;
 use dom_struct::dom_struct;
 use ipc_channel::ipc::{self, IpcReceiver, IpcSender};
 use ipc_channel::router::ROUTER;
-use js::jsapi::{JSAutoRealm, JSObject};
-use js::jsval::UndefinedValue;
-use js::rust::{CustomAutoRooterGuard, HandleObject};
-use js::typedarray::{ArrayBuffer, ArrayBufferView, CreateWith};
+use crate::js::jsapi::{JSAutoRealm, JSObject};
+use crate::js::jsval::UndefinedValue;
+use crate::js::rust::{CustomAutoRooterGuard, HandleObject};
+use crate::js::typedarray::{ArrayBuffer, ArrayBufferView, CreateWith};
 use net_traits::request::{
     CacheMode, CredentialsMode, RedirectMode, Referrer, RequestBuilder, RequestMode,
     ServiceWorkersMode,

@@ -4,7 +4,7 @@
 
 use dom_struct::dom_struct;
 use html5ever::{LocalName, Prefix};
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 
 use crate::dom::bindings::codegen::Bindings::HTMLLegendElementBinding::HTMLLegendElementMethods;
 use crate::dom::bindings::codegen::Bindings::NodeBinding::NodeMethods;

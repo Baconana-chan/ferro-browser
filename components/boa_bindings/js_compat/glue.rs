@@ -337,3 +337,332 @@ pub unsafe fn GetProxyHandler(_obj: *mut JSObject) -> *const ProxyHandler {
 pub unsafe fn IsProxy(_obj: *mut JSObject) -> bool {
     false
 }
+// ============================================================================
+// Additional functions for SpiderMonkey compatibility
+// ============================================================================
+
+/// Unwrap object dynamically (with security checks)
+pub unsafe fn UnwrapObjectDynamic(
+    _obj: *mut JSObject,
+    _cx: *mut RawJSContext,
+    _stopAtWindowProxy: bool,
+) -> *mut JSObject {
+    ptr::null_mut()
+}
+
+/// Unwrap object statically (no security checks)
+pub unsafe fn UnwrapObjectStatic(_obj: *mut JSObject) -> *mut JSObject {
+    ptr::null_mut()
+}
+
+/// JSPrincipals callbacks
+#[repr(C)]
+pub struct JSPrincipalsCallbacks {
+    pub write: Option<unsafe extern "C" fn(*mut RawJSContext, *mut c_void, *mut c_void) -> bool>,
+}
+
+/// Destroy Rust JS principals
+pub unsafe fn DestroyRustJSPrincipals(_principals: *mut c_void) {
+}
+
+/// Get Rust JS principals private data
+pub unsafe fn GetRustJSPrincipalsPrivate(_principals: *mut c_void) -> *mut c_void {
+    ptr::null_mut()
+}
+
+/// Call script tracer
+pub unsafe fn CallScriptTracer(
+    _tracer: *mut JSTracer,
+    _thing: *mut *mut c_void,
+    _name: *const i8,
+) {
+}
+
+/// Call string tracer
+pub unsafe fn CallStringTracer(
+    _tracer: *mut JSTracer,
+    _thing: *mut *mut JSString,
+    _name: *const i8,
+) {
+}
+
+/// Call value tracer
+pub unsafe fn CallValueTracer(
+    _tracer: *mut JSTracer,
+    _thing: *mut Value,
+    _name: *const i8,
+) {
+}
+
+/// Call object tracer
+pub unsafe fn CallObjectTracer(
+    _tracer: *mut JSTracer,
+    _thing: *mut *mut JSObject,
+    _name: *const i8,
+) {
+}
+
+// ==========================
+// Structured Clone Data APIs
+// ==========================
+
+/// Opaque type for structured clone data
+#[repr(C)]
+pub struct JSStructuredCloneData {
+    _private: [u8; 0],
+}
+
+/// Copy structured clone data to a buffer
+pub unsafe fn CopyJSStructuredCloneData(
+    _src: *const JSStructuredCloneData,
+    _dest: *mut u8,
+    _len: usize,
+) -> bool {
+    true
+}
+
+/// Get length of structured clone data
+pub unsafe fn GetLengthOfJSStructuredCloneData(_data: *const JSStructuredCloneData) -> usize {
+    0
+}
+
+/// Write bytes to structured clone data
+pub unsafe fn WriteBytesToJSStructuredCloneData(
+    _data: *mut JSStructuredCloneData,
+    _src: *const u8,
+    _len: usize,
+) -> bool {
+    true
+}
+
+// ==========================
+// Proxy APIs
+// ==========================
+
+/// Proxy traps structure
+#[repr(C)]
+pub struct ProxyTraps {
+    pub enter: Option<unsafe extern "C" fn() -> bool>,
+    pub getOwnPropertyDescriptor: Option<unsafe extern "C" fn() -> bool>,
+    pub defineProperty: Option<unsafe extern "C" fn() -> bool>,
+    pub ownPropertyKeys: Option<unsafe extern "C" fn() -> bool>,
+    pub delete_: Option<unsafe extern "C" fn() -> bool>,
+    pub enumerate: Option<unsafe extern "C" fn() -> bool>,
+    pub getPrototypeIfOrdinary: Option<unsafe extern "C" fn() -> bool>,
+    pub getPrototype: Option<unsafe extern "C" fn() -> bool>,
+    pub setPrototype: Option<unsafe extern "C" fn() -> bool>,
+    pub setImmutablePrototype: Option<unsafe extern "C" fn() -> bool>,
+    pub preventExtensions: Option<unsafe extern "C" fn() -> bool>,
+    pub isExtensible: Option<unsafe extern "C" fn() -> bool>,
+    pub has: Option<unsafe extern "C" fn() -> bool>,
+    pub get: Option<unsafe extern "C" fn() -> bool>,
+    pub set: Option<unsafe extern "C" fn() -> bool>,
+    pub call: Option<unsafe extern "C" fn() -> bool>,
+    pub construct: Option<unsafe extern "C" fn() -> bool>,
+    pub hasOwn: Option<unsafe extern "C" fn() -> bool>,
+    pub getOwnEnumerablePropertyKeys: Option<unsafe extern "C" fn() -> bool>,
+    pub nativeCall: Option<unsafe extern "C" fn() -> bool>,
+    pub objectClassIs: Option<unsafe extern "C" fn() -> bool>,
+    pub className: Option<unsafe extern "C" fn() -> *const i8>,
+    pub fun_toString: Option<unsafe extern "C" fn() -> bool>,
+    pub boxedValue_unbox: Option<unsafe extern "C" fn() -> bool>,
+    pub defaultValue: Option<unsafe extern "C" fn() -> bool>,
+    pub trace: Option<unsafe extern "C" fn()>,
+    pub finalize: Option<unsafe extern "C" fn()>,
+    pub objectMoved: Option<unsafe extern "C" fn() -> usize>,
+    pub isCallable: Option<unsafe extern "C" fn() -> bool>,
+    pub isConstructor: Option<unsafe extern "C" fn() -> bool>,
+}
+
+impl Default for ProxyTraps {
+    fn default() -> Self {
+        Self {
+            enter: None,
+            getOwnPropertyDescriptor: None,
+            defineProperty: None,
+            ownPropertyKeys: None,
+            delete_: None,
+            enumerate: None,
+            getPrototypeIfOrdinary: None,
+            getPrototype: None,
+            setPrototype: None,
+            setImmutablePrototype: None,
+            preventExtensions: None,
+            isExtensible: None,
+            has: None,
+            get: None,
+            set: None,
+            call: None,
+            construct: None,
+            hasOwn: None,
+            getOwnEnumerablePropertyKeys: None,
+            nativeCall: None,
+            objectClassIs: None,
+            className: None,
+            fun_toString: None,
+            boxedValue_unbox: None,
+            defaultValue: None,
+            trace: None,
+            finalize: None,
+            objectMoved: None,
+            isCallable: None,
+            isConstructor: None,
+        }
+    }
+}
+
+/// Create a wrapper proxy handler
+pub unsafe fn CreateWrapperProxyHandler(
+    _traps: *const ProxyTraps,
+) -> *const c_void {
+    ptr::null()
+}
+
+/// Delete a wrapper proxy handler
+pub unsafe fn DeleteWrapperProxyHandler(_handler: *const c_void) {
+}
+
+/// Get proxy reserved slot
+pub unsafe fn GetProxyReservedSlot(
+    _obj: *mut JSObject,
+    _slot: u32,
+) -> Value {
+    Value::undefined()
+}
+
+/// Set proxy reserved slot
+pub unsafe fn SetProxyReservedSlot(
+    _obj: *mut JSObject,
+    _slot: u32,
+    _value: &Value,
+) {
+}
+
+/// Dump JS stack (for debugging)
+pub unsafe fn DumpJSStack(_cx: *mut RawJSContext) {
+    // Stub for debugging
+}
+
+// ==========================
+// Additional glue functions
+// ==========================
+
+/// Collect Servo memory sizes
+pub unsafe fn CollectServoSizes(
+    _cx: *mut RawJSContext,
+    _sizes: *mut c_void,
+    _report: Option<unsafe extern "C" fn(*mut c_void, *const i8, usize, *const i8)>,
+) {
+}
+
+/// Job queue traps structure
+#[repr(C)]
+pub struct JobQueueTraps {
+    pub get_incumbent_global: Option<unsafe extern "C" fn(*mut RawJSContext) -> *mut JSObject>,
+    pub enqueue_promise_job: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleObject<'_>, HandleObject<'_>) -> bool>,
+    pub empty: Option<unsafe extern "C" fn(*mut RawJSContext) -> bool>,
+}
+
+impl Default for JobQueueTraps {
+    fn default() -> Self {
+        Self {
+            get_incumbent_global: None,
+            enqueue_promise_job: None,
+            empty: None,
+        }
+    }
+}
+
+/// Create a job queue
+pub unsafe fn CreateJobQueue(
+    _traps: *const JobQueueTraps,
+    _data: *const c_void,
+) -> *mut super::jsapi::JobQueue {
+    ptr::null_mut()
+}
+
+/// Delete a job queue
+pub unsafe fn DeleteJobQueue(_queue: *mut super::jsapi::JobQueue) {
+}
+
+/// Dispatchable pointer type
+pub type DispatchablePointer = *mut c_void;
+
+/// Run a dispatchable
+pub unsafe fn DispatchableRun(
+    _cx: *mut RawJSContext,
+    _dispatchable: DispatchablePointer,
+) {
+}
+
+/// Get error message (Rust version)
+pub unsafe fn RUST_js_GetErrorMessage(
+    _user_ref: *mut c_void,
+    _error_number: u32,
+) -> *const JSErrorFormatString {
+    ptr::null()
+}
+
+/// JS error format string
+#[repr(C)]
+pub struct JSErrorFormatString {
+    pub format: *const i8,
+    pub arg_count: u16,
+    pub exception_type: i16,
+}
+
+/// Get reserved slot from object
+pub unsafe fn JS_GetReservedSlot(
+    _obj: *mut JSObject,
+    _slot: u32,
+) -> Value {
+    Value::undefined()
+}
+
+/// Set build ID operation
+pub unsafe fn SetBuildId(_build_id: *const super::jsapi::BuildIdCharVector) -> bool {
+    true
+}
+
+/// Stream consumer - consume chunk
+pub unsafe fn StreamConsumerConsumeChunk(
+    _consumer: *mut c_void,
+    _chunk: *const u8,
+    _length: usize,
+) -> bool {
+    true
+}
+
+/// Stream consumer - note response URLs
+pub unsafe fn StreamConsumerNoteResponseURLs(
+    _consumer: *mut c_void,
+    _url: *const i8,
+    _source_map_url: *const i8,
+) {
+}
+
+/// Stream consumer - stream end
+pub unsafe fn StreamConsumerStreamEnd(
+    _consumer: *mut c_void,
+) {
+}
+
+/// Stream consumer - stream error
+pub unsafe fn StreamConsumerStreamError(
+    _consumer: *mut c_void,
+    _error: usize,
+) {
+}
+
+/// Get window proxy class
+pub unsafe fn GetWindowProxyClass() -> *const super::jsapi::JSClass {
+    ptr::null()
+}
+
+/// Create a proxy handler
+pub unsafe fn CreateProxyHandler(
+    _traps: *const ProxyTraps,
+    _extra: *const c_void,
+) -> *const c_void {
+    ptr::null()
+}

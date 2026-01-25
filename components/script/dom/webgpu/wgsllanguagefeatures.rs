@@ -6,7 +6,7 @@
 
 use dom_struct::dom_struct;
 use indexmap::IndexSet;
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use wgpu_core::naga::front::wgsl::ImplementedLanguageExtension;
 
 use crate::dom::bindings::cell::DomRefCell;

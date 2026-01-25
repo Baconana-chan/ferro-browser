@@ -7,7 +7,7 @@ use std::default::Default;
 
 use dom_struct::dom_struct;
 use html5ever::{LocalName, Prefix, local_name};
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use num_traits::ToPrimitive;
 use servo_url::ServoUrl;
 use style::attr::AttrValue;

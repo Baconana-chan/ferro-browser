@@ -5,7 +5,7 @@
 use base::id::{QuotaExceededErrorId, QuotaExceededErrorIndex};
 use constellation_traits::SerializableQuotaExceededError;
 use dom_struct::dom_struct;
-use js::gc::HandleObject;
+use crate::js::gc::HandleObject;
 use rustc_hash::FxHashMap;
 use script_bindings::codegen::GenericBindings::QuotaExceededErrorBinding::{
     QuotaExceededErrorMethods, QuotaExceededErrorOptions,

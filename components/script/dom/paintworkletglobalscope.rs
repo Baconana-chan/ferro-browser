@@ -14,13 +14,13 @@ use base::id::{PipelineId, WebViewId};
 use crossbeam_channel::{Sender, unbounded};
 use dom_struct::dom_struct;
 use euclid::{Scale, Size2D};
-use js::jsapi::{
+use crate::js::jsapi::{
     HandleValueArray, Heap, IsCallable, IsConstructor, JS_ClearPendingException,
     JS_IsExceptionPending, JSAutoRealm, JSObject, NewArrayObject, Value,
 };
-use js::jsval::{JSVal, ObjectValue, UndefinedValue};
-use js::rust::HandleValue;
-use js::rust::wrappers::{Call, Construct1};
+use crate::js::jsval::{JSVal, ObjectValue, UndefinedValue};
+use crate::js::rust::HandleValue;
+use crate::js::rust::wrappers::{Call, Construct1};
 use net_traits::image_cache::ImageCache;
 use pixels::PixelFormat;
 use script_traits::{DrawAPaintImageResult, PaintWorkletError, Painter};

@@ -5,8 +5,8 @@
 use std::cmp::min;
 
 use dom_struct::dom_struct;
-use js::rust::{CustomAutoRooterGuard, HandleObject};
-use js::typedarray::{Float32, Float32Array};
+use crate::js::rust::{CustomAutoRooterGuard, HandleObject};
+use crate::js::typedarray::{Float32, Float32Array};
 use servo_media::audio::buffer_source_node::AudioBuffer as ServoMediaAudioBuffer;
 
 use crate::dom::audio::audionode::MAX_CHANNEL_COUNT;

@@ -4,11 +4,14 @@
 
 use std::ptr::NonNull;
 
-use js::glue::{DestroyRustJSPrincipals, GetRustJSPrincipalsPrivate, JSPrincipalsCallbacks};
-use js::jsapi::{
+use crate::js::glue::{DestroyRustJSPrincipals, GetRustJSPrincipalsPrivate, JSPrincipalsCallbacks};
+use crate::js::jsapi::{
     JS_ReadUint32Pair, JSContext, JSPrincipals, JSStructuredCloneReader, JSStructuredCloneWriter,
 };
+#[cfg(feature = "js-spidermonkey")]
 use script_bindings::principals::{ServoJSPrincipals, ServoJSPrincipalsRef};
+#[cfg(feature = "js-boa")]
+use crate::script_bindings::principals::{ServoJSPrincipals, ServoJSPrincipalsRef};
 use servo_url::MutableOrigin;
 
 use super::structuredclone::StructuredCloneTags;

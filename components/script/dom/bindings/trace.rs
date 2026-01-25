@@ -35,13 +35,16 @@ use std::fmt::Display;
 use std::hash::{BuildHasher, Hash};
 
 /// A trait to allow tracing (only) DOM objects.
-pub(crate) use js::gc::Traceable as JSTraceable;
-use js::glue::{CallScriptTracer, CallStringTracer, CallValueTracer};
-use js::jsapi::{GCTraceKindToAscii, Heap, JSScript, JSString, JSTracer, TraceKind};
-use js::jsval::JSVal;
+pub(crate) use crate::js::gc::Traceable as JSTraceable;
+use crate::js::glue::{CallScriptTracer, CallStringTracer, CallValueTracer};
+use crate::js::jsapi::{GCTraceKindToAscii, Heap, JSScript, JSString, JSTracer, TraceKind};
+use crate::js::jsval::JSVal;
 use malloc_size_of::{MallocConditionalSizeOf, MallocSizeOf, MallocSizeOfOps};
 use rustc_hash::FxBuildHasher;
+#[cfg(feature = "js-spidermonkey")]
 pub(crate) use script_bindings::trace::*;
+#[cfg(feature = "js-boa")]
+pub(crate) use crate::script_bindings::trace::*;
 
 use crate::dom::bindings::cell::DomRefCell;
 use crate::dom::bindings::refcounted::{Trusted, TrustedPromise};

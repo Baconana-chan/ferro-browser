@@ -6,7 +6,7 @@ use std::cell::{Cell, Ref};
 use std::rc::Rc;
 
 use dom_struct::dom_struct;
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use script_bindings::inheritance::Castable;
 use script_bindings::realms::InRealm;
 use script_bindings::root::Dom;

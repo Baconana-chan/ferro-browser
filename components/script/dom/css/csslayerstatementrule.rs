@@ -5,7 +5,7 @@
 use std::cell::RefCell;
 
 use dom_struct::dom_struct;
-use js::rust::MutableHandleValue;
+use crate::js::rust::MutableHandleValue;
 use servo_arc::Arc;
 use style::shared_lock::ToCssWithGuard;
 use style::stylesheets::{CssRuleType, LayerStatementRule};

@@ -7,16 +7,25 @@
 use std::cell::RefCell;
 use std::thread::LocalKey;
 
-use js::conversions::ToJSValConvertible;
-use js::glue::{IsWrapper, JSPrincipalsCallbacks, UnwrapObjectDynamic, UnwrapObjectStatic};
-use js::jsapi::{
+use crate::js::conversions::ToJSValConvertible;
+use crate::js::glue::{IsWrapper, JSPrincipalsCallbacks, UnwrapObjectDynamic, UnwrapObjectStatic};
+use crate::js::jsapi::{
     CallArgs, DOMCallbacks, HandleObject as RawHandleObject, JS_FreezeObject, JSContext, JSObject,
 };
-use js::realm::CurrentRealm;
-use js::rust::{HandleObject, MutableHandleValue, get_object_class, is_dom_class};
+use crate::js::realm::CurrentRealm;
+use crate::js::rust::{HandleObject, MutableHandleValue, get_object_class, is_dom_class};
+#[cfg(feature = "js-spidermonkey")]
 use script_bindings::conversions::SafeToJSValConvertible;
+#[cfg(feature = "js-boa")]
+use crate::script_bindings::conversions::SafeToJSValConvertible;
+#[cfg(feature = "js-spidermonkey")]
 use script_bindings::interfaces::{DomHelpers, Interface};
+#[cfg(feature = "js-boa")]
+use crate::script_bindings::interfaces::{DomHelpers, Interface};
+#[cfg(feature = "js-spidermonkey")]
 use script_bindings::settings_stack::StackEntry;
+#[cfg(feature = "js-boa")]
+use crate::script_bindings::settings_stack::StackEntry;
 
 use crate::DomTypes;
 use crate::dom::bindings::codegen::{InterfaceObjectMap, PrototypeList};
@@ -51,7 +60,10 @@ impl GlobalStaticData {
     }
 }
 
+#[cfg(feature = "js-spidermonkey")]
 pub(crate) use script_bindings::utils::*;
+#[cfg(feature = "js-boa")]
+pub(crate) use crate::script_bindings::utils::*;
 
 /// Returns a JSVal representing the frozen JavaScript array
 pub(crate) fn to_frozen_array<T: ToJSValConvertible>(

@@ -58,4 +58,15 @@ pub fn PrivateValue(ptr: *const std::ffi::c_void) -> Value {
     Value { data: ptr as u64 | 0x0007_0000_0000_0000 }
 }
 
+/// Create an unsigned 32-bit integer value
+pub fn UInt32Value(u: u32) -> Value {
+    // For values that fit in i32, use integer representation
+    // For larger values, use double
+    if u <= i32::MAX as u32 {
+        Value::from_i32(u as i32)
+    } else {
+        Value::from_f64(u as f64)
+    }
+}
+
 // Additional Value methods are in jsapi.rs - don't duplicate here

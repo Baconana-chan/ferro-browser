@@ -6,7 +6,7 @@ use std::default::Default;
 
 use base::IpcSend;
 use dom_struct::dom_struct;
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use net_traits::CoreResourceMsg;
 use net_traits::blob_url_store::{get_blob_origin, parse_blob_url};
 use net_traits::filemanager_thread::FileManagerThreadMsg;

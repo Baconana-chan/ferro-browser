@@ -9,6 +9,24 @@ use std::ffi::c_void;
 use super::jsapi::{RawJSContext, JSObject, Value};
 use super::rust::{HandleObject, HandleValue, MutableHandleValue};
 
+// Re-export JSContext from jsapi for convenience
+pub use super::jsapi::JSContext;
+
+/// CurrentRealm - get the current realm
+pub struct CurrentRealm {
+    _private: (),
+}
+
+impl CurrentRealm {
+    pub fn new(_cx: *mut RawJSContext) -> Self {
+        Self { _private: () }
+    }
+    
+    pub fn get(&self) -> *mut c_void {
+        ptr::null_mut()
+    }
+}
+
 /// Context options
 #[repr(C)]
 pub struct ContextOptions {

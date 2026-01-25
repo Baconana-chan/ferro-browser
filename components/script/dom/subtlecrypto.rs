@@ -21,12 +21,12 @@ use std::rc::Rc;
 use std::str::FromStr;
 
 use dom_struct::dom_struct;
-use js::conversions::ConversionResult;
-use js::jsapi::{Heap, JSObject};
-use js::jsval::{ObjectValue, UndefinedValue};
-use js::rust::wrappers::JS_ParseJSON;
-use js::rust::{HandleValue, MutableHandleValue};
-use js::typedarray::ArrayBufferU8;
+use crate::js::conversions::ConversionResult;
+use crate::js::jsapi::{Heap, JSObject};
+use crate::js::jsval::{ObjectValue, UndefinedValue};
+use crate::js::rust::wrappers::JS_ParseJSON;
+use crate::js::rust::{HandleValue, MutableHandleValue};
+use crate::js::typedarray::ArrayBufferU8;
 
 use crate::dom::bindings::buffer_source::create_buffer_source;
 use crate::dom::bindings::codegen::Bindings::CryptoKeyBinding::{

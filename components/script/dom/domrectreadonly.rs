@@ -7,7 +7,7 @@ use std::cell::Cell;
 use base::id::{DomRectId, DomRectIndex};
 use constellation_traits::DomRect;
 use dom_struct::dom_struct;
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use rustc_hash::FxHashMap;
 
 use crate::dom::bindings::codegen::Bindings::DOMRectReadOnlyBinding::{

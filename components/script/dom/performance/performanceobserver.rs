@@ -6,7 +6,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use dom_struct::dom_struct;
-use js::rust::{HandleObject, MutableHandleValue};
+use crate::js::rust::{HandleObject, MutableHandleValue};
 
 use super::performance::PerformanceEntryList;
 use super::performanceentry::{EntryType, PerformanceEntry};

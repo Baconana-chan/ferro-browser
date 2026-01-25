@@ -11,21 +11,33 @@ use std::slice::from_raw_parts;
 #[cfg(feature = "js_backtrace")]
 use backtrace::Backtrace;
 use embedder_traits::JavaScriptErrorInfo;
-use js::conversions::jsstr_to_string;
-use js::error::{throw_range_error, throw_type_error};
+use crate::js::conversions::jsstr_to_string;
+use crate::js::error::{throw_range_error, throw_type_error};
 #[cfg(feature = "js_backtrace")]
-use js::jsapi::StackFormat as JSStackFormat;
-use js::jsapi::{
+use crate::js::jsapi::StackFormat as JSStackFormat;
+use crate::js::jsapi::{
     ExceptionStackBehavior, JS_ClearPendingException, JS_GetProperty, JS_IsExceptionPending,
 };
-use js::jsval::UndefinedValue;
-use js::rust::wrappers::{JS_ErrorFromException, JS_GetPendingException, JS_SetPendingException};
-use js::rust::{HandleObject, HandleValue, MutableHandleValue, describe_scripted_caller};
+use crate::js::jsval::UndefinedValue;
+use crate::js::rust::wrappers::{JS_ErrorFromException, JS_GetPendingException, JS_SetPendingException};
+use crate::js::rust::{HandleObject, HandleValue, MutableHandleValue, describe_scripted_caller};
 use libc::c_uint;
+#[cfg(feature = "js-spidermonkey")]
 use script_bindings::conversions::SafeToJSValConvertible;
+#[cfg(feature = "js-boa")]
+use crate::script_bindings::conversions::SafeToJSValConvertible;
+#[cfg(feature = "js-spidermonkey")]
 pub(crate) use script_bindings::error::*;
+#[cfg(feature = "js-boa")]
+pub(crate) use crate::script_bindings::error::*;
+#[cfg(feature = "js-spidermonkey")]
 use script_bindings::root::DomRoot;
+#[cfg(feature = "js-boa")]
+use crate::script_bindings::root::DomRoot;
+#[cfg(feature = "js-spidermonkey")]
 use script_bindings::str::DOMString;
+#[cfg(feature = "js-boa")]
+use crate::script_bindings::str::DOMString;
 
 #[cfg(feature = "js_backtrace")]
 use crate::dom::bindings::cell::DomRefCell;

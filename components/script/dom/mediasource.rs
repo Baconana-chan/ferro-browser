@@ -8,7 +8,7 @@
 use std::cell::Cell;
 
 use dom_struct::dom_struct;
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use script_bindings::codegen::GenericBindings::MediaSourceBinding::{
     EndOfStreamError, MediaSourceMethods, ReadyState,
 };

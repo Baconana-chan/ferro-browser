@@ -4,8 +4,11 @@
 
 //! The `Reflector` struct.
 
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
+#[cfg(feature = "js-spidermonkey")]
 use script_bindings::interfaces::GlobalScopeHelpers;
+#[cfg(feature = "js-boa")]
+use crate::script_bindings::interfaces::GlobalScopeHelpers;
 
 use crate::DomTypes;
 use crate::dom::bindings::conversions::DerivedFrom;
@@ -65,4 +68,7 @@ impl<T: DomGlobalGeneric<crate::DomTypeHolder>> DomGlobal for T {
     }
 }
 
+#[cfg(feature = "js-spidermonkey")]
 pub(crate) use script_bindings::reflector::*;
+#[cfg(feature = "js-boa")]
+pub(crate) use crate::script_bindings::reflector::*;

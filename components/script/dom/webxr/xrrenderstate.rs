@@ -5,7 +5,7 @@
 use std::cell::Cell;
 
 use dom_struct::dom_struct;
-use js::rust::MutableHandleValue;
+use crate::js::rust::MutableHandleValue;
 use webxr_api::SubImages;
 
 use crate::dom::bindings::cell::DomRefCell;

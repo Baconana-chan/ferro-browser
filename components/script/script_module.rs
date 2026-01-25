@@ -16,8 +16,8 @@ use headers::{HeaderMapExt, ReferrerPolicy as ReferrerPolicyHeader};
 use html5ever::local_name;
 use hyper_serde::Serde;
 use indexmap::{IndexMap, IndexSet};
-use js::conversions::jsstr_to_string;
-use js::jsapi::{
+use crate::js::conversions::jsstr_to_string;
+use crate::js::jsapi::{
     CompileModule1, ExceptionStackBehavior, FinishDynamicModuleImport, GetModuleRequestSpecifier,
     GetModuleResolveHook, GetRequestedModuleSpecifier, GetRequestedModulesCount,
     Handle as RawHandle, HandleObject, HandleValue as RawHandleValue, Heap,
@@ -27,9 +27,9 @@ use js::jsapi::{
     SetModuleMetadataHook, SetModulePrivate, SetModuleResolveHook, SetScriptPrivateReferenceHooks,
     ThrowOnModuleEvaluationFailure, Value,
 };
-use js::jsval::{JSVal, PrivateValue, UndefinedValue};
-use js::rust::wrappers::{JS_GetModulePrivate, JS_GetPendingException, JS_SetPendingException};
-use js::rust::{
+use crate::js::jsval::{JSVal, PrivateValue, UndefinedValue};
+use crate::js::rust::wrappers::{JS_GetModulePrivate, JS_GetPendingException, JS_SetPendingException};
+use crate::js::rust::{
     CompileOptionsWrapper, Handle, HandleObject as RustHandleObject, HandleValue, IntoHandle,
     MutableHandleObject as RustMutableHandleObject, transform_str_to_source_text,
 };

@@ -5,11 +5,11 @@
 use std::ptr;
 
 use dom_struct::dom_struct;
-use js::gc::CustomAutoRooterGuard;
-use js::jsapi::JSObject;
-use js::rust::HandleObject;
-use js::typedarray;
-use js::typedarray::Uint8Array;
+use crate::js::gc::CustomAutoRooterGuard;
+use crate::js::jsapi::JSObject;
+use crate::js::rust::HandleObject;
+use crate::js::typedarray;
+use crate::js::typedarray::Uint8Array;
 
 use crate::dom::bindings::buffer_source::create_buffer_source;
 use crate::dom::bindings::codegen::Bindings::TextEncoderBinding::{

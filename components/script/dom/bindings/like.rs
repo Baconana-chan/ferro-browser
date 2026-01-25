@@ -8,8 +8,11 @@ use std::cmp::Eq;
 use std::hash::Hash;
 
 use indexmap::{IndexMap, IndexSet};
-use js::conversions::ToJSValConvertible;
+use crate::js::conversions::ToJSValConvertible;
+#[cfg(feature = "js-spidermonkey")]
 pub(crate) use script_bindings::like::*;
+#[cfg(feature = "js-boa")]
+pub(crate) use crate::script_bindings::like::*;
 
 use crate::dom::bindings::cell::DomRefCell;
 

@@ -15,8 +15,8 @@ use euclid::default::Point2D;
 use headers::ContentLength;
 use headers::HeaderMapExt;
 use html5ever::{LocalName, Prefix, QualName, local_name, ns};
-use js::jsapi::JSAutoRealm;
-use js::rust::HandleObject;
+use crate::js::jsapi::JSAutoRealm;
+use crate::js::rust::HandleObject;
 use mime::{self, Mime};
 use net_traits::http_status::HttpStatus;
 use net_traits::image_cache::{

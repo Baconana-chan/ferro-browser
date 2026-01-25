@@ -5,7 +5,7 @@
 use std::rc::Rc;
 
 use dom_struct::dom_struct;
-use js::rust::HandleValue;
+use crate::js::rust::HandleValue;
 use strum::AsRefStr;
 
 use crate::dom::bindings::callback::ExceptionHandling;

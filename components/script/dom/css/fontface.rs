@@ -8,7 +8,7 @@ use std::rc::Rc;
 use cssparser::{Parser, ParserInput};
 use dom_struct::dom_struct;
 use fonts::{FontContext, FontContextWebFontMethods, FontTemplate, LowercaseFontFamilyName};
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use style::error_reporting::ParseErrorReporter;
 use style::font_face::SourceList;
 use style::parser::ParserContext;

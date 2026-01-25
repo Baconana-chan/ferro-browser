@@ -10,14 +10,14 @@ use devtools_traits::{
     ConsoleMessage, ConsoleMessageArgument, ConsoleMessageBuilder, LogLevel,
     ScriptToDevtoolsControlMsg, StackFrame,
 };
-use js::conversions::jsstr_to_string;
-use js::jsapi::{self, ESClass, PropertyDescriptor};
-use js::jsval::{Int32Value, UndefinedValue};
-use js::rust::wrappers::{
+use crate::js::conversions::jsstr_to_string;
+use crate::js::jsapi::{self, ESClass, PropertyDescriptor};
+use crate::js::jsval::{Int32Value, UndefinedValue};
+use crate::js::rust::wrappers::{
     GetBuiltinClass, GetPropertyKeys, JS_GetOwnPropertyDescriptorById, JS_GetPropertyById,
     JS_IdToValue, JS_Stringify, JS_ValueToSource,
 };
-use js::rust::{
+use crate::js::rust::{
     CapturedJSStack, HandleObject, HandleValue, IdVector, ToString, describe_scripted_caller,
 };
 use script_bindings::conversions::get_dom_class;

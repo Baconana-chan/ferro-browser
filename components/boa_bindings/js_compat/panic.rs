@@ -136,6 +136,13 @@ pub fn resume_panic(payload: Box<dyn std::any::Any + Send>) -> ! {
     panic::resume_unwind(payload)
 }
 
+/// Maybe resume an unwind if there was a saved panic
+/// This is a no-op stub for compatibility
+pub fn maybe_resume_unwind() {
+    // In SpiderMonkey this checks for a saved panic and resumes it
+    // For Boa, we don't need this functionality
+}
+
 /// Abort on panic (for unrecoverable situations)
 pub fn abort_on_panic<F, R>(f: F) -> R
 where

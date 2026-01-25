@@ -41,11 +41,38 @@ indexmap = { workspace = true }
 smallvec = { workspace = true }
 
 [features]
-default = []
-# Feature flags for optional Web APIs
-bluetooth = []
-webgpu = []
-webxr = []
+default = ["console", "fetch", "timers", "storage", "performance"]
+
+# Phase D2: Feature flags for optional Web APIs
+
+# Core APIs (typically always enabled)
+console = []              # Console API (console.log, etc.)
+fetch = []                # Fetch API (fetch, Request, Response, Headers, AbortController)
+timers = []               # Timer APIs (setTimeout, setInterval)
+storage = []              # Storage APIs (localStorage, sessionStorage)
+performance = []          # Performance APIs (performance.now, etc.)
+
+# Extended Web APIs (can be disabled for minimal builds)
+url = []                  # URL and URLSearchParams
+encoding = []             # TextEncoder, TextDecoder
+crypto = []               # Crypto API (getRandomValues, randomUUID)
+observers = []            # MutationObserver, ResizeObserver, IntersectionObserver
+workers = []              # Web Workers and SharedWorker
+modules = []              # ES Modules (import/export)
+
+# Advanced/Experimental APIs
+web_audio = []            # Web Audio API
+webgl = []                # WebGL and WebGL2
+media_source = []         # Media Source Extensions
+navigator = []            # Navigator API
+
+# Platform-specific features
+bluetooth = []            # Web Bluetooth API
+webgpu = []               # WebGPU API
+webxr = []                # WebXR API
+
+# Development/Debug features
+gc_debug = []             # GC safety debug assertions (GC_DEBUG env var)
 
 [dev-dependencies]
 

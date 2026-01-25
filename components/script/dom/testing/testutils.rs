@@ -5,7 +5,7 @@
 use std::rc::Rc;
 
 use dom_struct::dom_struct;
-use js::jsapi::{GCReason, JS_GC};
+use crate::js::jsapi::{GCReason, JS_GC};
 use script_bindings::reflector::Reflector;
 use script_bindings::script_runtime::CanGc;
 

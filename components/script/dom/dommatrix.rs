@@ -6,8 +6,8 @@ use base::id::{DomMatrixId, DomMatrixIndex};
 use constellation_traits::DomMatrix;
 use dom_struct::dom_struct;
 use euclid::default::Transform3D;
-use js::rust::{CustomAutoRooterGuard, HandleObject};
-use js::typedarray::{Float32Array, Float64Array};
+use crate::js::rust::{CustomAutoRooterGuard, HandleObject};
+use crate::js::typedarray::{Float32Array, Float64Array};
 use rustc_hash::FxHashMap;
 use script_bindings::str::DOMString;
 

@@ -7,9 +7,9 @@ use std::ptr;
 use std::rc::Rc;
 
 use dom_struct::dom_struct;
-use js::jsapi::{Heap, IsPromiseObject, JSObject};
-use js::jsval::{JSVal, UndefinedValue};
-use js::rust::{HandleObject as SafeHandleObject, HandleValue as SafeHandleValue, IntoHandle};
+use crate::js::jsapi::{Heap, IsPromiseObject, JSObject};
+use crate::js::jsval::{JSVal, UndefinedValue};
+use crate::js::rust::{HandleObject as SafeHandleObject, HandleValue as SafeHandleValue, IntoHandle};
 
 use super::bindings::codegen::Bindings::QueuingStrategyBinding::QueuingStrategySize;
 use super::types::TransformStream;

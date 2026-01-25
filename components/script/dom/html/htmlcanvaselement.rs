@@ -15,8 +15,8 @@ use euclid::default::Size2D;
 use html5ever::{LocalName, Prefix, local_name, ns};
 #[cfg(feature = "webgpu")]
 use ipc_channel::ipc::{self as ipcchan};
-use js::error::throw_type_error;
-use js::rust::{HandleObject, HandleValue};
+use crate::js::error::throw_type_error;
+use crate::js::rust::{HandleObject, HandleValue};
 use layout_api::HTMLCanvasData;
 use pixels::{EncodedImageType, Snapshot};
 use rustc_hash::FxHashMap;

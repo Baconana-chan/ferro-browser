@@ -11,9 +11,9 @@ use constellation_traits::{
     ScriptToConstellationMessage, StructuredSerializedData, TraversalDirection,
 };
 use dom_struct::dom_struct;
-use js::jsapi::Heap;
-use js::jsval::{JSVal, NullValue, UndefinedValue};
-use js::rust::{HandleValue, MutableHandleValue};
+use crate::js::jsapi::Heap;
+use crate::js::jsval::{JSVal, NullValue, UndefinedValue};
+use crate::js::rust::{HandleValue, MutableHandleValue};
 use net_traits::CoreResourceMsg;
 use profile_traits::ipc;
 use profile_traits::ipc::channel;

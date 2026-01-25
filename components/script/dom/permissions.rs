@@ -7,9 +7,9 @@ use std::rc::Rc;
 use base::generic_channel;
 use dom_struct::dom_struct;
 use embedder_traits::{self, AllowOrDeny, EmbedderMsg, PermissionFeature};
-use js::conversions::ConversionResult;
-use js::jsapi::JSObject;
-use js::jsval::{ObjectValue, UndefinedValue};
+use crate::js::conversions::ConversionResult;
+use crate::js::jsapi::JSObject;
+use crate::js::jsval::{ObjectValue, UndefinedValue};
 use script_bindings::inheritance::Castable;
 use servo_config::pref;
 

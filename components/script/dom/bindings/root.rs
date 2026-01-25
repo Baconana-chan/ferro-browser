@@ -31,9 +31,9 @@ use std::{mem, ptr};
 
 // JS engine imports - conditional based on feature
 #[cfg(feature = "js-spidermonkey")]
-use js::jsapi::{Heap, JSObject, JSTracer, Value};
+use crate::js::jsapi::{Heap, JSObject, JSTracer, Value};
 #[cfg(feature = "js-spidermonkey")]
-use js::rust::HandleValue;
+use crate::js::rust::HandleValue;
 
 #[cfg(feature = "js-boa")]
 use boa_bindings::js_compat::jsapi::{Heap, JSObject, JSTracer, Value};
@@ -44,6 +44,8 @@ use layout_api::TrustedNodeAddress;
 use malloc_size_of::{MallocSizeOf, MallocSizeOfOps};
 #[cfg(feature = "js-spidermonkey")]
 pub(crate) use script_bindings::root::*;
+#[cfg(feature = "js-boa")]
+pub(crate) use crate::script_bindings::root::*;
 use style::thread_state;
 
 // Boa stubs for types and functions from script_bindings::root

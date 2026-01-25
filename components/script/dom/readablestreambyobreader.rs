@@ -7,11 +7,11 @@ use std::mem;
 use std::rc::Rc;
 
 use dom_struct::dom_struct;
-use js::gc::CustomAutoRooterGuard;
-use js::jsapi::Heap;
-use js::jsval::{JSVal, UndefinedValue};
-use js::rust::{HandleObject as SafeHandleObject, HandleValue as SafeHandleValue};
-use js::typedarray::{ArrayBufferView, ArrayBufferViewU8};
+use crate::js::gc::CustomAutoRooterGuard;
+use crate::js::jsapi::Heap;
+use crate::js::jsval::{JSVal, UndefinedValue};
+use crate::js::rust::{HandleObject as SafeHandleObject, HandleValue as SafeHandleValue};
+use crate::js::typedarray::{ArrayBufferView, ArrayBufferViewU8};
 
 use super::bindings::buffer_source::HeapBufferSource;
 use super::bindings::codegen::Bindings::ReadableStreamBYOBReaderBinding::ReadableStreamBYOBReaderReadOptions;

@@ -6,12 +6,18 @@ use std::ptr;
 
 use html5ever::interface::QualName;
 use html5ever::{LocalName, local_name, ns};
-use js::glue::{UnwrapObjectDynamic, UnwrapObjectStatic};
-use js::jsapi::{CallArgs, CurrentGlobalOrNull, JSAutoRealm, JSObject};
-use js::rust::wrappers::{JS_SetPrototype, JS_WrapObject};
-use js::rust::{HandleObject, MutableHandleObject, MutableHandleValue};
+use crate::js::glue::{UnwrapObjectDynamic, UnwrapObjectStatic};
+use crate::js::jsapi::{CallArgs, CurrentGlobalOrNull, JSAutoRealm, JSObject};
+use crate::js::rust::wrappers::{JS_SetPrototype, JS_WrapObject};
+use crate::js::rust::{HandleObject, MutableHandleObject, MutableHandleValue};
+#[cfg(feature = "js-spidermonkey")]
 use script_bindings::conversions::SafeToJSValConvertible;
+#[cfg(feature = "js-boa")]
+use crate::script_bindings::conversions::SafeToJSValConvertible;
+#[cfg(feature = "js-spidermonkey")]
 use script_bindings::interface::get_desired_proto;
+#[cfg(feature = "js-boa")]
+use crate::script_bindings::interface::get_desired_proto;
 
 use super::utils::ProtoOrIfaceArray;
 use crate::dom::bindings::codegen::Bindings::WindowBinding::WindowMethods;

@@ -7,17 +7,17 @@ use std::num::{NonZero, NonZeroU16};
 use std::ptr::{self, NonNull};
 
 use dom_struct::dom_struct;
-use js::conversions::latin1_to_string;
-use js::jsapi::{
+use crate::js::conversions::latin1_to_string;
+use crate::js::jsapi::{
     JS_DeprecatedStringHasLatin1Chars, JS_GetTwoByteStringCharsAndLength, JS_IsExceptionPending,
     JSObject, JSType, ToPrimitive,
 };
-use js::jsval::UndefinedValue;
-use js::rust::{
+use crate::js::jsval::UndefinedValue;
+use crate::js::rust::{
     HandleObject as SafeHandleObject, HandleValue as SafeHandleValue,
     MutableHandleValue as SafeMutableHandleValue, ToString,
 };
-use js::typedarray::Uint8Array;
+use crate::js::typedarray::Uint8Array;
 use script_bindings::conversions::SafeToJSValConvertible;
 
 use crate::dom::bindings::buffer_source::create_buffer_source;

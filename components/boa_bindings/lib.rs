@@ -20,27 +20,54 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-//! Boa JavaScript Engine bindings for Ferro Browser.
+//! # Boa JavaScript Engine Bindings for Ferro Browser
 //!
-//! This module provides a pure Rust alternative to SpiderMonkey-based
-//! script_bindings. Boa is a JavaScript engine written entirely in Rust,
-//! offering better debugging, faster builds, and seamless integration.
+//! **boa_bindings** is the default JavaScript engine integration for Ferro Browser.
+//! It provides a pure Rust implementation using the [Boa](https://boajs.dev/) engine,
+//! eliminating the need for C++ toolchains and complex build dependencies.
 //!
-//! ## Features
+//! ## Why Boa?
 //!
-//! - **Pure Rust**: No C++ dependencies, no mozjs build complexity
-//! - **Boa 0.21**: 94% ECMAScript conformance, NaN-boxing, register-based VM
-//! - **Web APIs**: setTimeout, fetch, console via boa_runtime
-//! - **DOM Integration**: Reflector pattern for connecting Rust DOM objects to JS
+//! - **Pure Rust**: No C++ dependencies, faster compile times, easier debugging
+//! - **Cross-platform**: Works on any target Rust supports (including WASM)
+//! - **Modern ECMAScript**: 94% conformance with ECMAScript specification
+//! - **Memory Safe**: Leverages Rust's ownership model for GC safety
 //!
-//! ## Architecture
+//! ## Module Overview
 //!
-//! - `runtime` - JavaScript runtime management (Context)
-//! - `gc` - Garbage collection integration with DOM
-//! - `conversions` - Type conversions between Rust and JavaScript
-//! - `error` - JavaScript error handling
-//! - `reflector` - DOM object reflection (Rust ↔ JS binding)
-//! - `builtins` - Servo-specific Web API extensions
+//! | Module | Description |
+//! |--------|-------------|
+//! | `runtime` | JavaScript Context and evaluation |
+//! | `gc` | Garbage collection integration with DOM |
+//! | `reflector` | DOM object reflection (Rust ↔ JS binding) |
+//! | `root` | Smart pointers for DOM objects (Dom, DomRoot) |
+//! | `weakref` | Weak references for GC |
+//! | `event_loop` | Task/microtask scheduling per HTML spec |
+//! | `builtins` | Web APIs (setTimeout, fetch, console, etc.) |
+//! | `codegen` | WebIDL bindings infrastructure |
+//!
+//! ## Feature Flags
+//!
+//! Enable/disable Web APIs via Cargo features:
+//! - `console` - Console API (default)
+//! - `fetch` - Fetch API with AbortController (default)
+//! - `timers` - setTimeout/setInterval (default)
+//! - `webgl` - WebGL/WebGL2 support
+//! - `web_audio` - Web Audio API
+//! - `gc_debug` - GC safety debug assertions
+//!
+//! ## Example
+//!
+//! ```rust,no_run
+//! use boa_bindings::{JsRuntime, JsResult};
+//!
+//! fn main() -> JsResult<()> {
+//!     let mut runtime = JsRuntime::new();
+//!     let result = runtime.eval("1 + 2")?;
+//!     println!("Result: {:?}", result);
+//!     Ok(())
+//! }
+//! ```
 
 pub mod runtime;
 pub mod gc;
@@ -57,6 +84,8 @@ pub mod weakref;
 pub mod cell;
 pub mod dom_conversions;
 pub mod settings_stack;
+pub mod gc_safety;
+pub mod event_loop;
 
 // Re-export key Boa types
 pub use boa_engine::{
@@ -72,6 +101,16 @@ pub use boa_gc::{Finalize, Trace, Gc, GcRefCell};
 // This allows existing code using `use js::*` to work with Boa
 pub use js_compat as js;
 
+// Re-export GC safety utilities
+pub use gc_safety::{
+    init_gc_debug, gc_debug_enabled, record_allocation, record_gc_cycle,
+    is_in_trace, is_in_finalize, is_gc_running, root_depth,
+    assert_rooted, assert_not_in_gc, assert_traced, assert_finalize_order,
+    TraceGuard, FinalizeGuard, GcGuard, RootGuard,
+    WeakRefState, WeakRefDebugInfo,
+    gc_cycle_count, allocations_since_gc,
+};
+
 // Re-export our types
 // Note: root::Dom uses NonNull<T> for SpiderMonkey API compatibility
 // reflector::Dom uses Gc<T> for Boa-native usage (aliased as GcDom)
@@ -79,6 +118,7 @@ pub use reflector::{Reflector, DomObject, MutDomObject, DomRefCell};
 pub use reflector::{DomTypes, DomObjectWrap, Castable, DerivedFrom};
 pub use reflector::Dom as GcDom;  // Boa-native GC-managed Dom
 pub use root::{Dom, DomRoot, Root, RootCollection, MaybeUnreflectedDom, assert_in_script, trace_roots};
+pub use root::{DomExtractionError, DomExtractionResult, RootFromObject, extraction_to_js_result};
 pub use trace::BoaTraceable;
 pub use weakref::{WeakRef, WeakBox, WeakReferenceable, MutableWeakRef};
 pub use cell::{MutDom, MutNullableDom, DomOnceCell, LayoutDom, assert_in_layout};
@@ -88,11 +128,23 @@ pub use conversions::{ToJsValue, FromJsValue};
 pub use dom_conversions::{
     ConversionResult, StringificationBehavior, IDLInterface,
     ToJSValConvertible, FromJSValConvertible, NativeFromObject,
+    // Phase B2: Enhanced native_from_object types
+    NativeFromObjectError, NativeFromObjectResult, NativeFromObjectExt,
+    CrossRealmExtractable, type_error_for_interface, is_dom_wrapper,
 };
 pub use settings_stack::{
     StackEntryKind, StackEntry, SettingsStackAccess,
     AutoEntryScript, AutoIncumbentScript,
     entry_global, incumbent_global, has_entry_global, is_stack_empty,
+    realm_depth, max_realm_depth,
+};
+// Phase B3: Event loop integration
+pub use event_loop::{
+    TaskSource, Task,
+    schedule_task, schedule_js_callback, cancel_task, pending_task_count,
+    queue_microtask, pending_microtask_count, perform_microtask_checkpoint,
+    microtask_checkpoint_count, process_one_task, run_until_empty,
+    has_pending_work, is_processing_task,
 };
 
 // Re-export codegen types

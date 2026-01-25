@@ -46,13 +46,13 @@ use euclid::default::{Point2D as UntypedPoint2D, Rect as UntypedRect};
 use euclid::{Point2D, Scale, Size2D, Vector2D};
 use fonts::{CspViolationHandler, FontContext, WebFontDocumentContext};
 use ipc_channel::ipc::IpcSender;
-use js::glue::DumpJSStack;
-use js::jsapi::{
+use crate::js::glue::DumpJSStack;
+use crate::js::jsapi::{
     GCReason, Heap, JS_GC, JSAutoRealm, JSContext as RawJSContext, JSObject, JSPROP_ENUMERATE,
 };
-use js::jsval::{NullValue, UndefinedValue};
-use js::rust::wrappers::JS_DefineProperty;
-use js::rust::{
+use crate::js::jsval::{NullValue, UndefinedValue};
+use crate::js::rust::wrappers::JS_DefineProperty;
+use crate::js::rust::{
     CustomAutoRooter, CustomAutoRooterGuard, HandleObject, HandleValue, MutableHandleObject,
     MutableHandleValue,
 };

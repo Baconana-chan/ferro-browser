@@ -214,8 +214,252 @@ pub(crate) mod types {
 
 #[cfg(feature = "js-boa")]
 pub(crate) mod types {
-    // Stub interface types for Boa - DOM binding types will be defined differently
-    // TODO: Generate proper Boa interface types
+    // Stub interface types for Boa - DOM binding types will be re-exported from actual modules
+    // Each type is re-exported from its corresponding dom module
+    
+    pub use super::globalscope::GlobalScope;
+    pub use super::window::Window;
+    pub use super::document::Document;
+    pub use super::element::Element;
+    pub use super::node::Node;
+    pub use super::eventtarget::EventTarget;
+    pub use super::event::Event;
+    pub use super::characterdata::CharacterData;
+    pub use super::text::Text;
+    pub use super::comment::Comment;
+    pub use super::processinginstruction::ProcessingInstruction;
+    pub use super::documentfragment::DocumentFragment;
+    pub use super::documenttype::DocumentType;
+    pub use super::domexception::DOMException;
+    pub use super::attr::Attr;
+    pub use super::nodelist::NodeList;
+    pub use super::namednodemap::NamedNodeMap;
+    pub use super::domtokenlist::DOMTokenList;
+    pub use super::domstringlist::DOMStringList;
+    pub use super::domstringmap::DOMStringMap;
+    pub use super::domimplementation::DOMImplementation;
+    pub use super::range::Range;
+    pub use super::selection::Selection;
+    pub use super::mutationobserver::MutationObserver;
+    pub use super::mutationrecord::MutationRecord;
+    pub use super::domparser::DOMParser;
+    pub use super::xmlserializer::XMLSerializer;
+    pub use super::blob::Blob;
+    pub use super::file::File;
+    pub use super::filelist::FileList;
+    pub use super::filereader::FileReader;
+    pub use super::filereadersync::FileReaderSync;
+    pub use super::formdata::FormData;
+    pub use super::xmlhttprequest::XMLHttpRequest;
+    pub use super::xmlhttprequesteventtarget::XMLHttpRequestEventTarget;
+    pub use super::xmlhttprequestupload::XMLHttpRequestUpload;
+    pub use super::url::URL;
+    pub use super::urlsearchparams::URLSearchParams;
+    pub use super::headers::Headers;
+    pub use super::request::Request;
+    pub use super::response::Response;
+    pub use super::abortcontroller::AbortController;
+    pub use super::abortsignal::AbortSignal;
+    pub use super::promise::Promise;
+    pub use super::crypto::Crypto;
+    pub use super::cryptokey::CryptoKey;
+    pub use super::subtlecrypto::SubtleCrypto;
+    pub use super::storage::Storage;
+    pub use super::storageevent::StorageEvent;
+    pub use super::location::Location;
+    pub use super::history::History;
+    pub use super::navigator::Navigator;
+    pub use super::screen::Screen;
+    pub use super::console::Console;
+    pub use super::errorevent::ErrorEvent;
+    pub use super::customevent::CustomEvent;
+    pub use super::closeevent::CloseEvent;
+    pub use super::messageevent::MessageEvent;
+    pub use super::messageport::MessagePort;
+    pub use super::messagechannel::MessageChannel;
+    pub use super::broadcastchannel::BroadcastChannel;
+    pub use super::websocket::WebSocket;
+    pub use super::eventsource::EventSource;
+    pub use super::notification::Notification;
+    pub use super::permissions::Permissions;
+    pub use super::permissionstatus::PermissionStatus;
+    pub use super::focusevent::FocusEvent;
+    pub use super::keyboardevent::KeyboardEvent;
+    pub use super::mouseevent::MouseEvent;
+    pub use super::pointerevent::PointerEvent;
+    pub use super::wheelevent::WheelEvent;
+    pub use super::touchevent::TouchEvent;
+    pub use super::touch::Touch;
+    pub use super::touchlist::TouchList;
+    pub use super::uievent::UIEvent;
+    pub use super::compositionevent::CompositionEvent;
+    pub use super::inputevent::InputEvent;
+    pub use super::animationevent::AnimationEvent;
+    pub use super::transitionevent::TransitionEvent;
+    pub use super::clipboardevent::ClipboardEvent;
+    pub use super::clipboard::Clipboard;
+    pub use super::clipboarditem::ClipboardItem;
+    pub use super::datatransfer::DataTransfer;
+    pub use super::datatransferitem::DataTransferItem;
+    pub use super::datatransferitemlist::DataTransferItemList;
+    pub use super::hashchangeevent::HashChangeEvent;
+    pub use super::popstateevent::PopStateEvent;
+    pub use super::pagetransitionevent::PageTransitionEvent;
+    pub use super::beforeunloadevent::BeforeUnloadEvent;
+    pub use super::progressevent::ProgressEvent;
+    pub use super::submitevent::SubmitEvent;
+    pub use super::formdataevent::FormDataEvent;
+    pub use super::toggleevent::ToggleEvent;
+    pub use super::quotaexceedederror::QuotaExceededError;
+    pub use super::timeranges::TimeRanges;
+    pub use super::texttrack::TextTrack;
+    pub use super::texttracklist::TextTrackList;
+    pub use super::texttrackcue::TextTrackCue;
+    pub use super::texttrackcuelist::TextTrackCueList;
+    pub use super::vttcue::VTTCue;
+    pub use super::vttregion::VTTRegion;
+    pub use super::trackevent::TrackEvent;
+    pub use super::videotrack::VideoTrack;
+    pub use super::videotracklist::VideoTrackList;
+    pub use super::mediasource::MediaSource;
+    pub use super::sourcebuffer::SourceBuffer;
+    pub use super::sourcebufferlist::SourceBufferList;
+    pub use super::intersectionobserver::IntersectionObserver;
+    pub use super::intersectionobserverentry::IntersectionObserverEntry;
+    pub use super::resizeobserver::ResizeObserver;
+    pub use super::resizeobserverentry::ResizeObserverEntry;
+    pub use super::resizeobserversize::ResizeObserverSize;
+    pub use super::readablestream::ReadableStream;
+    pub use super::readablestreamdefaultreader::ReadableStreamDefaultReader;
+    pub use super::readablestreambyobreader::ReadableStreamBYOBReader;
+    pub use super::readablestreamdefaultcontroller::ReadableStreamDefaultController;
+    pub use super::readablebytestreamcontroller::ReadableByteStreamController;
+    pub use super::readablestreambyobrequest::ReadableStreamBYOBRequest;
+    pub use super::writablestream::WritableStream;
+    pub use super::writablestreamdefaultwriter::WritableStreamDefaultWriter;
+    pub use super::writablestreamdefaultcontroller::WritableStreamDefaultController;
+    pub use super::transformstream::TransformStream;
+    pub use super::transformstreamdefaultcontroller::TransformStreamDefaultController;
+    pub use super::compressionstream::CompressionStream;
+    pub use super::decompressionstream::DecompressionStream;
+    pub use super::countqueuingstrategy::CountQueuingStrategy;
+    pub use super::bytelengthqueuingstrategy::ByteLengthQueuingStrategy;
+    pub use super::textencoder::TextEncoder;
+    pub use super::textencoderstream::TextEncoderStream;
+    pub use super::textdecoder::TextDecoder;
+    pub use super::textdecoderstream::TextDecoderStream;
+    pub use super::domrect::DOMRect;
+    pub use super::domrectlist::DOMRectList;
+    pub use super::domrectreadonly::DOMRectReadOnly;
+    pub use super::dompoint::DOMPoint;
+    pub use super::dompointreadonly::DOMPointReadOnly;
+    pub use super::domquad::DOMQuad;
+    pub use super::dommatrix::DOMMatrix;
+    pub use super::dommatrixreadonly::DOMMatrixReadOnly;
+    pub use super::shadowroot::ShadowRoot;
+    pub use super::customelementregistry::CustomElementRegistry;
+    pub use super::customstateset::CustomStateSet;
+    pub use super::elementinternals::ElementInternals;
+    pub use super::xmldocument::XMLDocument;
+    pub use super::treewalker::TreeWalker;
+    pub use super::nodeiterator::NodeIterator;
+    pub use super::staticrange::StaticRange;
+    pub use super::abstractrange::AbstractRange;
+    pub use super::xpathevaluator::XPathEvaluator;
+    pub use super::xpathexpression::XPathExpression;
+    pub use super::xpathresult::XPathResult;
+    pub use super::pipelineid::PipelineId;
+    pub use super::debuggerglobalscope::DebuggerGlobalScope;
+    pub use super::debuggeradddebuggeeevent::DebuggerAddDebuggeeEvent;
+    pub use super::debuggergetpossiblebreakpointsevent::DebuggerGetPossibleBreakpointsEvent;
+    pub use super::commandevent::CommandEvent;
+    pub use super::trustedhtml::TrustedHTML;
+    pub use super::trustedscript::TrustedScript;
+    pub use super::trustedscripturl::TrustedScriptURL;
+    pub use super::trustedtypepolicy::TrustedTypePolicy;
+    pub use super::trustedtypepolicyfactory::TrustedTypePolicyFactory;
+    pub use super::urlpattern::URLPattern;
+    pub use super::fetchlaterresult::FetchLaterResult;
+    pub use super::validitystate::ValidityState;
+    pub use super::radionodelist::RadioNodeList;
+    pub use super::promiserejectionevent::PromiseRejectionEvent;
+    pub use super::promisenativehandler::PromiseNativeHandler;
+    pub use super::cookiestore::CookieStore;
+    pub use super::reportingobserver::ReportingObserver;
+    pub use super::reportingendpoint::ReportingEndpoint;
+    pub use super::visibilitystateentry::VisibilityStateEntry;
+    pub use super::servointernals::ServoInternals;
+    pub use super::windowproxy::WindowProxy;
+    pub use super::dissimilaroriginwindow::DissimilarOriginWindow;
+    pub use super::dissimilaroriginlocation::DissimilarOriginLocation;
+    pub use super::plugin::Plugin;
+    pub use super::pluginarray::PluginArray;
+    pub use super::mimetype::MimeType;
+    pub use super::mimetypearray::MimeTypeArray;
+    pub use super::navigationpreloadmanager::NavigationPreloadManager;
+    pub use super::client::Client;
+    pub use super::workletglobalscope::WorkletGlobalScope;
+    pub use super::worklet::Worklet;
+    pub use super::paintworkletglobalscope::PaintWorkletGlobalScope;
+    pub use super::paintsize::PaintSize;
+    
+    // HTML element types
+    pub use super::html::*;
+    
+    // SVG types
+    pub use super::svg::*;
+    
+    // CSS types
+    pub use super::css::*;
+    
+    // Canvas types
+    pub use super::canvasrenderingcontext2d::CanvasRenderingContext2D;
+    pub use super::canvasgradient::CanvasGradient;
+    pub use super::canvaspattern::CanvasPattern;
+    pub use super::imagedata::ImageData;
+    pub use super::path2d::Path2D;
+    pub use super::offscreencanvas::OffscreenCanvas;
+    pub use super::offscreencanvasrenderingcontext2d::OffscreenCanvasRenderingContext2D;
+    pub use super::imagebitmap::ImageBitmap;
+    
+    // Media types
+    pub use super::media::*;
+    
+    // Performance types
+    pub use super::performance::*;
+    
+    // Worker types
+    pub use super::workers::*;
+    
+    // WebGL types
+    pub use super::webgl::*;
+    
+    // WebGPU types
+    pub use super::webgpu::*;
+    
+    // WebXR types
+    #[cfg(feature = "webxr")]
+    pub use super::webxr::*;
+    
+    // WebRTC types  
+    #[cfg(feature = "webrtc")]
+    pub use super::webrtc::*;
+    
+    // Gamepad types
+    pub use super::gamepad::*;
+    
+    // Geolocation types
+    pub use super::geolocation::*;
+    
+    // IndexedDB types
+    pub use super::indexeddb::*;
+    
+    // Bluetooth types
+    #[cfg(feature = "bluetooth")]
+    pub use super::bluetooth::*;
+    
+    // Credential management types
+    pub use super::credentialmanagement::*;
 }
 
 pub(crate) mod abortcontroller;

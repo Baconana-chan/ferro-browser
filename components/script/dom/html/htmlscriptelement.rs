@@ -11,8 +11,8 @@ use base::id::{PipelineId, WebViewId};
 use dom_struct::dom_struct;
 use encoding_rs::Encoding;
 use html5ever::{LocalName, Prefix, local_name, ns};
-use js::jsval::UndefinedValue;
-use js::rust::{HandleObject, Stencil};
+use crate::js::jsval::UndefinedValue;
+use crate::js::rust::{HandleObject, Stencil};
 use net_traits::http_status::HttpStatus;
 use net_traits::policy_container::PolicyContainer;
 use net_traits::request::{

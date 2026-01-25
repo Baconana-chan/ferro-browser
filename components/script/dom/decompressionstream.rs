@@ -9,10 +9,10 @@ use std::ptr;
 use brotli::DecompressorWriter as BrotliDecoder;
 use dom_struct::dom_struct;
 use flate2::write::{DeflateDecoder, GzDecoder, ZlibDecoder};
-use js::jsapi::JSObject;
-use js::jsval::UndefinedValue;
-use js::rust::{HandleObject as SafeHandleObject, HandleValue as SafeHandleValue};
-use js::typedarray::Uint8Array;
+use crate::js::jsapi::JSObject;
+use crate::js::jsval::UndefinedValue;
+use crate::js::rust::{HandleObject as SafeHandleObject, HandleValue as SafeHandleValue};
+use crate::js::typedarray::Uint8Array;
 use malloc_size_of::{MallocSizeOf, MallocSizeOfOps};
 
 use crate::dom::bindings::buffer_source::create_buffer_source;

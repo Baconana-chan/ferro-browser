@@ -161,7 +161,10 @@ pub(crate) mod utils;
 pub(crate) mod weakref;
 pub(crate) mod xmlname;
 
+#[cfg(feature = "js-spidermonkey")]
 pub(crate) use script_bindings::{callback, iterable, num};
+#[cfg(feature = "js-boa")]
+pub(crate) use crate::script_bindings::{callback, iterable, num};
 
 /// Generated JS-Rust bindings.
 /// Only available when using SpiderMonkey (js-spidermonkey feature)
@@ -194,5 +197,324 @@ pub(crate) mod codegen {
 #[cfg(feature = "js-boa")]
 #[allow(missing_docs, non_snake_case)]
 pub(crate) mod codegen {
-    // Stub types for Boa - real bindings are in boa_bindings::dom
-}
+    pub(crate) mod DomTypeHolder {
+        //! Stub DomTypeHolder for Boa
+        use ::boa_bindings::reflector::DomTypes;
+        
+        /// The type holder for DOM types
+        pub struct DomTypeHolder;
+        
+        impl DomTypes for DomTypeHolder {
+            // Stub implementation - real types defined in boa_bindings
+        }
+    }
+    
+    pub(crate) use crate::script_bindings::codegen::GenericBindings;
+    
+    /// Stub bindings module - contains empty binding modules for Boa
+    /// When using Boa, actual bindings are handled differently
+    #[allow(non_snake_case)]
+    pub(crate) mod Bindings {
+        // Generate stub binding modules for all DOM interfaces
+        // These are empty stubs - actual implementation is in boa_bindings::dom
+        macro_rules! stub_binding {
+            ($name:ident) => {
+                pub mod $name {
+                    #![allow(dead_code, non_upper_case_globals)]
+                }
+            };
+        }
+        
+        // Core DOM bindings
+        stub_binding!(EventBinding);
+        stub_binding!(EventTargetBinding);
+        stub_binding!(NodeBinding);
+        stub_binding!(ElementBinding);
+        stub_binding!(DocumentBinding);
+        stub_binding!(WindowBinding);
+        stub_binding!(HTMLElementBinding);
+        
+        // Events
+        stub_binding!(AnimationEventBinding);
+        stub_binding!(TransitionEventBinding);
+        stub_binding!(EventListenerBinding);
+        stub_binding!(CustomEventBinding);
+        stub_binding!(MouseEventBinding);
+        stub_binding!(KeyboardEventBinding);
+        stub_binding!(UIEventBinding);
+        stub_binding!(FocusEventBinding);
+        stub_binding!(InputEventBinding);
+        stub_binding!(WheelEventBinding);
+        stub_binding!(PointerEventBinding);
+        stub_binding!(TouchEventBinding);
+        stub_binding!(ClipboardEventBinding);
+        stub_binding!(DragEventBinding);
+        stub_binding!(ProgressEventBinding);
+        stub_binding!(ErrorEventBinding);
+        stub_binding!(MessageEventBinding);
+        stub_binding!(PageTransitionEventBinding);
+        stub_binding!(HashChangeEventBinding);
+        stub_binding!(PopStateEventBinding);
+        stub_binding!(StorageEventBinding);
+        stub_binding!(BeforeUnloadEventBinding);
+        stub_binding!(SecurityPolicyViolationEventBinding);
+        stub_binding!(CompositionEventBinding);
+        stub_binding!(TextEventBinding);
+        
+        // AbortController
+        stub_binding!(AbortControllerBinding);
+        stub_binding!(AbortSignalBinding);
+        
+        // Ranges
+        stub_binding!(AbstractRangeBinding);
+        stub_binding!(RangeBinding);
+        stub_binding!(StaticRangeBinding);
+        
+        // Collections
+        stub_binding!(NodeListBinding);
+        stub_binding!(HTMLCollectionBinding);
+        stub_binding!(DOMTokenListBinding);
+        stub_binding!(NamedNodeMapBinding);
+        
+        // DOM traversal
+        stub_binding!(TreeWalkerBinding);
+        stub_binding!(NodeIteratorBinding);
+        stub_binding!(NodeFilterBinding);
+        
+        // Geometry
+        stub_binding!(DOMRectBinding);
+        stub_binding!(DOMRectReadOnlyBinding);
+        stub_binding!(DOMRectListBinding);
+        stub_binding!(DOMPointBinding);
+        stub_binding!(DOMPointReadOnlyBinding);
+        stub_binding!(DOMQuadBinding);
+        stub_binding!(DOMMatrixBinding);
+        stub_binding!(DOMMatrixReadOnlyBinding);
+        
+        // CSS
+        stub_binding!(CSSStyleDeclarationBinding);
+        stub_binding!(CSSRuleBinding);
+        stub_binding!(CSSRuleListBinding);
+        stub_binding!(CSSStyleRuleBinding);
+        stub_binding!(CSSStyleSheetBinding);
+        stub_binding!(StyleSheetBinding);
+        stub_binding!(StyleSheetListBinding);
+        stub_binding!(MediaListBinding);
+        stub_binding!(MediaQueryListBinding);
+        
+        // HTML Elements
+        stub_binding!(HTMLAnchorElementBinding);
+        stub_binding!(HTMLAreaElementBinding);
+        stub_binding!(HTMLAudioElementBinding);
+        stub_binding!(HTMLBaseElementBinding);
+        stub_binding!(HTMLBodyElementBinding);
+        stub_binding!(HTMLBRElementBinding);
+        stub_binding!(HTMLButtonElementBinding);
+        stub_binding!(HTMLCanvasElementBinding);
+        stub_binding!(HTMLDataElementBinding);
+        stub_binding!(HTMLDataListElementBinding);
+        stub_binding!(HTMLDetailsElementBinding);
+        stub_binding!(HTMLDialogElementBinding);
+        stub_binding!(HTMLDirectoryElementBinding);
+        stub_binding!(HTMLDivElementBinding);
+        stub_binding!(HTMLDListElementBinding);
+        stub_binding!(HTMLEmbedElementBinding);
+        stub_binding!(HTMLFieldSetElementBinding);
+        stub_binding!(HTMLFontElementBinding);
+        stub_binding!(HTMLFormElementBinding);
+        stub_binding!(HTMLFrameElementBinding);
+        stub_binding!(HTMLFrameSetElementBinding);
+        stub_binding!(HTMLHeadElementBinding);
+        stub_binding!(HTMLHeadingElementBinding);
+        stub_binding!(HTMLHRElementBinding);
+        stub_binding!(HTMLHtmlElementBinding);
+        stub_binding!(HTMLIFrameElementBinding);
+        stub_binding!(HTMLImageElementBinding);
+        stub_binding!(HTMLInputElementBinding);
+        stub_binding!(HTMLLabelElementBinding);
+        stub_binding!(HTMLLegendElementBinding);
+        stub_binding!(HTMLLIElementBinding);
+        stub_binding!(HTMLLinkElementBinding);
+        stub_binding!(HTMLMapElementBinding);
+        stub_binding!(HTMLMediaElementBinding);
+        stub_binding!(HTMLMenuElementBinding);
+        stub_binding!(HTMLMetaElementBinding);
+        stub_binding!(HTMLMeterElementBinding);
+        stub_binding!(HTMLModElementBinding);
+        stub_binding!(HTMLObjectElementBinding);
+        stub_binding!(HTMLOListElementBinding);
+        stub_binding!(HTMLOptGroupElementBinding);
+        stub_binding!(HTMLOptionElementBinding);
+        stub_binding!(HTMLOutputElementBinding);
+        stub_binding!(HTMLParagraphElementBinding);
+        stub_binding!(HTMLParamElementBinding);
+        stub_binding!(HTMLPictureElementBinding);
+        stub_binding!(HTMLPreElementBinding);
+        stub_binding!(HTMLProgressElementBinding);
+        stub_binding!(HTMLQuoteElementBinding);
+        stub_binding!(HTMLScriptElementBinding);
+        stub_binding!(HTMLSelectElementBinding);
+        stub_binding!(HTMLSlotElementBinding);
+        stub_binding!(HTMLSourceElementBinding);
+        stub_binding!(HTMLSpanElementBinding);
+        stub_binding!(HTMLStyleElementBinding);
+        stub_binding!(HTMLTableCaptionElementBinding);
+        stub_binding!(HTMLTableCellElementBinding);
+        stub_binding!(HTMLTableColElementBinding);
+        stub_binding!(HTMLTableElementBinding);
+        stub_binding!(HTMLTableRowElementBinding);
+        stub_binding!(HTMLTableSectionElementBinding);
+        stub_binding!(HTMLTemplateElementBinding);
+        stub_binding!(HTMLTextAreaElementBinding);
+        stub_binding!(HTMLTimeElementBinding);
+        stub_binding!(HTMLTitleElementBinding);
+        stub_binding!(HTMLTrackElementBinding);
+        stub_binding!(HTMLUListElementBinding);
+        stub_binding!(HTMLUnknownElementBinding);
+        stub_binding!(HTMLVideoElementBinding);
+        
+        // Form elements
+        stub_binding!(FormDataBinding);
+        stub_binding!(HTMLFormControlsCollectionBinding);
+        stub_binding!(RadioNodeListBinding);
+        stub_binding!(ValidityStateBinding);
+        
+        // XHR/Fetch
+        stub_binding!(XMLHttpRequestBinding);
+        stub_binding!(XMLHttpRequestEventTargetBinding);
+        stub_binding!(XMLHttpRequestUploadBinding);
+        stub_binding!(RequestBinding);
+        stub_binding!(ResponseBinding);
+        stub_binding!(HeadersBinding);
+        stub_binding!(BodyBinding);
+        
+        // Blob/File
+        stub_binding!(BlobBinding);
+        stub_binding!(FileBinding);
+        stub_binding!(FileListBinding);
+        stub_binding!(FileReaderBinding);
+        
+        // URL
+        stub_binding!(URLBinding);
+        stub_binding!(URLSearchParamsBinding);
+        
+        // Promises
+        stub_binding!(PromiseBinding);
+        
+        // Text
+        stub_binding!(TextBinding);
+        stub_binding!(CharacterDataBinding);
+        stub_binding!(CommentBinding);
+        stub_binding!(CDATASectionBinding);
+        stub_binding!(ProcessingInstructionBinding);
+        stub_binding!(DocumentTypeBinding);
+        stub_binding!(DocumentFragmentBinding);
+        
+        // Selection
+        stub_binding!(SelectionBinding);
+        
+        // Shadow DOM
+        stub_binding!(ShadowRootBinding);
+        
+        // History
+        stub_binding!(HistoryBinding);
+        stub_binding!(LocationBinding);
+        
+        // Navigator
+        stub_binding!(NavigatorBinding);
+        stub_binding!(ScreenBinding);
+        
+        // Performance
+        stub_binding!(PerformanceBinding);
+        stub_binding!(PerformanceEntryBinding);
+        stub_binding!(PerformanceMarkBinding);
+        stub_binding!(PerformanceMeasureBinding);
+        stub_binding!(PerformanceNavigationBinding);
+        stub_binding!(PerformanceTimingBinding);
+        
+        // Console
+        stub_binding!(ConsoleBinding);
+        
+        // Crypto
+        stub_binding!(CryptoBinding);
+        stub_binding!(SubtleCryptoBinding);
+        stub_binding!(CryptoKeyBinding);
+        
+        // Storage
+        stub_binding!(StorageBinding);
+        
+        // WebSocket
+        stub_binding!(WebSocketBinding);
+        stub_binding!(CloseEventBinding);
+        
+        // Workers
+        stub_binding!(WorkerBinding);
+        stub_binding!(DedicatedWorkerGlobalScopeBinding);
+        stub_binding!(SharedWorkerBinding);
+        stub_binding!(SharedWorkerGlobalScopeBinding);
+        stub_binding!(ServiceWorkerBinding);
+        stub_binding!(ServiceWorkerContainerBinding);
+        stub_binding!(ServiceWorkerRegistrationBinding);
+        stub_binding!(ServiceWorkerGlobalScopeBinding);
+        
+        // Canvas
+        stub_binding!(CanvasRenderingContext2DBinding);
+        stub_binding!(WebGLRenderingContextBinding);
+        stub_binding!(WebGL2RenderingContextBinding);
+        stub_binding!(ImageDataBinding);
+        stub_binding!(Path2DBinding);
+        stub_binding!(CanvasGradientBinding);
+        stub_binding!(CanvasPatternBinding);
+        stub_binding!(TextMetricsBinding);
+        stub_binding!(ImageBitmapBinding);
+        stub_binding!(OffscreenCanvasBinding);
+        
+        // Media
+        stub_binding!(AudioContextBinding);
+        stub_binding!(AudioNodeBinding);
+        stub_binding!(MediaStreamBinding);
+        stub_binding!(MediaRecorderBinding);
+        stub_binding!(MediaSourceBinding);
+        stub_binding!(SourceBufferBinding);
+        stub_binding!(SourceBufferListBinding);
+        
+        // Mutation Observer
+        stub_binding!(MutationObserverBinding);
+        stub_binding!(MutationRecordBinding);
+        
+        // Intersection/Resize Observer
+        stub_binding!(IntersectionObserverBinding);
+        stub_binding!(IntersectionObserverEntryBinding);
+        stub_binding!(ResizeObserverBinding);
+        stub_binding!(ResizeObserverEntryBinding);
+        
+        // Custom Elements
+        stub_binding!(CustomElementRegistryBinding);
+        
+        // Misc
+        stub_binding!(DOMExceptionBinding);
+        stub_binding!(DOMParserBinding);
+        stub_binding!(XMLSerializerBinding);
+        stub_binding!(XPathEvaluatorBinding);
+        stub_binding!(XPathResultBinding);
+        stub_binding!(AttrBinding);
+    }
+    
+    pub(crate) mod InterfaceObjectMap {
+        //! Interface object map stubs
+        use std::collections::HashMap;
+        
+        /// Get the interface object map
+        pub fn get() -> HashMap<&'static str, u16> {
+            HashMap::new()
+        }
+    }
+    
+    pub(crate) mod ConcreteInheritTypes {
+        //! Concrete inheritance types for Boa
+    }
+    
+    pub(crate) use crate::script_bindings::codegen::{PrototypeList, RegisterBindings};
+    
+    // Re-export UnionTypes from script_bindings shim
+    pub(crate) use crate::script_bindings::codegen::UnionTypes;}

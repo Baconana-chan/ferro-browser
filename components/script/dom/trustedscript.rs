@@ -4,8 +4,8 @@
 use std::fmt;
 
 use dom_struct::dom_struct;
-use js::jsapi::CompilationType;
-use js::rust::HandleValue;
+use crate::js::jsapi::CompilationType;
+use crate::js::rust::HandleValue;
 
 use crate::dom::bindings::codegen::Bindings::TrustedScriptBinding::TrustedScriptMethods;
 use crate::dom::bindings::codegen::UnionTypes::TrustedScriptOrString;

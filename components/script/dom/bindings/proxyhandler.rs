@@ -6,10 +6,16 @@
 
 #![deny(missing_docs)]
 
-use js::jsapi::{GetObjectRealmOrNull, GetRealmPrincipals, HandleObject as RawHandleObject};
-use js::realm::CurrentRealm;
+use crate::js::jsapi::{GetObjectRealmOrNull, GetRealmPrincipals, HandleObject as RawHandleObject};
+use crate::js::realm::CurrentRealm;
+#[cfg(feature = "js-spidermonkey")]
 use script_bindings::principals::ServoJSPrincipalsRef;
+#[cfg(feature = "js-boa")]
+use crate::script_bindings::principals::ServoJSPrincipalsRef;
+#[cfg(feature = "js-spidermonkey")]
 pub(crate) use script_bindings::proxyhandler::*;
+#[cfg(feature = "js-boa")]
+pub(crate) use crate::script_bindings::proxyhandler::*;
 
 /// <https://html.spec.whatwg.org/multipage/#isplatformobjectsameorigin-(-o-)>
 pub(crate) unsafe fn is_platform_object_same_origin(

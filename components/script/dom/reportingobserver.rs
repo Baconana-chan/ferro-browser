@@ -7,7 +7,7 @@ use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use dom_struct::dom_struct;
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use script_bindings::match_domstring_ascii;
 use script_bindings::str::DOMString;
 use servo_url::ServoUrl;

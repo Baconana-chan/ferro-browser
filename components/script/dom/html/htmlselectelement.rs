@@ -9,7 +9,7 @@ use dom_struct::dom_struct;
 use embedder_traits::EmbedderControlRequest;
 use embedder_traits::{SelectElementOption, SelectElementOptionOrOptgroup};
 use html5ever::{LocalName, Prefix, QualName, local_name, ns};
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use style::attr::AttrValue;
 use stylo_dom::ElementState;
 use crate::dom::bindings::refcounted::Trusted;

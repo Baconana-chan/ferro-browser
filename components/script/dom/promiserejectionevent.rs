@@ -6,9 +6,9 @@ use std::ptr::NonNull;
 use std::rc::Rc;
 
 use dom_struct::dom_struct;
-use js::jsapi::{Heap, JSObject};
-use js::jsval::JSVal;
-use js::rust::{HandleObject, HandleValue, MutableHandleValue};
+use crate::js::jsapi::{Heap, JSObject};
+use crate::js::jsval::JSVal;
+use crate::js::rust::{HandleObject, HandleValue, MutableHandleValue};
 use stylo_atoms::Atom;
 
 use crate::dom::bindings::codegen::Bindings::EventBinding::EventMethods;
