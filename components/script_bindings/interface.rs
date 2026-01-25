@@ -8,10 +8,10 @@ use std::convert::TryFrom;
 use std::ffi::CStr;
 use std::ptr;
 
-use js::error::throw_type_error;
-use js::glue::UncheckedUnwrapObject;
-use js::jsapi::JS::CompartmentIterResult;
-use js::jsapi::{
+use crate::js::error::throw_type_error;
+use crate::js::glue::UncheckedUnwrapObject;
+use crate::js::jsapi::JS::CompartmentIterResult;
+use crate::js::jsapi::{
     CallArgs, CheckedUnwrapStatic, Compartment, CompartmentSpecifier, CurrentGlobalOrNull,
     GetFunctionRealm, GetNonCCWObjectGlobal, GetRealmGlobalOrNull, GetWellKnownSymbol,
     HandleObject as RawHandleObject, IsSharableCompartment, IsSystemCompartment,
@@ -22,13 +22,13 @@ use js::jsapi::{
     JSPROP_READONLY, JSPROP_RESOLVING, JSPropertySpec, JSString, JSTracer, ObjectOps,
     OnNewGlobalHookOption, SymbolCode, TrueHandleValue, Value, jsid,
 };
-use js::jsval::{JSVal, NullValue, PrivateValue};
-use js::rust::wrappers::{
+use crate::js::jsval::{JSVal, NullValue, PrivateValue};
+use crate::js::rust::wrappers::{
     JS_DefineProperty, JS_DefineProperty3, JS_DefineProperty4, JS_DefineProperty5,
     JS_DefinePropertyById5, JS_FireOnNewGlobalObject, JS_LinkConstructorAndPrototype,
     JS_NewObjectWithGivenProto, RUST_SYMBOL_TO_JSID,
 };
-use js::rust::{
+use crate::js::rust::{
     HandleObject, HandleValue, MutableHandleObject, RealmOptions, define_methods,
     define_properties, get_object_class, is_dom_class, maybe_wrap_object,
 };

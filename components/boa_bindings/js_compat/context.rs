@@ -6,11 +6,11 @@
 use std::ptr;
 use std::ffi::c_void;
 
-use super::jsapi::{RawJSContext, JSObject, Value};
+use super::jsapi::{JSObject, Value};
 use super::rust::{HandleObject, HandleValue, MutableHandleValue};
 
-// Re-export JSContext from jsapi for convenience
-pub use super::jsapi::JSContext;
+// Re-export JSContext and RawJSContext from jsapi for convenience
+pub use super::jsapi::{JSContext, RawJSContext};
 
 /// CurrentRealm - get the current realm
 pub struct CurrentRealm {

@@ -8,6 +8,78 @@ use std::ffi::c_void;
 use std::marker::PhantomData;
 // Note: We don't use Boa's Context directly here, we define our own opaque types
 
+// ===================
+// Bitfield Unit Support
+// ===================
+
+/// __BindgenBitfieldUnit - used for bitfield handling in bindgen-style structs
+#[repr(C)]
+#[derive(Copy, Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct __BindgenBitfieldUnit<Storage> {
+    storage: Storage,
+}
+
+impl<Storage> __BindgenBitfieldUnit<Storage> {
+    #[inline]
+    pub const fn new(storage: Storage) -> Self {
+        Self { storage }
+    }
+}
+
+impl<Storage: AsRef<[u8]> + AsMut<[u8]>> __BindgenBitfieldUnit<Storage> {
+    #[inline]
+    pub fn get_bit(&self, index: usize) -> bool {
+        debug_assert!(index / 8 < self.storage.as_ref().len());
+        let byte_index = index / 8;
+        let byte = self.storage.as_ref()[byte_index];
+        let bit_index = index % 8;
+        let mask = 1 << bit_index;
+        byte & mask == mask
+    }
+
+    #[inline]
+    pub fn set_bit(&mut self, index: usize, val: bool) {
+        debug_assert!(index / 8 < self.storage.as_ref().len());
+        let byte_index = index / 8;
+        let byte = &mut self.storage.as_mut()[byte_index];
+        let bit_index = index % 8;
+        let mask = 1 << bit_index;
+        if val {
+            *byte |= mask;
+        } else {
+            *byte &= !mask;
+        }
+    }
+
+    #[inline]
+    pub fn get(&self, bit_offset: usize, bit_width: u8) -> u64 {
+        debug_assert!(bit_width <= 64);
+        debug_assert!(bit_offset / 8 < self.storage.as_ref().len());
+        debug_assert!((bit_offset + (bit_width as usize)) / 8 <= self.storage.as_ref().len());
+
+        let mut val = 0;
+        for i in 0..(bit_width as usize) {
+            if self.get_bit(i + bit_offset) {
+                val |= 1 << i;
+            }
+        }
+        val
+    }
+
+    #[inline]
+    pub fn set(&mut self, bit_offset: usize, bit_width: u8, val: u64) {
+        debug_assert!(bit_width <= 64);
+        debug_assert!(bit_offset / 8 < self.storage.as_ref().len());
+        debug_assert!((bit_offset + (bit_width as usize)) / 8 <= self.storage.as_ref().len());
+
+        for i in 0..(bit_width as usize) {
+            let mask = 1 << i;
+            let val_bit_is_set = val & mask == mask;
+            self.set_bit(i + bit_offset, val_bit_is_set);
+        }
+    }
+}
+
 /// Opaque JSContext equivalent - wraps Boa Context
 pub struct JSContext {
     inner: *mut c_void,
@@ -922,6 +994,9 @@ pub use super::glue::PropertyDescriptor;
 pub mod JS {
     use super::*;
     
+    /// CompartmentIterResult re-export in JS namespace
+    pub type CompartmentIterResult = super::CompartmentIterResult;
+    
     /// Compile JavaScript source
     pub unsafe fn Compile(
         _cx: *mut RawJSContext,
@@ -1685,4 +1760,617 @@ pub enum JSErrNum {
     JSMSG_OK = 0,
     JSMSG_NOT_AN_ERROR = 1,
     // Add more as needed
+}
+
+// ===================
+// Realm Management
+// ===================
+
+/// Realm - opaque type representing a JavaScript realm
+#[repr(C)]
+pub struct Realm {
+    _private: [u8; 0],
+}
+
+/// Enter a realm, returning the old realm
+pub unsafe fn EnterRealm(_cx: *mut RawJSContext, _target: *mut JSObject) -> *mut Realm {
+    ptr::null_mut()
+}
+
+/// Leave a realm, restoring the old realm
+pub unsafe fn LeaveRealm(_cx: *mut RawJSContext, _old_realm: *mut Realm) {
+}
+
+/// Check if an object is a WindowProxy
+pub unsafe fn IsWindowProxy(_obj: *mut JSObject) -> bool {
+    false
+}
+
+/// Get Latin1 string chars and length
+pub unsafe fn JS_GetLatin1StringCharsAndLength(
+    _cx: *mut RawJSContext,
+    _nogc: *const c_void,
+    _str: *mut JSString,
+    _length: *mut usize,
+) -> *const u8 {
+    ptr::null()
+}
+
+/// Atomize and pin a string
+pub unsafe fn JS_AtomizeAndPinString(
+    _cx: *mut RawJSContext,
+    _s: *const i8,
+) -> *mut JSString {
+    ptr::null_mut()
+}
+
+// ===================
+// Function/Property Specification
+// ===================
+
+/// JSNative function type
+pub type JSNative = Option<unsafe extern "C" fn(*mut RawJSContext, u32, *mut Value) -> bool>;
+
+/// JSFunctionSpec - specification for defining functions
+#[repr(C)]
+pub struct JSFunctionSpec {
+    pub name: JSFunctionSpec_Name,
+    pub call: JSNativeWrapper,
+    pub nargs: u16,
+    pub flags: u16,
+    pub self_hosted_name: *const i8,
+}
+
+unsafe impl Sync for JSFunctionSpec {}
+
+impl JSFunctionSpec {
+    pub const TERMINATOR: Self = Self {
+        name: JSFunctionSpec_Name { string_: ptr::null() },
+        call: JSNativeWrapper { op: None, info: ptr::null() },
+        nargs: 0,
+        flags: 0,
+        self_hosted_name: ptr::null(),
+    };
+    
+    pub fn is_terminator(&self) -> bool {
+        // SAFETY: We're checking if the string pointer is null, which is safe
+        unsafe { self.name.string_.is_null() }
+    }
+}
+
+/// JSFunctionSpec name union
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union JSFunctionSpec_Name {
+    pub string_: *const i8,
+    pub symbol_: *const c_void,
+}
+
+/// JSNativeWrapper - wraps a native function with JIT info
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct JSNativeWrapper {
+    pub op: JSNative,
+    pub info: *const JSJitInfo,
+}
+
+/// JSPropertySpec - specification for defining properties
+#[repr(C)]
+pub struct JSPropertySpec {
+    pub name: JSPropertySpec_Name,
+    pub attributes_: u8,
+    pub kind_: u8,
+    pub u: JSPropertySpec_AccessorsOrValue,
+}
+
+unsafe impl Sync for JSPropertySpec {}
+
+impl JSPropertySpec {
+    pub const TERMINATOR: Self = Self {
+        name: JSPropertySpec_Name { string_: ptr::null() },
+        attributes_: 0,
+        kind_: 0,
+        u: JSPropertySpec_AccessorsOrValue { 
+            accessors: JSPropertySpec_AccessorsOrValue_Accessors { 
+                getter: JSPropertySpec_Accessor { native: JSNativeWrapper { op: None, info: ptr::null() } },
+                setter: JSPropertySpec_Accessor { native: JSNativeWrapper { op: None, info: ptr::null() } },
+            }
+        },
+    };
+    
+    pub fn is_terminator(&self) -> bool {
+        // SAFETY: We're checking if the string pointer is null, which is safe
+        unsafe { self.name.string_.is_null() }
+    }
+}
+
+/// JSPropertySpec name union
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union JSPropertySpec_Name {
+    pub string_: *const i8,
+    pub symbol_: *const c_void,
+}
+
+/// JSPropertySpec accessor
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct JSPropertySpec_Accessor {
+    pub native: JSNativeWrapper,
+}
+
+/// JSPropertySpec accessors or value union
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union JSPropertySpec_AccessorsOrValue {
+    pub accessors: JSPropertySpec_AccessorsOrValue_Accessors,
+    pub value: JSPropertySpec_ValueWrapper,
+}
+
+/// JSPropertySpec accessor pair
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct JSPropertySpec_AccessorsOrValue_Accessors {
+    pub getter: JSPropertySpec_Accessor,
+    pub setter: JSPropertySpec_Accessor,
+}
+
+/// JSPropertySpec value wrapper
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct JSPropertySpec_ValueWrapper {
+    pub type_: JSPropertySpec_ValueWrapper_Type,
+    pub u: JSPropertySpec_ValueWrapper_Value,
+}
+
+/// JSPropertySpec value type
+#[repr(u8)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum JSPropertySpec_ValueWrapper_Type {
+    Double = 0,
+    String = 1,
+    Int32 = 2,
+}
+
+/// JSPropertySpec value union
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union JSPropertySpec_ValueWrapper_Value {
+    pub double_: f64,
+    pub string_: *const i8,
+    pub int32_: i32,
+}
+
+// ===================
+// Property Flags
+// ===================
+
+/// JSFUN_CONSTRUCTOR - function is a constructor
+pub const JSFUN_CONSTRUCTOR: u16 = 0x400;
+
+/// JSPROP_RESOLVING - property is being resolved
+pub const JSPROP_RESOLVING: u32 = 0x8000;
+
+// ===================
+// Compartment/Realm Functions
+// ===================
+
+/// Compartment - opaque type for compartments
+#[repr(C)]
+pub struct Compartment {
+    _private: [u8; 0],
+}
+
+/// CompartmentSpecifier - specifies a compartment for an operation
+#[repr(C)]
+pub struct CompartmentSpecifier {
+    _private: [u8; 0],
+}
+
+/// CheckedUnwrapStatic - unwrap an object with checks
+pub unsafe fn CheckedUnwrapStatic(_obj: *mut JSObject) -> *mut JSObject {
+    ptr::null_mut()
+}
+
+/// GetFunctionRealm - get the realm of a function
+pub unsafe fn GetFunctionRealm(_cx: *mut RawJSContext, _fun: HandleObject<'_>) -> *mut Realm {
+    ptr::null_mut()
+}
+
+/// GetRealmGlobalOrNull - get the global for a realm
+pub unsafe fn GetRealmGlobalOrNull(_realm: *mut Realm) -> *mut JSObject {
+    ptr::null_mut()
+}
+
+/// IsSharableCompartment - check if compartment is sharable
+pub unsafe fn IsSharableCompartment(_comp: *mut Compartment) -> bool {
+    false
+}
+
+/// IsSystemCompartment - check if compartment is system compartment
+pub unsafe fn IsSystemCompartment(_comp: *mut Compartment) -> bool {
+    false
+}
+
+/// Compartment iteration callback type
+pub type CompartmentCallback = Option<unsafe extern "C" fn(*mut RawJSContext, *mut c_void, *mut Compartment) -> CompartmentIterResult>;
+
+/// JS_IterateCompartments - iterate over compartments
+pub unsafe fn JS_IterateCompartments(
+    _cx: *mut RawJSContext,
+    _data: *mut c_void,
+    _callback: CompartmentCallback,
+) {
+}
+
+/// OnNewGlobalHookOption - option for new global hooks
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OnNewGlobalHookOption {
+    FireOnNewGlobalHook = 0,
+    DontFireOnNewGlobalHook = 1,
+}
+
+/// JS_NewGlobalObject - create a new global object
+pub unsafe fn JS_NewGlobalObject(
+    _cx: *mut RawJSContext,
+    _clasp: *const JSClass,
+    _principals: *mut JSPrincipals,
+    _hook_option: OnNewGlobalHookOption,
+    _options: *const c_void,
+) -> *mut JSObject {
+    ptr::null_mut()
+}
+
+/// JS_SetTrustedPrincipals - set trusted principals
+pub unsafe fn JS_SetTrustedPrincipals(
+    _cx: *mut RawJSContext,
+    _principals: *mut JSPrincipals,
+) {
+}
+
+// ===================
+// Prototype Functions
+// ===================
+
+/// GetRealmErrorPrototype - get Error.prototype for a realm
+pub unsafe fn GetRealmErrorPrototype(_cx: *mut RawJSContext) -> *mut JSObject {
+    ptr::null_mut()
+}
+
+/// GetRealmFunctionPrototype - get Function.prototype for a realm
+pub unsafe fn GetRealmFunctionPrototype(_cx: *mut RawJSContext) -> *mut JSObject {
+    ptr::null_mut()
+}
+
+/// GetRealmIteratorPrototype - get the iterator prototype for a realm
+pub unsafe fn GetRealmIteratorPrototype(_cx: *mut RawJSContext) -> *mut JSObject {
+    ptr::null_mut()
+}
+
+/// GetRealmObjectPrototype - get Object.prototype for a realm
+pub unsafe fn GetRealmObjectPrototype(_cx: *mut RawJSContext) -> *mut JSObject {
+    ptr::null_mut()
+}
+
+/// GetStaticPrototype - get the [[Prototype]] slot of an object
+pub unsafe fn GetStaticPrototype(_obj: *mut JSObject) -> *mut JSObject {
+    ptr::null_mut()
+}
+
+// ===================
+// Mutable Handle ID Vector
+// ===================
+
+/// MutableHandleIdVector - mutable handle to a vector of property IDs
+pub type MutableHandleIdVector<'a> = MutableHandle<'a, *mut c_void>;
+
+// ===================
+// DOM Proxy Functions
+// ===================
+
+/// DOMProxyShadowsResult - result of checking if proxy shadows
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DOMProxyShadowsResult {
+    ShadowCheckFailed = 0,
+    Shadows = 1,
+    DoesntShadow = 2,
+    DoesntShadowUnique = 3,
+    ShadowsViaDirectExpando = 4,
+    ShadowsViaIndirectExpando = 5,
+}
+
+/// DOMProxyShadowsCheck type
+pub type DOMProxyShadowsCheck = Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleId<'_>) -> DOMProxyShadowsResult>;
+
+/// SetDOMProxyInformation - set DOM proxy information
+pub unsafe fn SetDOMProxyInformation(
+    _handler_family: *const c_void,
+    _shadows_check: DOMProxyShadowsCheck,
+) {
+}
+
+// ===================
+// Object Operations
+// ===================
+
+/// ObjectOps - object operations struct
+#[repr(C)]
+pub struct ObjectOps {
+    pub lookup_property: Option<unsafe extern "C" fn() -> bool>,
+    pub define_property: Option<unsafe extern "C" fn() -> bool>,
+    pub has_property: Option<unsafe extern "C" fn() -> bool>,
+    pub get_property: Option<unsafe extern "C" fn() -> bool>,
+    pub set_property: Option<unsafe extern "C" fn() -> bool>,
+    pub get_own_property_descriptor: Option<unsafe extern "C" fn() -> bool>,
+    pub delete_property: Option<unsafe extern "C" fn() -> bool>,
+    pub get_elements: Option<unsafe extern "C" fn() -> bool>,
+    pub fun_to_string: Option<unsafe extern "C" fn() -> *mut JSString>,
+}
+
+impl Default for ObjectOps {
+    fn default() -> Self {
+        Self {
+            lookup_property: None,
+            define_property: None,
+            has_property: None,
+            get_property: None,
+            set_property: None,
+            get_own_property_descriptor: None,
+            delete_property: None,
+            get_elements: None,
+            fun_to_string: None,
+        }
+    }
+}
+
+// ===================
+// JSJitInfo Types
+// ===================
+
+/// JSJitInfo - JIT optimization info for native functions
+#[repr(C)]
+pub struct JSJitInfo {
+    pub call: JSJitInfo__bindgen_ty_1,
+    pub proto_id_: u16,
+    pub depth_: u16,
+    pub _bitfield_1: __BindgenBitfieldUnit<[u8; 4]>,
+}
+
+impl JSJitInfo {
+    pub const fn new(
+        getter: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, *mut c_void, JSJitGetterCallArgs) -> bool>,
+        proto_id: u16,
+        depth: u16,
+        ty: u8,
+        alias_set: u8,
+        return_type: u8,
+        is_infallible: bool,
+        is_movement_free: bool,
+        is_effect_free: bool,
+        is_always_in_slot: bool,
+        is_lazily_cached_in_slot: bool,
+        is_typed_method: bool,
+        slot_index: u8,
+    ) -> Self {
+        let mut info = Self {
+            call: JSJitInfo__bindgen_ty_1 { getter },
+            proto_id_: proto_id,
+            depth_: depth,
+            _bitfield_1: __BindgenBitfieldUnit::new([0u8; 4]),
+        };
+        // Set bitfield values (simplified - actual layout depends on SpiderMonkey)
+        let _ = (ty, alias_set, return_type, is_infallible, is_movement_free, 
+                 is_effect_free, is_always_in_slot, is_lazily_cached_in_slot,
+                 is_typed_method, slot_index);
+        info
+    }
+}
+
+impl Default for JSJitInfo {
+    fn default() -> Self {
+        Self {
+            call: JSJitInfo__bindgen_ty_1 { getter: None },
+            proto_id_: 0,
+            depth_: 0,
+            _bitfield_1: __BindgenBitfieldUnit::new([0u8; 4]),
+        }
+    }
+}
+
+/// JSJitInfo call union
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union JSJitInfo__bindgen_ty_1 {
+    pub getter: JSJitGetterOp,
+    pub setter: JSJitSetterOp,
+    pub method: JSJitMethodOp,
+    pub static_method: JSNative,
+}
+
+/// JSJitInfo operation types
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum JSJitInfo__bindgen_ty_2 {
+    Getter = 0,
+    Setter = 1,
+    Method = 2,
+    StaticMethod = 3,
+}
+
+/// JSJitInfo return type
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum JSJitInfo__bindgen_ty_3 {
+    JSVAL_TYPE_DOUBLE = 0,
+    JSVAL_TYPE_INT32 = 1,
+    JSVAL_TYPE_BOOLEAN = 2,
+    JSVAL_TYPE_UNDEFINED = 3,
+    JSVAL_TYPE_NULL = 4,
+    JSVAL_TYPE_STRING = 5,
+    JSVAL_TYPE_SYMBOL = 6,
+    JSVAL_TYPE_OBJECT = 7,
+    JSVAL_TYPE_UNKNOWN = 8,
+}
+
+/// JSJitGetterOp - JIT getter operation
+pub type JSJitGetterOp = Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, *mut c_void, JSJitGetterCallArgs) -> bool>;
+
+/// JSJitSetterOp - JIT setter operation
+pub type JSJitSetterOp = Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, *mut c_void, JSJitSetterCallArgs) -> bool>;
+
+/// JSJitMethodOp - JIT method operation
+pub type JSJitMethodOp = Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, *mut c_void, *const CallArgs) -> bool>;
+
+/// JSJitGetterCallArgs - arguments for JIT getter
+#[repr(transparent)]
+pub struct JSJitGetterCallArgs {
+    pub rval: MutableHandleValue<'static>,
+}
+
+impl JSJitGetterCallArgs {
+    pub fn rval(&self) -> MutableHandleValue<'_> {
+        MutableHandleValue { 
+            ptr: self.rval.ptr,
+            _marker: PhantomData,
+        }
+    }
+}
+
+/// JSJitSetterCallArgs - arguments for JIT setter
+#[repr(transparent)]
+pub struct JSJitSetterCallArgs {
+    pub value: HandleValue<'static>,
+}
+
+impl JSJitSetterCallArgs {
+    pub fn get(&self, _index: u32) -> HandleValue<'_> {
+        HandleValue {
+            ptr: self.value.ptr,
+            _marker: PhantomData,
+        }
+    }
+}
+
+/// JSTypedMethodJitInfo - typed method JIT info
+#[repr(C)]
+pub struct JSTypedMethodJitInfo {
+    pub base: JSJitInfo,
+    pub args: *const JSJitInfo_ArgType,
+}
+
+/// JSJitInfo argument type
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum JSJitInfo_ArgType {
+    String = 0,
+    Integer = 1,
+    Double = 2,
+    Boolean = 3,
+    Object = 4,
+    Null = 5,
+    Undefined = 6,
+}
+
+/// JSJitInfo operation type
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum JSJitInfo_OpType {
+    Getter = 0,
+    Setter = 1,
+    Method = 2,
+    StaticMethod = 3,
+}
+
+/// JSJitInfo alias set
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum JSJitInfo_AliasSet {
+    AliasNone = 0,
+    AliasDOMSets = 1,
+    AliasEverything = 2,
+}
+
+// ===================
+// JSValueType
+// ===================
+
+/// JSValueType - type tag for JavaScript values
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum JSValueType {
+    JSVAL_TYPE_DOUBLE = 0x00,
+    JSVAL_TYPE_INT32 = 0x01,
+    JSVAL_TYPE_BOOLEAN = 0x02,
+    JSVAL_TYPE_UNDEFINED = 0x03,
+    JSVAL_TYPE_NULL = 0x04,
+    JSVAL_TYPE_MAGIC = 0x05,
+    JSVAL_TYPE_STRING = 0x06,
+    JSVAL_TYPE_SYMBOL = 0x07,
+    JSVAL_TYPE_PRIVATE_GCTHING = 0x08,
+    JSVAL_TYPE_BIGINT = 0x09,
+    JSVAL_TYPE_OBJECT = 0x0c,
+    JSVAL_TYPE_UNKNOWN = 0x20,
+}
+
+// ===================
+// Current Realm
+// ===================
+
+/// GetCurrentRealmOrNull - get the current realm or null
+pub unsafe fn GetCurrentRealmOrNull(_cx: *mut RawJSContext) -> *mut Realm {
+    ptr::null_mut()
+}
+
+// ===================
+// True Handle Value
+// ===================
+
+/// Static true value for TrueHandleValue
+static TRUE_VALUE: Value = Value { data: 0x0001_0001 };
+
+/// TrueHandleValue - a constant handle to true
+pub unsafe fn TrueHandleValue() -> HandleValue<'static> {
+    Handle::from_raw(&TRUE_VALUE)
+}
+
+// ===================
+// Principals Functions
+// ===================
+
+/// JS_DropPrincipals - decrement principals refcount
+pub unsafe fn JS_DropPrincipals(_cx: *mut RawJSContext, _principals: *mut JSPrincipals) {
+}
+
+/// JS_HoldPrincipals - increment principals refcount
+pub unsafe fn JS_HoldPrincipals(_principals: *mut JSPrincipals) {
+}
+
+// ===================
+// Compartment Iteration
+// ===================
+
+/// CompartmentIterResult - result of compartment iteration
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CompartmentIterResult {
+    KeepGoing = 0,
+    Stop = 1,
+}
+
+// Note: CompartmentIterResult is also available in JS namespace via the main JS mod above
+
+// ===================
+// JS_CALLEE macro equivalent
+// ===================
+
+/// JS_CALLEE - get the callee from the vp array
+/// In SpiderMonkey, vp[-2] is the callee. This is a stub.
+#[inline]
+pub unsafe fn JS_CALLEE(_cx: *mut RawJSContext, vp: *mut Value) -> Value {
+    // In SpiderMonkey layout, callee is at vp[-2]
+    // For our stub, just return undefined
+    let _ = vp;
+    Value::undefined()
 }

@@ -9,12 +9,12 @@ use std::ffi::CString;
 use std::mem::drop;
 use std::rc::Rc;
 
-use js::jsapi::{
+use crate::js::jsapi::{
     AddRawValueRoot, EnterRealm, Heap, IsCallable, JSObject, LeaveRealm, Realm, RemoveRawValueRoot,
 };
-use js::jsval::{JSVal, NullValue, ObjectValue, UndefinedValue};
-use js::rust::wrappers::{JS_GetProperty, JS_WrapObject};
-use js::rust::{HandleObject, MutableHandleValue, Runtime};
+use crate::js::jsval::{JSVal, NullValue, ObjectValue, UndefinedValue};
+use crate::js::rust::wrappers::{JS_GetProperty, JS_WrapObject};
+use crate::js::rust::{HandleObject, MutableHandleValue, Runtime};
 
 use crate::DomTypes;
 use crate::codegen::GenericBindings::WindowBinding::Window_Binding::WindowMethods;

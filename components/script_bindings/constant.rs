@@ -6,11 +6,11 @@
 
 use std::ffi::CStr;
 
-use js::jsapi::{JSPROP_ENUMERATE, JSPROP_PERMANENT, JSPROP_READONLY};
-use js::jsval::{BooleanValue, DoubleValue, Int32Value, JSVal, NullValue, UInt32Value};
-use js::rooted;
-use js::rust::HandleObject;
-use js::rust::wrappers::JS_DefineProperty;
+use crate::js::jsapi::{JSPROP_ENUMERATE, JSPROP_PERMANENT, JSPROP_READONLY};
+use crate::js::jsval::{BooleanValue, DoubleValue, Int32Value, JSVal, NullValue, UInt32Value};
+use crate::js::rooted;
+use crate::js::rust::HandleObject;
+use crate::js::rust::wrappers::JS_DefineProperty;
 
 use crate::script_runtime::JSContext;
 

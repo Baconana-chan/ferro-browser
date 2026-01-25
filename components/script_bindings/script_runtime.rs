@@ -6,7 +6,7 @@ use std::cell::Cell;
 use std::marker::PhantomData;
 use std::ops::Deref;
 
-use js::jsapi::JSContext as RawJSContext;
+use crate::js::jsapi::JSContext as RawJSContext;
 
 #[derive(Clone, Copy)]
 #[repr(transparent)]
@@ -23,12 +23,12 @@ impl JSContext {
         JSContext(raw_js_context)
     }
 
-    /// For compatibility with [js::context::JSContext]
+    /// For compatibility with [crate::js::context::JSContext]
     pub fn raw_cx(&self) -> *mut RawJSContext {
         self.0
     }
 
-    /// For compatibility with [js::context::JSContext]
+    /// For compatibility with [crate::js::context::JSContext]
     pub fn raw_cx_no_gc(&self) -> *mut RawJSContext {
         self.0
     }

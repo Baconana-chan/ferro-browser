@@ -7,9 +7,9 @@ use std::mem::ManuallyDrop;
 use std::ops::Deref;
 use std::ptr::NonNull;
 
-use js::glue::{CreateRustJSPrincipals, GetRustJSPrincipalsPrivate};
-use js::jsapi::{JS_DropPrincipals, JS_HoldPrincipals, JSPrincipals};
-use js::rust::Runtime;
+use crate::js::glue::{CreateRustJSPrincipals, GetRustJSPrincipalsPrivate};
+use crate::js::jsapi::{JS_DropPrincipals, JS_HoldPrincipals, JSPrincipals};
+use crate::js::rust::Runtime;
 use servo_url::MutableOrigin;
 
 use crate::DomTypes;

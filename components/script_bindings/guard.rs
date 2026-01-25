@@ -4,7 +4,7 @@
 
 //! Machinery to conditionally expose things.
 
-use js::rust::HandleObject;
+use crate::js::rust::HandleObject;
 use servo_config::prefs::get;
 
 use crate::DomTypes;

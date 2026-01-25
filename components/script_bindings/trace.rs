@@ -14,9 +14,9 @@ use html5ever::interface::{Tracer as HtmlTracer, TreeSink};
 use html5ever::tokenizer::{TokenSink, Tokenizer};
 use html5ever::tree_builder::TreeBuilder;
 use indexmap::IndexMap;
-use js::gc::{GCMethods, Handle};
-use js::glue::CallObjectTracer;
-use js::jsapi::{GCTraceKindToAscii, Heap, JSObject, JSTracer, TraceKind};
+use crate::js::gc::{GCMethods, Handle};
+use crate::js::glue::CallObjectTracer;
+use crate::js::jsapi::{GCTraceKindToAscii, Heap, JSObject, JSTracer, TraceKind};
 use malloc_size_of::{MallocSizeOf, MallocSizeOfOps};
 use parking_lot::RwLock;
 use servo_arc::Arc as ServoArc;
@@ -74,7 +74,7 @@ macro_rules! unsafe_no_jsmanaged_fields(
             #[expect(unsafe_code)]
             unsafe impl crate::JSTraceable for $ty {
                 #[inline]
-                unsafe fn trace(&self, _: *mut ::js::jsapi::JSTracer) {
+                unsafe fn trace(&self, _: *mut crate::js::jsapi::JSTracer) {
                     // Do nothing
                 }
             }
@@ -328,23 +328,25 @@ unsafe impl<Handle: JSTraceable + Clone, Sink: JSTraceable + XmlTreeSink<Handle 
 /// If you have an arbitrary number of DomObjects to root, use rooted_vec!.
 /// If you know what you're doing, use this.
 #[cfg_attr(crown, crown::unrooted_must_root_lint::allow_unrooted_interior)]
-pub struct RootedTraceableBox<T: JSTraceable + 'static>(js::gc::RootedTraceableBox<T>);
+pub struct RootedTraceableBox<T: JSTraceable + 'static> {
+    inner: Box<T>,
+}
 
 unsafe impl<T: JSTraceable + 'static> JSTraceable for RootedTraceableBox<T> {
     unsafe fn trace(&self, tracer: *mut JSTracer) {
-        unsafe { self.0.trace(tracer) };
+        unsafe { (*self.inner).trace(tracer) };
     }
 }
 
 impl<T: JSTraceable + 'static> RootedTraceableBox<T> {
     /// DomRoot a JSTraceable thing for the life of this RootedTraceableBox
     pub fn new(traceable: T) -> RootedTraceableBox<T> {
-        Self(js::gc::RootedTraceableBox::new(traceable))
+        Self { inner: Box::new(traceable) }
     }
 
     /// Consumes a boxed JSTraceable and roots it for the life of this RootedTraceableBox.
     pub fn from_box(boxed_traceable: Box<T>) -> RootedTraceableBox<T> {
-        Self(js::gc::RootedTraceableBox::from_box(boxed_traceable))
+        Self { inner: boxed_traceable }
     }
 }
 
@@ -354,18 +356,13 @@ where
     T: GCMethods + Copy,
 {
     pub fn handle(&self) -> Handle<'_, T> {
-        self.0.handle()
+        unsafe { Handle::from_raw(&*(*self.inner).get()) }
     }
 }
 
 impl<T: JSTraceable + MallocSizeOf> MallocSizeOf for RootedTraceableBox<T> {
     fn size_of(&self, ops: &mut MallocSizeOfOps) -> usize {
-        // Briefly resurrect the real Box value so we can rely on the existing calculations.
-        // Then immediately forget about it again to avoid dropping the box.
-        let inner = unsafe { Box::from_raw(self.0.ptr()) };
-        let size = inner.size_of(ops);
-        mem::forget(inner);
-        size
+        (*self.inner).size_of(ops)
     }
 }
 
@@ -378,13 +375,13 @@ impl<T: JSTraceable + Default> Default for RootedTraceableBox<T> {
 impl<T: JSTraceable> Deref for RootedTraceableBox<T> {
     type Target = T;
     fn deref(&self) -> &T {
-        self.0.deref()
+        &*self.inner
     }
 }
 
 impl<T: JSTraceable> DerefMut for RootedTraceableBox<T> {
     fn deref_mut(&mut self) -> &mut T {
-        self.0.deref_mut()
+        &mut *self.inner
     }
 }
 
@@ -410,7 +407,7 @@ impl<T> From<T> for NoTrace<T> {
 #[expect(unsafe_code)]
 unsafe impl<T> JSTraceable for NoTrace<T> {
     #[inline]
-    unsafe fn trace(&self, _: *mut ::js::jsapi::JSTracer) {}
+    unsafe fn trace(&self, _: *mut crate::js::jsapi::JSTracer) {}
 }
 
 impl<T: MallocSizeOf> MallocSizeOf for NoTrace<T> {

@@ -10,10 +10,10 @@ use std::ptr;
 use std::ptr::NonNull;
 
 use dom_struct::dom_struct;
-use js::conversions::ToJSValConvertible;
-use js::jsapi::{Heap, JSObject};
-use js::jsval::UndefinedValue;
-use js::rust::{HandleObject, HandleValue, MutableHandleObject};
+use crate::js::conversions::ToJSValConvertible;
+use crate::js::jsapi::{Heap, JSObject};
+use crate::js::jsval::UndefinedValue;
+use crate::js::rust::{HandleObject, HandleValue, MutableHandleObject};
 
 use crate::codegen::GenericBindings::IterableIteratorBinding::{
     IterableKeyAndValueResult, IterableKeyOrValueResult,

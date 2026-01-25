@@ -7,10 +7,10 @@
 use std::any::type_name;
 use std::{mem, ptr};
 
-use js::glue::JS_GetReservedSlot;
-use js::jsapi::JSObject;
-use js::jsval::UndefinedValue;
-use js::rust::GCMethods;
+use crate::js::glue::JS_GetReservedSlot;
+use crate::js::jsapi::JSObject;
+use crate::js::jsval::UndefinedValue;
+use crate::js::rust::GCMethods;
 
 use crate::codegen::PrototypeList::PROTO_OR_IFACE_LENGTH;
 use crate::utils::{ProtoOrIfaceArray, get_proto_or_iface_array};

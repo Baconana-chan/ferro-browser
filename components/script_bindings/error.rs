@@ -2,8 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-use js::error::throw_type_error;
-use js::jsapi::JS_IsExceptionPending;
+use crate::js::error::throw_type_error;
+use crate::js::jsapi::JS_IsExceptionPending;
 
 use crate::codegen::PrototypeList::proto_id_to_name;
 use crate::num::Finite;

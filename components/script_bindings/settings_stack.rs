@@ -5,25 +5,39 @@
 use std::marker::PhantomData;
 use std::thread;
 
-use js::jsapi::{HideScriptedCaller, UnhideScriptedCaller};
-use js::rust::Runtime;
+use crate::js::jsapi::{HideScriptedCaller, UnhideScriptedCaller};
+use crate::js::rust::Runtime;
 
 use crate::DomTypes;
 use crate::interfaces::{DomHelpers, GlobalScopeHelpers};
 use crate::root::{Dom, DomRoot};
 use crate::script_runtime::CanGc;
 
-#[derive(Debug, Eq, JSTraceable, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "js-spidermonkey", derive(JSTraceable))]
 pub enum StackEntryKind {
     Incumbent,
     Entry,
 }
 
+#[cfg(feature = "js-boa")]
+unsafe impl crate::JSTraceable for StackEntryKind {
+    unsafe fn trace(&self, _tracer: *mut crate::js::jsapi::JSTracer) {}
+}
+
 #[cfg_attr(crown, allow(crown::unrooted_must_root))]
-#[derive(JSTraceable)]
+#[cfg_attr(feature = "js-spidermonkey", derive(JSTraceable))]
 pub struct StackEntry<D: DomTypes> {
     pub global: Dom<D::GlobalScope>,
     pub kind: StackEntryKind,
+}
+
+#[cfg(feature = "js-boa")]
+unsafe impl<D: DomTypes> crate::JSTraceable for StackEntry<D> {
+    unsafe fn trace(&self, tracer: *mut crate::js::jsapi::JSTracer) {
+        // Trace global
+        unsafe { self.global.trace(tracer); }
+    }
 }
 
 /// RAII struct that pushes and pops entries from the script settings stack.

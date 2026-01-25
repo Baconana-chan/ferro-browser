@@ -2,8 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-use js::jsapi::{Heap, JSObject};
-use js::rust::HandleObject;
+use crate::js::jsapi::{Heap, JSObject};
+use crate::js::rust::HandleObject;
 use malloc_size_of_derive::MallocSizeOf;
 
 use crate::interfaces::GlobalScopeHelpers;
@@ -23,8 +23,8 @@ pub struct Reflector {
     object: Heap<*mut JSObject>,
 }
 
-unsafe impl js::gc::Traceable for Reflector {
-    unsafe fn trace(&self, _: *mut js::jsapi::JSTracer) {}
+unsafe impl crate::js::gc::Traceable for Reflector {
+    unsafe fn trace(&self, _: *mut crate::js::jsapi::JSTracer) {}
 }
 
 #[cfg_attr(crown, allow(crown::unrooted_must_root))]
@@ -71,7 +71,7 @@ impl Reflector {
 }
 
 /// A trait to provide access to the `Reflector` for a DOM object.
-pub trait DomObject: js::gc::Traceable + 'static {
+pub trait DomObject: crate::js::gc::Traceable + 'static {
     /// Returns the receiver's reflector.
     fn reflector(&self) -> &Reflector;
 }

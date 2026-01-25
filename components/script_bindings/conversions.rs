@@ -4,21 +4,21 @@
 
 use std::{ptr, slice};
 
-use js::conversions::{
+use crate::js::conversions::{
     ConversionResult, FromJSValConvertible, ToJSValConvertible, jsstr_to_string,
 };
-use js::error::throw_type_error;
-use js::glue::{
+use crate::js::error::throw_type_error;
+use crate::js::glue::{
     GetProxyHandlerExtra, GetProxyReservedSlot, IsProxyHandlerFamily, IsWrapper,
     JS_GetReservedSlot, UnwrapObjectDynamic,
 };
-use js::jsapi::{
+use crate::js::jsapi::{
     Heap, IsWindowProxy, JS_DeprecatedStringHasLatin1Chars, JS_GetLatin1StringCharsAndLength,
     JS_GetTwoByteStringCharsAndLength, JS_NewStringCopyN, JSContext, JSObject,
 };
-use js::jsval::{ObjectValue, StringValue, UndefinedValue};
-use js::rust::wrappers::IsArrayObject;
-use js::rust::{
+use crate::js::jsval::{ObjectValue, StringValue, UndefinedValue};
+use crate::js::rust::wrappers::IsArrayObject;
+use crate::js::rust::{
     HandleId, HandleValue, MutableHandleValue, ToString, get_object_class, is_dom_class,
     is_dom_object, maybe_wrap_value,
 };
@@ -265,7 +265,7 @@ pub unsafe fn get_dom_class(obj: *mut JSObject) -> Result<&'static DOMClass, ()>
 pub unsafe fn is_dom_proxy(obj: *mut JSObject) -> bool {
     unsafe {
         let clasp = get_object_class(obj);
-        ((*clasp).flags & js::JSCLASS_IS_PROXY) != 0 && IsProxyHandlerFamily(obj)
+        ((*clasp).flags & crate::js::JSCLASS_IS_PROXY) != 0 && IsProxyHandlerFamily(obj)
     }
 }
 
@@ -522,7 +522,7 @@ impl<T: ToJSValConvertible + JSTraceable> ToJSValConvertible for RootedTraceable
 
 impl<T> FromJSValConvertible for RootedTraceableBox<Heap<T>>
 where
-    T: FromJSValConvertible + js::rust::GCMethods + Copy,
+    T: FromJSValConvertible + crate::js::rust::GCMethods + Copy,
     Heap<T>: JSTraceable + Default,
 {
     type Config = T::Config;

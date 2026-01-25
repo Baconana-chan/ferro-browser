@@ -16,9 +16,9 @@ use std::hash::{Hash, Hasher};
 use std::ops::Drop;
 use std::{mem, ptr};
 
-use js::glue::JS_GetReservedSlot;
-use js::jsapi::{JS_SetReservedSlot, JSTracer};
-use js::jsval::{PrivateValue, UndefinedValue};
+use crate::js::glue::JS_GetReservedSlot;
+use crate::js::jsapi::{JS_SetReservedSlot, JSTracer};
+use crate::js::jsval::{PrivateValue, UndefinedValue};
 use libc::c_void;
 use malloc_size_of::{MallocSizeOf, MallocSizeOfOps};
 

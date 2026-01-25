@@ -7,8 +7,8 @@
 use std::ffi::CStr;
 use std::ptr;
 
-use js::jsapi::{JSClass, JSFunctionSpec};
-use js::rust::{HandleObject, MutableHandleObject};
+use crate::js::jsapi::{JSClass, JSFunctionSpec};
+use crate::js::rust::{HandleObject, MutableHandleObject};
 
 use crate::DomTypes;
 use crate::constant::ConstantSpec;

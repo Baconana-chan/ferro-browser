@@ -666,3 +666,51 @@ pub unsafe fn CreateProxyHandler(
 ) -> *const c_void {
     ptr::null()
 }
+
+// ===================
+// Additional Proxy Functions
+// ===================
+
+/// GetProxyHandlerExtra - get extra data from proxy handler
+pub unsafe fn GetProxyHandlerExtra(_obj: *mut JSObject) -> *const c_void {
+    ptr::null()
+}
+
+/// IsProxyHandlerFamily - check if object uses a specific proxy handler family
+pub unsafe fn IsProxyHandlerFamily(_obj: *mut JSObject, _family: *const c_void) -> bool {
+    false
+}
+
+/// UncheckedUnwrapObject - unwrap object without security checks
+pub unsafe fn UncheckedUnwrapObject(
+    _obj: *mut JSObject,
+    _stop_at_window_proxy: bool,
+) -> *mut JSObject {
+    ptr::null_mut()
+}
+
+/// CreateRustJSPrincipals - create principals from Rust
+pub unsafe fn CreateRustJSPrincipals(
+    _destroy: Option<unsafe extern "C" fn(*mut c_void)>,
+    _write: Option<unsafe extern "C" fn(*mut RawJSContext, *mut c_void, *mut c_void) -> bool>,
+    _private: *mut c_void,
+) -> *mut JSPrincipals {
+    ptr::null_mut()
+}
+
+/// GetProxyHandlerFamily - get the handler family for a proxy
+pub unsafe fn GetProxyHandlerFamily(_handler: *const c_void) -> *const c_void {
+    ptr::null()
+}
+
+/// InvokeGetOwnPropertyDescriptor - invoke the getOwnPropertyDescriptor trap
+pub unsafe fn InvokeGetOwnPropertyDescriptor(
+    _cx: *mut RawJSContext,
+    _handler: *const c_void,
+    _proxy: HandleObject<'_>,
+    _id: HandleId<'_>,
+    _desc: *mut PropertyDescriptor,
+    _is_none: *mut bool,
+) -> bool {
+    true
+}

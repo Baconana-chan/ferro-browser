@@ -10,16 +10,22 @@ use std::ops::Deref;
 use std::str::FromStr;
 use std::{fmt, ops, slice, str};
 
-use js::gc::{HandleObject, HandleValue};
-use js::rust::wrappers::ToJSON;
+use crate::js::gc::{HandleObject, HandleValue};
+use crate::js::rust::wrappers::ToJSON;
 
 pub use crate::domstring::DOMString;
 use crate::error::Error;
 use crate::script_runtime::JSContext;
 
 /// Encapsulates the IDL `ByteString` type.
-#[derive(Clone, Debug, Default, Eq, JSTraceable, MallocSizeOf, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, MallocSizeOf, PartialEq)]
+#[cfg_attr(feature = "js-spidermonkey", derive(JSTraceable))]
 pub struct ByteString(Vec<u8>);
+
+#[cfg(feature = "js-boa")]
+unsafe impl crate::JSTraceable for ByteString {
+    unsafe fn trace(&self, _tracer: *mut crate::js::jsapi::JSTracer) {}
+}
 
 impl ByteString {
     /// Creates a new `ByteString`.

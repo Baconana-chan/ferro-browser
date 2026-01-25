@@ -29,15 +29,17 @@ impl GCMethods for *mut JSObject {
 }
 
 /// Traceable - trait for types that can be traced by GC
-pub trait Traceable {
+/// # Safety
+/// Implementations must correctly trace all GC-managed values
+pub unsafe trait Traceable {
     unsafe fn trace(&self, _tracer: *mut JSTracer);
 }
 
-impl Traceable for Value {
+unsafe impl Traceable for Value {
     unsafe fn trace(&self, _tracer: *mut JSTracer) {}
 }
 
-impl Traceable for *mut JSObject {
+unsafe impl Traceable for *mut JSObject {
     unsafe fn trace(&self, _tracer: *mut JSTracer) {}
 }
 
@@ -258,9 +260,36 @@ impl<T> DerefMut for Root<T> {
 /// Rooted - SpiderMonkey's Rooted type
 pub type Rooted<T> = Root<T>;
 
-/// rooted! macro replacement
+/// rooted! macro replacement - mimics SpiderMonkey's rooted! macro syntax
 #[macro_export]
 macro_rules! rooted {
+    // SpiderMonkey syntax: rooted!(in(cx) let name = val)
+    (in($cx:expr) let $name:ident = $val:expr) => {
+        let _ = $cx;  // Suppress unused warning
+        let mut $name = $crate::js_compat::gc::Root::new($val);
+    };
+    (in($cx:expr) let mut $name:ident = $val:expr) => {
+        let _ = $cx;
+        let mut $name = $crate::js_compat::gc::Root::new($val);
+    };
+    (in($cx:expr) let $name:ident: $ty:ty = $val:expr) => {
+        let _ = $cx;
+        let mut $name: $crate::js_compat::gc::Root<$ty> = $crate::js_compat::gc::Root::new($val);
+    };
+    (in($cx:expr) let mut $name:ident: $ty:ty = $val:expr) => {
+        let _ = $cx;
+        let mut $name: $crate::js_compat::gc::Root<$ty> = $crate::js_compat::gc::Root::new($val);
+    };
+    // Syntax without initializer: rooted!(in(cx) let mut name: Type)
+    (in($cx:expr) let $name:ident: $ty:ty) => {
+        let _ = $cx;
+        let mut $name = $crate::js_compat::gc::Root::<$ty>::new(Default::default());
+    };
+    (in($cx:expr) let mut $name:ident: $ty:ty) => {
+        let _ = $cx;
+        let mut $name = $crate::js_compat::gc::Root::<$ty>::new(Default::default());
+    };
+    // Legacy syntax: rooted!($cx, let name = val)
     ($cx:expr, let $name:ident = $val:expr) => {
         let mut $name = $crate::js_compat::gc::Root::new($val);
     };
@@ -277,5 +306,34 @@ pub unsafe fn IsMarkedUnbarriered(_obj: *mut JSObject) -> bool {
 /// TraceEdge - trace a GC edge
 pub unsafe fn TraceEdge(_tracer: *mut JSTracer, _ptr: *mut Value, _name: *const i8) {
 }
+
+/// RootedTraceableBox - for rooting traceable boxes
+pub struct RootedTraceableBox<T: Traceable + 'static> {
+    inner: Box<T>,
+}
+
+impl<T: Traceable + 'static> RootedTraceableBox<T> {
+    pub fn new(value: T) -> Self {
+        Self { inner: Box::new(value) }
+    }
+    
+    pub fn from_box(boxed: Box<T>) -> Self {
+        Self { inner: boxed }
+    }
+}
+
+impl<T: Traceable + 'static> Deref for RootedTraceableBox<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &*self.inner
+    }
+}
+
+impl<T: Traceable + 'static> DerefMut for RootedTraceableBox<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut *self.inner
+    }
+}
+
 // Re-export Handle types for convenience (some code imports them from gc)
 pub use super::rust::{Handle, MutableHandle, HandleObject, HandleValue, MutableHandleValue, MutableHandleObject};

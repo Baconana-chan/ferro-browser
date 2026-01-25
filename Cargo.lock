@@ -7851,6 +7851,9 @@ name = "script_bindings"
 version = "0.0.1"
 dependencies = [
  "bitflags 2.10.0",
+ "boa_bindings",
+ "boa_engine",
+ "boa_gc",
  "crossbeam-channel",
  "cssparser",
  "deny_public_fields",

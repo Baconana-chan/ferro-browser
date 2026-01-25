@@ -152,9 +152,146 @@ impl<'a, T> IntoMutableHandle<'a, T> for MutableHandle<'a, T> {
 /// RustHandleObject alias
 pub type RustHandleObject<'a> = HandleObject<'a>;
 
+/// HandleId - handle to a property ID
+pub type HandleId<'a> = Handle<'a, super::glue::jsid>;
+
 /// ToString - convert to string
 pub unsafe fn ToString(_cx: *mut RawJSContext, _v: HandleValue<'_>) -> *mut JSString {
     ptr::null_mut()
+}
+
+// ===================
+// DOM Object Helpers
+// ===================
+
+/// is_dom_object - check if an object is a DOM object
+pub unsafe fn is_dom_object(_obj: *mut JSObject) -> bool {
+    false
+}
+
+/// maybe_wrap_value - wrap a value for cross-realm use
+pub unsafe fn maybe_wrap_value(
+    _cx: *mut RawJSContext,
+    _vp: MutableHandleValue<'_>,
+) -> bool {
+    true
+}
+
+/// maybe_wrap_object - wrap an object for cross-realm use
+pub unsafe fn maybe_wrap_object(
+    _cx: *mut RawJSContext,
+    _obj: MutableHandleObject<'_>,
+) -> bool {
+    true
+}
+
+/// get_context_realm - get the realm of a context
+pub unsafe fn get_context_realm(_cx: *mut RawJSContext) -> *mut c_void {
+    ptr::null_mut()
+}
+
+/// get_object_realm - get the realm of an object
+pub unsafe fn get_object_realm(_obj: *mut JSObject) -> *mut c_void {
+    ptr::null_mut()
+}
+
+// ===================
+// Trace Trait
+// ===================
+
+/// Trace - trait for GC tracing (re-export from gc module)
+pub use super::gc::Traceable as Trace;
+
+/// GCMethods - trait for GC methods (re-export from gc module)
+pub use super::gc::GCMethods;
+
+// ===================
+// RealmOptions
+// ===================
+
+/// RealmOptions - options for creating a realm
+#[repr(C)]
+pub struct RealmOptions {
+    pub creation_options: RealmCreationOptions,
+    pub behaviors: RealmBehaviors,
+}
+
+impl Default for RealmOptions {
+    fn default() -> Self {
+        Self {
+            creation_options: RealmCreationOptions::default(),
+            behaviors: RealmBehaviors::default(),
+        }
+    }
+}
+
+impl RealmOptions {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    
+    pub fn creation_options(&self) -> &RealmCreationOptions {
+        &self.creation_options
+    }
+    
+    pub fn behaviors(&self) -> &RealmBehaviors {
+        &self.behaviors
+    }
+}
+
+/// RealmCreationOptions - options for realm creation
+#[repr(C)]
+pub struct RealmCreationOptions {
+    /// Whether this realm is for DOM use
+    pub class_is_dom: bool,
+    /// Enable shared memory and atomics
+    pub shared_memory_and_atomics: bool,
+}
+
+impl Default for RealmCreationOptions {
+    fn default() -> Self {
+        Self {
+            class_is_dom: false,
+            shared_memory_and_atomics: false,
+        }
+    }
+}
+
+/// RealmBehaviors - behaviors for a realm
+#[repr(C)]
+pub struct RealmBehaviors {
+    /// Discard source for scripts
+    pub discard_source: bool,
+}
+
+impl Default for RealmBehaviors {
+    fn default() -> Self {
+        Self {
+            discard_source: false,
+        }
+    }
+}
+
+// ===================
+// Define Methods/Properties
+// ===================
+
+/// define_methods - define methods on an object
+pub unsafe fn define_methods(
+    _cx: *mut RawJSContext,
+    _obj: HandleObject<'_>,
+    _methods: *const super::jsapi::JSFunctionSpec,
+) -> bool {
+    true
+}
+
+/// define_properties - define properties on an object
+pub unsafe fn define_properties(
+    _cx: *mut RawJSContext,
+    _obj: HandleObject<'_>,
+    _props: *const super::jsapi::JSPropertySpec,
+) -> bool {
+    true
 }
 
 /// Wrappers module - contains SpiderMonkey API wrappers
@@ -575,6 +712,200 @@ pub mod wrappers {
     ) {
         let _ = (promise, state);
     }
+    
+    // ===================
+    // Additional Wrapper Functions
+    // ===================
+    
+    /// AppendToIdVector - append an ID to an ID vector
+    pub unsafe fn AppendToIdVector(
+        _vec: MutableHandleIdVector<'_>,
+        _id: super::super::glue::jsid,
+    ) -> bool {
+        true
+    }
+    
+    /// JS_CopyOwnPropertiesAndPrivateFields - copy own properties and private fields
+    pub unsafe fn JS_CopyOwnPropertiesAndPrivateFields(
+        _cx: *mut RawJSContext,
+        _target: HandleObject<'_>,
+        _source: HandleObject<'_>,
+    ) -> bool {
+        true
+    }
+    
+    /// JS_DefinePropertyById2 - define property by ID with value
+    pub unsafe fn JS_DefinePropertyById2(
+        _cx: *mut RawJSContext,
+        _obj: HandleObject<'_>,
+        _id: super::super::glue::HandleId<'_>,
+        _value: HandleValue<'_>,
+        _attrs: u32,
+    ) -> bool {
+        true
+    }
+    
+    /// JS_InitializePropertiesFromCompatibleNativeObject - initialize properties from native
+    pub unsafe fn JS_InitializePropertiesFromCompatibleNativeObject(
+        _cx: *mut RawJSContext,
+        _dst: HandleObject<'_>,
+        _src: HandleObject<'_>,
+    ) -> bool {
+        true
+    }
+    
+    /// JS_NewObjectWithGivenProto - new object with specified prototype
+    pub unsafe fn JS_NewObjectWithGivenProto(
+        _cx: *mut RawJSContext,
+        _clasp: *const super::super::jsapi::JSClass,
+        _proto: HandleObject<'_>,
+    ) -> *mut JSObject {
+        ptr::null_mut()
+    }
+    
+    /// JS_NewObjectWithoutMetadata - new object without metadata
+    pub unsafe fn JS_NewObjectWithoutMetadata(
+        _cx: *mut RawJSContext,
+        _clasp: *const super::super::jsapi::JSClass,
+        _proto: HandleObject<'_>,
+    ) -> *mut JSObject {
+        ptr::null_mut()
+    }
+    
+    /// JS_SetImmutablePrototype - set immutable prototype
+    pub unsafe fn JS_SetImmutablePrototype(
+        _cx: *mut RawJSContext,
+        _obj: HandleObject<'_>,
+        _succeeded: *mut bool,
+    ) -> bool {
+        if !_succeeded.is_null() {
+            *_succeeded = true;
+        }
+        true
+    }
+    
+    /// NewProxyObject - create a new proxy object
+    pub unsafe fn NewProxyObject(
+        _cx: *mut RawJSContext,
+        _handler: *const c_void,
+        _priv: HandleValue<'_>,
+        _proto: HandleObject<'_>,
+        _clasp: *const super::super::jsapi::JSClass,
+    ) -> *mut JSObject {
+        ptr::null_mut()
+    }
+    
+    /// RUST_INTERNED_STRING_TO_JSID - convert an interned string to jsid
+    pub unsafe fn RUST_INTERNED_STRING_TO_JSID(
+        _cx: *mut RawJSContext,
+        _str: *mut JSString,
+    ) -> super::super::glue::jsid {
+        super::super::glue::jsid::VOID
+    }
+    
+    /// RUST_SYMBOL_TO_JSID - convert a symbol to jsid
+    pub unsafe fn RUST_SYMBOL_TO_JSID(
+        _symbol: *mut c_void,
+    ) -> super::super::glue::jsid {
+        super::super::glue::jsid::VOID
+    }
+    
+    /// int_to_jsid - convert an integer to jsid
+    pub unsafe fn int_to_jsid(i: i32) -> super::super::glue::jsid {
+        super::super::glue::jsid { bits: ((i as u32) << 1) as usize | 1 }
+    }
+    
+    /// JS_DefineProperty3 - define property with getter/setter
+    pub unsafe fn JS_DefineProperty3(
+        _cx: *mut RawJSContext,
+        _obj: HandleObject<'_>,
+        _name: *const i8,
+        _value: HandleValue<'_>,
+        _attrs: u32,
+        _getter: Option<unsafe extern "C" fn() -> bool>,
+        _setter: Option<unsafe extern "C" fn() -> bool>,
+    ) -> bool {
+        true
+    }
+    
+    /// JS_DefineProperty4 - define property by name with value
+    pub unsafe fn JS_DefineProperty4(
+        _cx: *mut RawJSContext,
+        _obj: HandleObject<'_>,
+        _name: *const i8,
+        _value: HandleValue<'_>,
+        _attrs: u32,
+    ) -> bool {
+        true
+    }
+    
+    /// JS_DefineProperty5 - define property with native getter/setter
+    pub unsafe fn JS_DefineProperty5(
+        _cx: *mut RawJSContext,
+        _obj: HandleObject<'_>,
+        _name: *const i8,
+        _getter: super::super::jsapi::JSNative,
+        _setter: super::super::jsapi::JSNative,
+        _attrs: u32,
+    ) -> bool {
+        true
+    }
+    
+    /// JS_DefinePropertyById5 - define property by ID with native getter/setter
+    pub unsafe fn JS_DefinePropertyById5(
+        _cx: *mut RawJSContext,
+        _obj: HandleObject<'_>,
+        _id: super::super::glue::HandleId<'_>,
+        _getter: super::super::jsapi::JSNative,
+        _setter: super::super::jsapi::JSNative,
+        _attrs: u32,
+    ) -> bool {
+        true
+    }
+    
+    /// JS_FireOnNewGlobalObject - fire the new global hook
+    pub unsafe fn JS_FireOnNewGlobalObject(
+        _cx: *mut RawJSContext,
+        _global: HandleObject<'_>,
+    ) {
+    }
+    
+    /// JS_LinkConstructorAndPrototype - link constructor and prototype
+    pub unsafe fn JS_LinkConstructorAndPrototype(
+        _cx: *mut RawJSContext,
+        _ctor: HandleObject<'_>,
+        _proto: HandleObject<'_>,
+    ) -> bool {
+        true
+    }
+    
+    /// JS_AlreadyHasOwnPropertyById - check if object already has own property
+    pub unsafe fn JS_AlreadyHasOwnPropertyById(
+        _cx: *mut RawJSContext,
+        _obj: HandleObject<'_>,
+        _id: super::super::glue::HandleId<'_>,
+        _found: *mut bool,
+    ) -> bool {
+        if !_found.is_null() {
+            *_found = false;
+        }
+        true
+    }
+    
+    /// SetDataPropertyDescriptor - set a data property descriptor
+    pub unsafe fn SetDataPropertyDescriptor(
+        _desc: *mut super::super::glue::PropertyDescriptor,
+        _value: HandleValue<'_>,
+        _attrs: u32,
+    ) {
+        if !_desc.is_null() {
+            (*_desc).value = *_value.ptr;
+            (*_desc).attrs = _attrs;
+        }
+    }
+    
+    /// MutableHandleIdVector type alias
+    pub type MutableHandleIdVector<'a> = super::MutableHandle<'a, *mut c_void>;
 }
 
 /// Wrappers2 module - additional wrappers

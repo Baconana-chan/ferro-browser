@@ -14,6 +14,28 @@ pub struct Realm {
     _private: (),
 }
 
+/// CurrentRealm - represents the current realm in the context
+pub struct CurrentRealm {
+    realm: *mut c_void,
+}
+
+impl CurrentRealm {
+    /// Get the current realm from a context
+    pub fn new(cx: *mut RawJSContext) -> Option<Self> {
+        let realm = unsafe { GetCurrentRealmOrNull(cx) };
+        if realm.is_null() {
+            None
+        } else {
+            Some(Self { realm })
+        }
+    }
+    
+    /// Get the raw realm pointer
+    pub fn as_ptr(&self) -> *mut c_void {
+        self.realm
+    }
+}
+
 /// AutoRealm - RAII guard for entering/leaving realms
 pub struct AutoRealm {
     cx: *mut RawJSContext,

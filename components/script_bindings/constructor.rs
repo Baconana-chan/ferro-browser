@@ -4,8 +4,8 @@
 
 use std::ptr;
 
-use js::jsapi::{CallArgs, JSObject};
-use js::rust::HandleObject;
+use crate::js::jsapi::{CallArgs, JSObject};
+use crate::js::rust::HandleObject;
 
 use crate::codegen::PrototypeList;
 use crate::error::throw_constructor_without_new;

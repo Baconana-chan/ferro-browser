@@ -4,7 +4,7 @@
 // Tracing support for Boa GC integration
 // Provides traits and utilities for tracing DOM objects
 
-use boa_gc::{Trace, Tracer, Finalize};
+pub use boa_gc::{Trace, Tracer, Finalize};
 
 use super::reflector::Reflector;
 

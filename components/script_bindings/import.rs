@@ -7,21 +7,21 @@ pub(crate) mod base {
     pub(crate) use std::rc::Rc;
 
     #[allow(unused_imports)]
-    pub(crate) use js::context::{JSContext, RawJSContext};
-    pub(crate) use js::conversions::{
+    pub(crate) use crate::js::context::{JSContext, RawJSContext};
+    pub(crate) use crate::js::conversions::{
         ConversionBehavior, ConversionResult, FromJSValConvertible, ToJSValConvertible,
     };
-    pub(crate) use js::error::throw_type_error;
-    pub(crate) use js::jsapi::{
+    pub(crate) use crate::js::error::throw_type_error;
+    pub(crate) use crate::js::jsapi::{
         HandleValue as RawHandleValue, HandleValueArray, Heap, IsCallable, JS_NewObject, JSObject,
     };
-    pub(crate) use js::jsval::{JSVal, NullValue, ObjectOrNullValue, ObjectValue, UndefinedValue};
-    pub(crate) use js::panic::maybe_resume_unwind;
+    pub(crate) use crate::js::jsval::{JSVal, NullValue, ObjectOrNullValue, ObjectValue, UndefinedValue};
+    pub(crate) use crate::js::panic::maybe_resume_unwind;
     #[allow(unused_imports)]
-    pub(crate) use js::realm::{AutoRealm, CurrentRealm};
-    pub(crate) use js::rust::wrappers::Call;
-    pub(crate) use js::rust::{HandleObject, HandleValue, MutableHandleObject, MutableHandleValue};
-    pub(crate) use js::typedarray::{
+    pub(crate) use crate::js::realm::{AutoRealm, CurrentRealm};
+    pub(crate) use crate::js::rust::wrappers::Call;
+    pub(crate) use crate::js::rust::{HandleObject, HandleValue, MutableHandleObject, MutableHandleValue};
+    pub(crate) use crate::js::typedarray::{
         ArrayBuffer, ArrayBufferView, Float32Array, Float64Array, Uint8Array, Uint8ClampedArray,
     };
 
@@ -51,12 +51,12 @@ pub(crate) mod module {
     pub(crate) use std::ffi::CString;
     pub(crate) use std::ptr::NonNull;
 
-    pub(crate) use js::conversions::ToJSValConvertible;
-    pub(crate) use js::glue::{
+    pub(crate) use crate::js::conversions::ToJSValConvertible;
+    pub(crate) use crate::js::glue::{
         CreateProxyHandler, GetProxyReservedSlot, JS_GetReservedSlot, ProxyTraps,
         SetProxyReservedSlot,
     };
-    pub(crate) use js::jsapi::{
+    pub(crate) use crate::js::jsapi::{
         __BindgenBitfieldUnit, CallArgs, GCContext, GetRealmErrorPrototype,
         GetRealmFunctionPrototype, GetRealmIteratorPrototype, GetRealmObjectPrototype,
         GetWellKnownSymbol, Handle as RawHandle, HandleId as RawHandleId,
@@ -76,9 +76,9 @@ pub(crate) mod module {
         MutableHandleObject as RawMutableHandleObject, MutableHandleValue as RawMutableHandleValue,
         ObjectOpResult, PropertyDescriptor, SymbolCode, UndefinedHandleValue, jsid,
     };
-    pub(crate) use js::jsval::PrivateValue;
-    pub(crate) use js::panic::wrap_panic;
-    pub(crate) use js::rust::wrappers::{
+    pub(crate) use crate::js::jsval::PrivateValue;
+    pub(crate) use crate::js::panic::wrap_panic;
+    pub(crate) use crate::js::rust::wrappers::{
         AppendToIdVector, Call, GetPropertyKeys, JS_CopyOwnPropertiesAndPrivateFields,
         JS_DefineProperty, JS_DefinePropertyById2, JS_GetProperty,
         JS_InitializePropertiesFromCompatibleNativeObject, JS_NewObjectWithGivenProto,
@@ -86,11 +86,11 @@ pub(crate) mod module {
         JS_WrapObject, NewProxyObject, RUST_INTERNED_STRING_TO_JSID, RUST_SYMBOL_TO_JSID,
         int_to_jsid,
     };
-    pub(crate) use js::rust::{
+    pub(crate) use crate::js::rust::{
         CustomAutoRooterGuard, GCMethods, Handle, MutableHandle, get_context_realm,
         get_object_class, get_object_realm,
     };
-    pub(crate) use js::{
+    pub(crate) use crate::js::{
         JS_CALLEE, JSCLASS_GLOBAL_SLOT_COUNT, JSCLASS_IS_DOMJSCLASS, JSCLASS_IS_GLOBAL,
         JSCLASS_RESERVED_SLOTS_MASK, typedarray,
     };

@@ -63,47 +63,47 @@ impl Default for StringificationBehavior {
 
 /// ToJSValConvertible - trait for types that can be converted to JS values
 pub trait ToJSValConvertible {
-    unsafe fn to_jsval(&self, cx: *mut RawJSContext, rval: MutableHandleValue<'_>);
+    unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>);
 }
 
 impl ToJSValConvertible for bool {
-    unsafe fn to_jsval(&self, _cx: *mut RawJSContext, rval: MutableHandleValue<'_>) {
+    unsafe fn to_jsval(&self, _cx: *mut JSContext, rval: MutableHandleValue<'_>) {
         rval.set(Value::from_bool(*self));
     }
 }
 
 impl ToJSValConvertible for i8 {
-    unsafe fn to_jsval(&self, _cx: *mut RawJSContext, rval: MutableHandleValue<'_>) {
+    unsafe fn to_jsval(&self, _cx: *mut JSContext, rval: MutableHandleValue<'_>) {
         rval.set(Value::from_i32(*self as i32));
     }
 }
 
 impl ToJSValConvertible for u8 {
-    unsafe fn to_jsval(&self, _cx: *mut RawJSContext, rval: MutableHandleValue<'_>) {
+    unsafe fn to_jsval(&self, _cx: *mut JSContext, rval: MutableHandleValue<'_>) {
         rval.set(Value::from_i32(*self as i32));
     }
 }
 
 impl ToJSValConvertible for i16 {
-    unsafe fn to_jsval(&self, _cx: *mut RawJSContext, rval: MutableHandleValue<'_>) {
+    unsafe fn to_jsval(&self, _cx: *mut JSContext, rval: MutableHandleValue<'_>) {
         rval.set(Value::from_i32(*self as i32));
     }
 }
 
 impl ToJSValConvertible for u16 {
-    unsafe fn to_jsval(&self, _cx: *mut RawJSContext, rval: MutableHandleValue<'_>) {
+    unsafe fn to_jsval(&self, _cx: *mut JSContext, rval: MutableHandleValue<'_>) {
         rval.set(Value::from_i32(*self as i32));
     }
 }
 
 impl ToJSValConvertible for i32 {
-    unsafe fn to_jsval(&self, _cx: *mut RawJSContext, rval: MutableHandleValue<'_>) {
+    unsafe fn to_jsval(&self, _cx: *mut JSContext, rval: MutableHandleValue<'_>) {
         rval.set(Value::from_i32(*self));
     }
 }
 
 impl ToJSValConvertible for u32 {
-    unsafe fn to_jsval(&self, _cx: *mut RawJSContext, rval: MutableHandleValue<'_>) {
+    unsafe fn to_jsval(&self, _cx: *mut JSContext, rval: MutableHandleValue<'_>) {
         if *self <= i32::MAX as u32 {
             rval.set(Value::from_i32(*self as i32));
         } else {
@@ -113,51 +113,51 @@ impl ToJSValConvertible for u32 {
 }
 
 impl ToJSValConvertible for i64 {
-    unsafe fn to_jsval(&self, _cx: *mut RawJSContext, rval: MutableHandleValue<'_>) {
+    unsafe fn to_jsval(&self, _cx: *mut JSContext, rval: MutableHandleValue<'_>) {
         rval.set(Value::from_f64(*self as f64));
     }
 }
 
 impl ToJSValConvertible for u64 {
-    unsafe fn to_jsval(&self, _cx: *mut RawJSContext, rval: MutableHandleValue<'_>) {
+    unsafe fn to_jsval(&self, _cx: *mut JSContext, rval: MutableHandleValue<'_>) {
         rval.set(Value::from_f64(*self as f64));
     }
 }
 
 impl ToJSValConvertible for f32 {
-    unsafe fn to_jsval(&self, _cx: *mut RawJSContext, rval: MutableHandleValue<'_>) {
+    unsafe fn to_jsval(&self, _cx: *mut JSContext, rval: MutableHandleValue<'_>) {
         rval.set(Value::from_f64(*self as f64));
     }
 }
 
 impl ToJSValConvertible for f64 {
-    unsafe fn to_jsval(&self, _cx: *mut RawJSContext, rval: MutableHandleValue<'_>) {
+    unsafe fn to_jsval(&self, _cx: *mut JSContext, rval: MutableHandleValue<'_>) {
         rval.set(Value::from_f64(*self));
     }
 }
 
 impl ToJSValConvertible for String {
-    unsafe fn to_jsval(&self, cx: *mut RawJSContext, rval: MutableHandleValue<'_>) {
+    unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
         // SAFETY: we are in an unsafe fn, call unsafe fn safely
         unsafe { self.as_str().to_jsval(cx, rval) };
     }
 }
 
 impl ToJSValConvertible for str {
-    unsafe fn to_jsval(&self, _cx: *mut RawJSContext, rval: MutableHandleValue<'_>) {
+    unsafe fn to_jsval(&self, _cx: *mut JSContext, rval: MutableHandleValue<'_>) {
         // TODO: Create actual JS string
         rval.set(Value::undefined());
     }
 }
 
 impl ToJSValConvertible for () {
-    unsafe fn to_jsval(&self, _cx: *mut RawJSContext, rval: MutableHandleValue<'_>) {
+    unsafe fn to_jsval(&self, _cx: *mut JSContext, rval: MutableHandleValue<'_>) {
         rval.set(Value::undefined());
     }
 }
 
 impl<T: ToJSValConvertible> ToJSValConvertible for Option<T> {
-    unsafe fn to_jsval(&self, cx: *mut RawJSContext, rval: MutableHandleValue<'_>) {
+    unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
         match self {
             // SAFETY: we are in an unsafe fn, call unsafe fn safely
             Some(v) => unsafe { v.to_jsval(cx, rval) },
@@ -167,14 +167,14 @@ impl<T: ToJSValConvertible> ToJSValConvertible for Option<T> {
 }
 
 impl<T: ToJSValConvertible> ToJSValConvertible for Vec<T> {
-    unsafe fn to_jsval(&self, _cx: *mut RawJSContext, rval: MutableHandleValue<'_>) {
+    unsafe fn to_jsval(&self, _cx: *mut JSContext, rval: MutableHandleValue<'_>) {
         // TODO: Create actual JS array
         rval.set(Value::undefined());
     }
 }
 
 impl ToJSValConvertible for *mut JSObject {
-    unsafe fn to_jsval(&self, _cx: *mut RawJSContext, rval: MutableHandleValue<'_>) {
+    unsafe fn to_jsval(&self, _cx: *mut JSContext, rval: MutableHandleValue<'_>) {
         if self.is_null() {
             rval.set(Value::null());
         } else {
@@ -188,7 +188,7 @@ pub trait FromJSValConvertible: Sized {
     type Config;
     
     unsafe fn from_jsval(
-        cx: *mut RawJSContext,
+        cx: *mut JSContext,
         val: HandleValue<'_>,
         config: Self::Config,
     ) -> Result<ConversionResult<Self>, ()>;
@@ -198,7 +198,7 @@ impl FromJSValConvertible for bool {
     type Config = ();
     
     unsafe fn from_jsval(
-        _cx: *mut RawJSContext,
+        _cx: *mut JSContext,
         val: HandleValue<'_>,
         _config: Self::Config,
     ) -> Result<ConversionResult<Self>, ()> {
@@ -210,7 +210,7 @@ impl FromJSValConvertible for i8 {
     type Config = ConversionBehavior;
     
     unsafe fn from_jsval(
-        _cx: *mut RawJSContext,
+        _cx: *mut JSContext,
         val: HandleValue<'_>,
         _config: Self::Config,
     ) -> Result<ConversionResult<Self>, ()> {
@@ -222,7 +222,7 @@ impl FromJSValConvertible for u8 {
     type Config = ConversionBehavior;
     
     unsafe fn from_jsval(
-        _cx: *mut RawJSContext,
+        _cx: *mut JSContext,
         val: HandleValue<'_>,
         _config: Self::Config,
     ) -> Result<ConversionResult<Self>, ()> {
@@ -234,7 +234,7 @@ impl FromJSValConvertible for i16 {
     type Config = ConversionBehavior;
     
     unsafe fn from_jsval(
-        _cx: *mut RawJSContext,
+        _cx: *mut JSContext,
         val: HandleValue<'_>,
         _config: Self::Config,
     ) -> Result<ConversionResult<Self>, ()> {
@@ -246,7 +246,7 @@ impl FromJSValConvertible for u16 {
     type Config = ConversionBehavior;
     
     unsafe fn from_jsval(
-        _cx: *mut RawJSContext,
+        _cx: *mut JSContext,
         val: HandleValue<'_>,
         _config: Self::Config,
     ) -> Result<ConversionResult<Self>, ()> {
@@ -258,7 +258,7 @@ impl FromJSValConvertible for i32 {
     type Config = ConversionBehavior;
     
     unsafe fn from_jsval(
-        _cx: *mut RawJSContext,
+        _cx: *mut JSContext,
         val: HandleValue<'_>,
         _config: Self::Config,
     ) -> Result<ConversionResult<Self>, ()> {
@@ -270,7 +270,7 @@ impl FromJSValConvertible for u32 {
     type Config = ConversionBehavior;
     
     unsafe fn from_jsval(
-        _cx: *mut RawJSContext,
+        _cx: *mut JSContext,
         val: HandleValue<'_>,
         _config: Self::Config,
     ) -> Result<ConversionResult<Self>, ()> {
@@ -282,7 +282,7 @@ impl FromJSValConvertible for i64 {
     type Config = ConversionBehavior;
     
     unsafe fn from_jsval(
-        _cx: *mut RawJSContext,
+        _cx: *mut JSContext,
         val: HandleValue<'_>,
         _config: Self::Config,
     ) -> Result<ConversionResult<Self>, ()> {
@@ -294,7 +294,7 @@ impl FromJSValConvertible for u64 {
     type Config = ConversionBehavior;
     
     unsafe fn from_jsval(
-        _cx: *mut RawJSContext,
+        _cx: *mut JSContext,
         val: HandleValue<'_>,
         _config: Self::Config,
     ) -> Result<ConversionResult<Self>, ()> {
@@ -306,7 +306,7 @@ impl FromJSValConvertible for f32 {
     type Config = ();
     
     unsafe fn from_jsval(
-        _cx: *mut RawJSContext,
+        _cx: *mut JSContext,
         val: HandleValue<'_>,
         _config: Self::Config,
     ) -> Result<ConversionResult<Self>, ()> {
@@ -318,7 +318,7 @@ impl FromJSValConvertible for f64 {
     type Config = ();
     
     unsafe fn from_jsval(
-        _cx: *mut RawJSContext,
+        _cx: *mut JSContext,
         val: HandleValue<'_>,
         _config: Self::Config,
     ) -> Result<ConversionResult<Self>, ()> {
@@ -330,7 +330,7 @@ impl FromJSValConvertible for String {
     type Config = ();
     
     unsafe fn from_jsval(
-        _cx: *mut RawJSContext,
+        _cx: *mut JSContext,
         _val: HandleValue<'_>,
         _config: Self::Config,
     ) -> Result<ConversionResult<Self>, ()> {
@@ -340,7 +340,7 @@ impl FromJSValConvertible for String {
 }
 
 /// Convert a JSString to a Rust String
-pub unsafe fn jsstr_to_string(_cx: *mut RawJSContext, _s: *mut JSString) -> String {
+pub unsafe fn jsstr_to_string(_cx: *mut JSContext, _s: *mut JSString) -> String {
     String::new()
 }
 
@@ -351,12 +351,12 @@ pub fn latin1_to_string(bytes: &[u8]) -> String {
 
 /// ForOfIterator - iterator for for-of loops
 pub struct ForOfIterator<'a> {
-    _cx: *mut RawJSContext,
+    _cx: *mut JSContext,
     _marker: PhantomData<&'a ()>,
 }
 
 impl<'a> ForOfIterator<'a> {
-    pub fn new(_cx: *mut RawJSContext) -> Self {
+    pub fn new(_cx: *mut JSContext) -> Self {
         Self {
             _cx,
             _marker: PhantomData,
@@ -430,7 +430,7 @@ impl<T> std::ops::DerefMut for RootedTraceableBox<T> {
 pub trait FromJSValConvertibleRc: Sized {
     /// Convert from a JS value to an Rc
     unsafe fn from_jsval_rc(
-        cx: *mut RawJSContext,
+        cx: *mut JSContext,
         val: HandleValue<'_>,
     ) -> ConversionResult<std::rc::Rc<Self>>;
 }
@@ -438,7 +438,7 @@ pub trait FromJSValConvertibleRc: Sized {
 /// root_from_handlevalue - get root from handle value
 pub unsafe fn root_from_handlevalue<T>(
     _val: HandleValue<'_>,
-    _cx: *mut RawJSContext,
+    _cx: *mut JSContext,
 ) -> Option<T> {
     // Stub - would extract DOM object from JS value
     None
@@ -447,7 +447,7 @@ pub unsafe fn root_from_handlevalue<T>(
 /// root_from_object - get root from object
 pub unsafe fn root_from_object<T>(
     _obj: *mut JSObject,
-    _cx: *mut RawJSContext,
+    _cx: *mut JSContext,
 ) -> Option<T> {
     // Stub - would extract DOM object from JS object
     None
@@ -455,7 +455,7 @@ pub unsafe fn root_from_object<T>(
 
 /// is_array_like - check if value is array-like
 pub unsafe fn is_array_like(
-    _cx: *mut RawJSContext,
+    _cx: *mut JSContext,
     _val: HandleValue<'_>,
 ) -> bool {
     false
@@ -473,7 +473,7 @@ pub unsafe fn private_from_object(_obj: *mut JSObject) -> *const std::ffi::c_voi
 
 /// Convert jsid to string
 pub unsafe fn jsid_to_string(
-    _cx: *mut RawJSContext,
+    _cx: *mut JSContext,
     _id: super::glue::HandleId<'_>,
 ) -> Option<String> {
     None

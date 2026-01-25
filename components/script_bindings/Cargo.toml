@@ -24,7 +24,11 @@ dom_struct = { path = "../dom_struct" }
 domobject_derive = { path = "../domobject_derive" }
 html5ever = { workspace = true }
 indexmap = { workspace = true }
-js = { workspace = true }
+# JS Engine - one of these must be enabled
+js = { workspace = true, optional = true }
+boa_bindings = { path = "../boa_bindings", optional = true }
+boa_engine = { workspace = true, optional = true }
+boa_gc = { workspace = true, optional = true }
 jstraceable_derive = { path = "../jstraceable_derive" }
 keyboard-types = { workspace = true }
 libc = { workspace = true }
@@ -52,6 +56,10 @@ phf_shared = "0.13"
 serde_json = { workspace = true }
 
 [features]
+# JS Engine selection - default to SpiderMonkey for backwards compatibility
+default = ["js-spidermonkey"]
+js-spidermonkey = ["dep:js"]
+js-boa = ["dep:boa_bindings", "dep:boa_engine", "dep:boa_gc"]
 bluetooth = []
 testbinding = []
 tracing = ["dep:tracing"]

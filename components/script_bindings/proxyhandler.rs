@@ -9,12 +9,12 @@ use std::os::raw::c_char;
 use std::ptr;
 use std::ptr::NonNull;
 
-use js::conversions::{ToJSValConvertible, jsstr_to_string};
-use js::glue::{
+use crate::js::conversions::{ToJSValConvertible, jsstr_to_string};
+use crate::js::glue::{
     GetProxyHandler, GetProxyHandlerFamily, GetProxyPrivate, InvokeGetOwnPropertyDescriptor,
     SetProxyPrivate,
 };
-use js::jsapi::{
+use crate::js::jsapi::{
     DOMProxyShadowsResult, GetStaticPrototype, GetWellKnownSymbol, Handle as RawHandle,
     HandleId as RawHandleId, HandleObject as RawHandleObject, HandleValue as RawHandleValue,
     JS_AtomizeAndPinString, JS_DefinePropertyById, JS_GetOwnPropertyDescriptorById,
@@ -23,15 +23,15 @@ use js::jsapi::{
     MutableHandleObject as RawMutableHandleObject, MutableHandleValue as RawMutableHandleValue,
     ObjectOpResult, PropertyDescriptor, SetDOMProxyInformation, SymbolCode, jsid,
 };
-use js::jsid::SymbolId;
-use js::jsval::{ObjectValue, UndefinedValue};
-use js::realm::{AutoRealm, CurrentRealm};
-use js::rust::wrappers::{
+use crate::js::jsid::SymbolId;
+use crate::js::jsval::{ObjectValue, UndefinedValue};
+use crate::js::realm::{AutoRealm, CurrentRealm};
+use crate::js::rust::wrappers::{
     AppendToIdVector, JS_AlreadyHasOwnPropertyById, JS_NewObjectWithGivenProto,
     RUST_INTERNED_STRING_TO_JSID, SetDataPropertyDescriptor,
 };
-use js::rust::{Handle, HandleObject, HandleValue, IntoHandle, MutableHandle, MutableHandleObject};
-use js::{jsapi, rooted};
+use crate::js::rust::{Handle, HandleObject, HandleValue, IntoHandle, MutableHandle, MutableHandleObject};
+use crate::js::{jsapi, rooted};
 
 use crate::DomTypes;
 use crate::conversions::{is_dom_proxy, jsid_to_string};
@@ -551,8 +551,8 @@ pub(crate) unsafe extern "C" fn maybe_cross_origin_set_rawcx<D: DomTypes>(
     receiver: RawHandleValue,
     result: *mut ObjectOpResult,
 ) -> bool {
-    let mut cx = js::context::JSContext::from_ptr(NonNull::new(cx).unwrap());
-    let mut realm = js::realm::CurrentRealm::assert(&mut cx);
+    let mut cx = crate::js::context::JSContext::from_ptr(NonNull::new(cx).unwrap());
+    let mut realm = crate::js::realm::CurrentRealm::assert(&mut cx);
     let proxy_handle = unsafe { HandleObject::from_raw(proxy) };
 
     if !<D as DomHelpers<D>>::is_platform_object_same_origin(&realm, proxy) {
@@ -567,13 +567,13 @@ pub(crate) unsafe extern "C" fn maybe_cross_origin_set_rawcx<D: DomTypes>(
     }
 
     // Safe to enter the Realm of proxy now.
-    let mut realm = js::realm::AutoRealm::new_from_handle(&mut realm, proxy_handle);
+    let mut realm = crate::js::realm::AutoRealm::new_from_handle(&mut realm, proxy_handle);
 
     // OrdinarySet
     // <https://tc39.es/ecma262/#sec-ordinaryset>
     rooted!(&in(&mut realm) let mut own_desc = PropertyDescriptor::default());
     let mut is_none = false;
-    if !js::glue::InvokeGetOwnPropertyDescriptor(
+    if !crate::js::glue::InvokeGetOwnPropertyDescriptor(
         GetProxyHandler(*proxy),
         realm.raw_cx(),
         proxy,
@@ -585,7 +585,7 @@ pub(crate) unsafe extern "C" fn maybe_cross_origin_set_rawcx<D: DomTypes>(
     }
 
     let own_desc_handle = own_desc.handle().into();
-    js::jsapi::SetPropertyIgnoringNamedGetter(
+    crate::js::jsapi::SetPropertyIgnoringNamedGetter(
         realm.raw_cx(),
         proxy,
         id,

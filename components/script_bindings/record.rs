@@ -10,16 +10,16 @@ use std::marker::Sized;
 use std::ops::{Deref, DerefMut};
 
 use indexmap::IndexMap;
-use js::conversions::{ConversionResult, FromJSValConvertible, ToJSValConvertible};
-use js::jsapi::glue::JS_GetOwnPropertyDescriptorById;
-use js::jsapi::{
+use crate::js::conversions::{ConversionResult, FromJSValConvertible, ToJSValConvertible};
+use crate::js::jsapi::glue::JS_GetOwnPropertyDescriptorById;
+use crate::js::jsapi::{
     HandleId as RawHandleId, JS_NewPlainObject, JSContext, JSITER_HIDDEN, JSITER_OWNONLY,
     JSITER_SYMBOLS, JSPROP_ENUMERATE, PropertyDescriptor,
 };
-use js::jsval::{ObjectValue, UndefinedValue};
-use js::rooted;
-use js::rust::wrappers::{GetPropertyKeys, JS_DefineUCProperty2, JS_GetPropertyById, JS_IdToValue};
-use js::rust::{HandleId, HandleValue, IdVector, MutableHandleValue};
+use crate::js::jsval::{ObjectValue, UndefinedValue};
+use crate::js::rooted;
+use crate::js::rust::wrappers::{GetPropertyKeys, JS_DefineUCProperty2, JS_GetPropertyById, JS_IdToValue};
+use crate::js::rust::{HandleId, HandleValue, IdVector, MutableHandleValue};
 
 use crate::conversions::jsid_to_string;
 use crate::str::{ByteString, DOMString, USVString};
@@ -76,10 +76,21 @@ impl RecordKey for ByteString {
 }
 
 /// The `Record` (open-ended dictionary) type.
-#[derive(Clone, JSTraceable)]
+#[derive(Clone)]
+#[cfg_attr(feature = "js-spidermonkey", derive(JSTraceable))]
 pub struct Record<K: RecordKey, V> {
-    #[custom_trace]
+    #[cfg_attr(feature = "js-spidermonkey", custom_trace)]
     map: IndexMap<K, V>,
+}
+
+#[cfg(feature = "js-boa")]
+unsafe impl<K: RecordKey + crate::JSTraceable, V: crate::JSTraceable> crate::JSTraceable for Record<K, V> {
+    unsafe fn trace(&self, tracer: *mut crate::js::jsapi::JSTracer) {
+        for (k, v) in self.map.iter() {
+            k.trace(tracer);
+            v.trace(tracer);
+        }
+    }
 }
 
 impl<K: RecordKey, V> Record<K, V> {

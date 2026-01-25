@@ -4,7 +4,7 @@
 
 //! Implementation of `setlike<...>` and `maplike<..., ...>` WebIDL declarations.
 
-use js::conversions::ToJSValConvertible;
+use crate::js::conversions::ToJSValConvertible;
 
 use crate::iterable::Iterable;
 

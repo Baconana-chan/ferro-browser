@@ -28,9 +28,20 @@ pub const JSCLASS_RESERVED_SLOTS_SHIFT: u32 = 8;
 pub const JSCLASS_RESERVED_SLOTS_MASK: u32 = 0xFF;
 pub const JSCLASS_DELAY_METADATA_BUILDER: u32 = 1 << 16;
 pub const JSCLASS_IS_PROXY: u32 = 1 << 17;
+pub const JSCLASS_FOREGROUND_FINALIZE: u32 = 1 << 19;
+pub const JSCLASS_BACKGROUND_FINALIZE: u32 = 1 << 20;
+pub const JSCLASS_HAS_PRIVATE: u32 = 1 << 21;
 
 /// JSClass NON_NATIVE constant
 pub const JSClass_NON_NATIVE: u32 = 1 << 18;
+
+/// Global slot count (SpiderMonkey reserves slots for built-ins)
+pub const JSCLASS_GLOBAL_SLOT_COUNT: u32 = 78;
+
+/// User-defined bit flags for JSCLASS
+pub const JSCLASS_USERBIT1: u32 = 1 << 22;
+pub const JSCLASS_USERBIT2: u32 = 1 << 23;
+pub const JSCLASS_USERBIT3: u32 = 1 << 24;
 
 /// Undefined handle value (as a function for compatibility)
 pub fn UndefinedHandleValue() -> jsapi::HandleValue<'static> {
@@ -118,6 +129,9 @@ pub use glue::jsid;
 pub use jsapi::HandleId;
 pub use jsapi::MutableHandleId;
 
+// Re-export CurrentRealm from realm module
+pub use realm::CurrentRealm;
+
 /// GetPropertyKeys wrapper at root level
 pub unsafe fn GetPropertyKeys(
     _cx: *mut jsapi::RawJSContext,
@@ -137,3 +151,6 @@ pub unsafe fn JS_GetPropertyById(
 ) -> bool {
     true
 }
+
+// Note: The rooted! macro is defined with #[macro_export] in gc.rs
+// and is available at crate root level as boa_bindings::rooted

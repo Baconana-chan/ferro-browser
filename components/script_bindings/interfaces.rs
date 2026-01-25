@@ -5,10 +5,10 @@
 use std::cell::RefCell;
 use std::thread::LocalKey;
 
-use js::glue::JSPrincipalsCallbacks;
-use js::jsapi::{CallArgs, HandleObject as RawHandleObject, JSContext as RawJSContext, JSObject};
-use js::realm::CurrentRealm;
-use js::rust::{HandleObject, MutableHandleObject};
+use crate::js::glue::JSPrincipalsCallbacks;
+use crate::js::jsapi::{CallArgs, HandleObject as RawHandleObject, JSContext as RawJSContext, JSObject};
+use crate::js::realm::CurrentRealm;
+use crate::js::rust::{HandleObject, MutableHandleObject};
 use servo_url::{MutableOrigin, ServoUrl};
 
 use crate::DomTypes;

@@ -132,6 +132,10 @@ pub use dom_conversions::{
     NativeFromObjectError, NativeFromObjectResult, NativeFromObjectExt,
     CrossRealmExtractable, type_error_for_interface, is_dom_wrapper,
 };
+
+// Note: rooted! macro is exported via #[macro_export] in js_compat/gc.rs
+// and is available at crate root level
+
 pub use settings_stack::{
     StackEntryKind, StackEntry, SettingsStackAccess,
     AutoEntryScript, AutoIncumbentScript,

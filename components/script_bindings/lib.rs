@@ -6,14 +6,44 @@
 // Register the linter `crown`, which is the Servo-specific linter for the script crate.
 #![cfg_attr(crown, register_tool(crown))]
 
+// JS Engine selection - use SpiderMonkey or Boa
+#[cfg(feature = "js-spidermonkey")]
 #[macro_use]
 extern crate js;
+
+#[cfg(feature = "js-boa")]
+extern crate boa_bindings;
+
 #[macro_use]
 extern crate jstraceable_derive;
 #[macro_use]
 extern crate log;
 #[macro_use]
 extern crate malloc_size_of_derive;
+
+// Re-export js module - either from SpiderMonkey or Boa compatibility layer
+#[cfg(feature = "js-spidermonkey")]
+pub use js;
+
+#[cfg(feature = "js-boa")]
+pub mod js {
+    //! JavaScript engine compatibility layer for Boa
+    pub use boa_bindings::js_compat::*;
+    // Re-export submodules explicitly
+    pub use boa_bindings::js_compat::jsapi;
+    pub use boa_bindings::js_compat::jsval;
+    pub use boa_bindings::js_compat::rust;
+    pub use boa_bindings::js_compat::gc;
+    pub use boa_bindings::js_compat::glue;
+    pub use boa_bindings::js_compat::context;
+    pub use boa_bindings::js_compat::realm;
+    pub use boa_bindings::js_compat::conversions;
+    pub use boa_bindings::js_compat::typedarray;
+    pub use boa_bindings::js_compat::error;
+    pub use boa_bindings::js_compat::panic;
+    // Re-export the rooted macro from gc
+    pub use boa_bindings::rooted;
+}
 
 pub mod callback;
 mod constant;
@@ -90,7 +120,11 @@ pub mod codegen {
 // These trait exports are public, because they are used in the DOM bindings.
 // Since they are used in derive macros,
 // it is useful that they are accessible at the root of the crate.
-pub(crate) use js::gc::Traceable as JSTraceable;
+#[cfg(feature = "js-spidermonkey")]
+pub(crate) use crate::js::gc::Traceable as JSTraceable;
+
+#[cfg(feature = "js-boa")]
+pub(crate) use boa_bindings::trace::Trace as JSTraceable;
 
 pub use crate::codegen::DomTypes::DomTypes;
 pub(crate) use crate::reflector::{DomObject, MutDomObject, Reflector};

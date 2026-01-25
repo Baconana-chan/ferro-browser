@@ -13,11 +13,11 @@ use std::sync::LazyLock;
 use std::{fmt, slice, str};
 
 use html5ever::{LocalName, Namespace};
-use js::conversions::{ToJSValConvertible, jsstr_to_string};
-use js::gc::MutableHandleValue;
-use js::jsapi::{Heap, JS_GetLatin1StringCharsAndLength, JSContext, JSString};
-use js::jsval::StringValue;
-use js::rust::{Runtime, Trace};
+use crate::js::conversions::{ToJSValConvertible, jsstr_to_string};
+use crate::js::gc::MutableHandleValue;
+use crate::js::jsapi::{Heap, JS_GetLatin1StringCharsAndLength, JSContext, JSString};
+use crate::js::jsval::StringValue;
+use crate::js::rust::{Runtime, Trace};
 use malloc_size_of::MallocSizeOfOps;
 use num_traits::{ToPrimitive, Zero};
 use regex::Regex;
@@ -182,7 +182,7 @@ impl From<StringView<'_>> for String {
 /// The js string could be garbage collected and, hence, violating this
 /// could lead to undefined behavior
 unsafe impl Trace for DOMStringType {
-    unsafe fn trace(&self, tracer: *mut js::jsapi::JSTracer) {
+    unsafe fn trace(&self, tracer: *mut crate::js::jsapi::JSTracer) {
         unsafe {
             match self {
                 DOMStringType::Rust(_s) => {},
@@ -321,14 +321,14 @@ impl DOMString {
     /// to the JSString. Otherwise do the conversion to utf8 now.
     pub fn from_js_string(
         cx: SafeJSContext,
-        value: js::gc::HandleValue,
+        value: crate::js::gc::HandleValue,
     ) -> Result<DOMString, DOMStringErrorType> {
-        let string_ptr = unsafe { js::rust::ToString(*cx, value) };
+        let string_ptr = unsafe { crate::js::rust::ToString(*cx, value) };
         if string_ptr.is_null() {
             debug!("ToString failed");
             Err(DOMStringErrorType::JSConversionError)
         } else {
-            let latin1 = unsafe { js::jsapi::JS_DeprecatedStringHasLatin1Chars(string_ptr) };
+            let latin1 = unsafe { crate::js::jsapi::JS_DeprecatedStringHasLatin1Chars(string_ptr) };
             let inner = if latin1 {
                 let h = RootedTraceableBox::from_box(Heap::boxed(string_ptr));
                 DOMStringType::JSString(h)
