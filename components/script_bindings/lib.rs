@@ -12,6 +12,7 @@
 extern crate js;
 
 #[cfg(feature = "js-boa")]
+#[macro_use]
 extern crate boa_bindings;
 
 #[macro_use]
@@ -123,8 +124,10 @@ pub mod codegen {
 #[cfg(feature = "js-spidermonkey")]
 pub(crate) use crate::js::gc::Traceable as JSTraceable;
 
+// For Boa, we use our own JSTraceable trait defined in trace.rs
+// This is compatible with the SpiderMonkey API signature
 #[cfg(feature = "js-boa")]
-pub(crate) use boa_bindings::trace::Trace as JSTraceable;
+pub use crate::trace::JSTraceable;
 
 pub use crate::codegen::DomTypes::DomTypes;
 pub(crate) use crate::reflector::{DomObject, MutDomObject, Reflector};

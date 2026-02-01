@@ -181,7 +181,7 @@ fn js_traceable_derive(s: synstructure::Structure) -> proc_macro2::TokenStream {
         unsafe impl #impl_generics crate::JSTraceable for #name #ty_generics #where_clause {
             #[inline]
             #[expect(unused_variables, unused_imports)]
-            unsafe fn trace(&self, tracer: *mut js::jsapi::JSTracer) {
+            unsafe fn trace(&self, tracer: *mut crate::js::jsapi::JSTracer) {
                 use crate::JSTraceable;
                 match *self {
                     #match_body

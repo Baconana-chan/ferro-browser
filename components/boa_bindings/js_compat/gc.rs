@@ -7,7 +7,8 @@ use std::ptr;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
-use super::jsapi::{JSTracer, Value, JSObject};
+use super::jsapi::{JSTracer, Value, JSObject, JSString, StringId};
+use super::glue::{PropertyDescriptor, jsid, PropertyKey};
 
 /// GCMethods - trait for types that need GC management
 pub trait GCMethods: Sized {
@@ -28,6 +29,32 @@ impl GCMethods for *mut JSObject {
     }
 }
 
+impl GCMethods for *mut JSString {
+    unsafe fn initial() -> Self {
+        ptr::null_mut()
+    }
+}
+
+impl GCMethods for jsid {
+    unsafe fn initial() -> Self {
+        jsid::VOID
+    }
+}
+
+// Note: PropertyKey is a type alias for jsid, so no separate impl needed
+
+impl GCMethods for PropertyDescriptor {
+    unsafe fn initial() -> Self {
+        PropertyDescriptor::default()
+    }
+}
+
+impl GCMethods for StringId {
+    unsafe fn initial() -> Self {
+        StringId(ptr::null_mut())
+    }
+}
+
 /// Traceable - trait for types that can be traced by GC
 /// # Safety
 /// Implementations must correctly trace all GC-managed values
@@ -40,6 +67,22 @@ unsafe impl Traceable for Value {
 }
 
 unsafe impl Traceable for *mut JSObject {
+    unsafe fn trace(&self, _tracer: *mut JSTracer) {}
+}
+
+unsafe impl Traceable for *mut JSString {
+    unsafe fn trace(&self, _tracer: *mut JSTracer) {}
+}
+
+unsafe impl Traceable for StringId {
+    unsafe fn trace(&self, _tracer: *mut JSTracer) {}
+}
+
+unsafe impl Traceable for jsid {
+    unsafe fn trace(&self, _tracer: *mut JSTracer) {}
+}
+
+unsafe impl Traceable for PropertyDescriptor {
     unsafe fn trace(&self, _tracer: *mut JSTracer) {}
 }
 
@@ -243,6 +286,51 @@ impl<T: GCMethods> Root<T> {
     }
 }
 
+impl<T: Copy> Root<T> {
+    /// Get a Handle to this rooted value
+    pub fn handle(&self) -> super::rust::Handle<'_, T> {
+        unsafe { super::rust::Handle::from_raw(&self.value) }
+    }
+    
+    /// Get a MutableHandle to this rooted value
+    pub fn handle_mut(&mut self) -> super::rust::MutableHandle<'_, T> {
+        unsafe { super::rust::MutableHandle::from_raw(&mut self.value) }
+    }
+    
+    /// Get the contained value
+    pub fn get(&self) -> T {
+        self.value
+    }
+    
+    /// Set the contained value (accepts values that can be converted into T)
+    pub fn set<V: Into<T>>(&mut self, val: V) {
+        self.value = val.into();
+    }
+}
+
+// Generic implementations that work for non-Copy types too
+impl<T> Root<T> {
+    /// Get a Handle to this rooted value (reference version for non-Copy types)
+    pub fn handle_ref(&self) -> super::rust::Handle<'_, T> {
+        unsafe { super::rust::Handle::from_raw(&self.value) }
+    }
+    
+    /// Get a MutableHandle to this rooted value (reference version for non-Copy types)
+    pub fn handle_mut_ref(&mut self) -> super::rust::MutableHandle<'_, T> {
+        unsafe { super::rust::MutableHandle::from_raw(&mut self.value) }
+    }
+    
+    /// Get a reference to the contained value
+    pub fn get_ref(&self) -> &T {
+        &self.value
+    }
+    
+    /// Set the contained value
+    pub fn set_val(&mut self, val: T) {
+        self.value = val;
+    }
+}
+
 impl<T> Deref for Root<T> {
     type Target = T;
     
@@ -265,29 +353,38 @@ pub type Rooted<T> = Root<T>;
 macro_rules! rooted {
     // SpiderMonkey syntax: rooted!(in(cx) let name = val)
     (in($cx:expr) let $name:ident = $val:expr) => {
-        let _ = $cx;  // Suppress unused warning
+        let _ = &$cx;  // Suppress unused warning
         let mut $name = $crate::js_compat::gc::Root::new($val);
     };
     (in($cx:expr) let mut $name:ident = $val:expr) => {
-        let _ = $cx;
+        let _ = &$cx;
         let mut $name = $crate::js_compat::gc::Root::new($val);
     };
     (in($cx:expr) let $name:ident: $ty:ty = $val:expr) => {
-        let _ = $cx;
+        let _ = &$cx;
         let mut $name: $crate::js_compat::gc::Root<$ty> = $crate::js_compat::gc::Root::new($val);
     };
     (in($cx:expr) let mut $name:ident: $ty:ty = $val:expr) => {
-        let _ = $cx;
+        let _ = &$cx;
         let mut $name: $crate::js_compat::gc::Root<$ty> = $crate::js_compat::gc::Root::new($val);
     };
     // Syntax without initializer: rooted!(in(cx) let mut name: Type)
     (in($cx:expr) let $name:ident: $ty:ty) => {
-        let _ = $cx;
-        let mut $name = $crate::js_compat::gc::Root::<$ty>::new(Default::default());
+        let _ = &$cx;
+        let mut $name = $crate::js_compat::gc::Root::<$ty>::new(unsafe { $crate::js_compat::gc::GCMethods::initial() });
     };
     (in($cx:expr) let mut $name:ident: $ty:ty) => {
-        let _ = $cx;
-        let mut $name = $crate::js_compat::gc::Root::<$ty>::new(Default::default());
+        let _ = &$cx;
+        let mut $name = $crate::js_compat::gc::Root::<$ty>::new(unsafe { $crate::js_compat::gc::GCMethods::initial() });
+    };
+    // SpiderMonkey syntax with &in: rooted!(&in(&mut realm) let mut name = val)
+    (&in($cx:expr) let $name:ident = $val:expr) => {
+        let _ = &$cx;  // Suppress unused warning
+        let mut $name = $crate::js_compat::gc::Root::new($val);
+    };
+    (&in($cx:expr) let mut $name:ident = $val:expr) => {
+        let _ = &$cx;
+        let mut $name = $crate::js_compat::gc::Root::new($val);
     };
     // Legacy syntax: rooted!($cx, let name = val)
     ($cx:expr, let $name:ident = $val:expr) => {
@@ -320,6 +417,11 @@ impl<T: Traceable + 'static> RootedTraceableBox<T> {
     pub fn from_box(boxed: Box<T>) -> Self {
         Self { inner: boxed }
     }
+    
+    /// Trace the contained value
+    pub unsafe fn trace(&self, tracer: *mut JSTracer) {
+        (*self.inner).trace(tracer);
+    }
 }
 
 impl<T: Traceable + 'static> Deref for RootedTraceableBox<T> {
@@ -332,6 +434,236 @@ impl<T: Traceable + 'static> Deref for RootedTraceableBox<T> {
 impl<T: Traceable + 'static> DerefMut for RootedTraceableBox<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut *self.inner
+    }
+}
+
+// ===================
+// Traceable implementations for standard library types
+// ===================
+
+// Primitive types
+unsafe impl Traceable for () { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for bool { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for i8 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for i16 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for i32 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for i64 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for i128 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for isize { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for u8 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for u16 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for u32 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for u64 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for u128 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for usize { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for f32 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for f64 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for char { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for String { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for str { unsafe fn trace(&self, _: *mut JSTracer) {} }
+
+// Atomics
+use std::sync::atomic::{AtomicBool, AtomicI8, AtomicI16, AtomicI32, AtomicI64, AtomicIsize};
+use std::sync::atomic::{AtomicU8, AtomicU16, AtomicU32, AtomicU64, AtomicUsize};
+
+unsafe impl Traceable for AtomicBool { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for AtomicI8 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for AtomicI16 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for AtomicI32 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for AtomicI64 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for AtomicIsize { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for AtomicU8 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for AtomicU16 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for AtomicU32 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for AtomicU64 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for AtomicUsize { unsafe fn trace(&self, _: *mut JSTracer) {} }
+
+// Option
+unsafe impl<T: Traceable> Traceable for Option<T> {
+    #[inline]
+    unsafe fn trace(&self, tracer: *mut JSTracer) {
+        if let Some(ref v) = *self {
+            v.trace(tracer);
+        }
+    }
+}
+
+// Result
+unsafe impl<T: Traceable, E: Traceable> Traceable for Result<T, E> {
+    #[inline]
+    unsafe fn trace(&self, tracer: *mut JSTracer) {
+        match *self {
+            Ok(ref v) => v.trace(tracer),
+            Err(ref e) => e.trace(tracer),
+        }
+    }
+}
+
+// Cell types
+use std::cell::{Cell, RefCell, UnsafeCell};
+
+unsafe impl<T: Traceable + Copy> Traceable for Cell<T> {
+    #[inline]
+    unsafe fn trace(&self, tracer: *mut JSTracer) {
+        self.get().trace(tracer);
+    }
+}
+
+unsafe impl<T: Traceable> Traceable for RefCell<T> {
+    #[inline]
+    unsafe fn trace(&self, tracer: *mut JSTracer) {
+        (*self).borrow().trace(tracer);
+    }
+}
+
+unsafe impl<T: Traceable> Traceable for UnsafeCell<T> {
+    #[inline]
+    unsafe fn trace(&self, tracer: *mut JSTracer) {
+        (*self.get()).trace(tracer);
+    }
+}
+
+// Box, Vec, slice
+unsafe impl<T: Traceable + ?Sized> Traceable for Box<T> {
+    #[inline]
+    unsafe fn trace(&self, tracer: *mut JSTracer) {
+        (**self).trace(tracer);
+    }
+}
+
+unsafe impl<T: Traceable> Traceable for Vec<T> {
+    #[inline]
+    unsafe fn trace(&self, tracer: *mut JSTracer) {
+        for item in self.iter() {
+            item.trace(tracer);
+        }
+    }
+}
+
+unsafe impl<T: Traceable> Traceable for [T] {
+    #[inline]
+    unsafe fn trace(&self, tracer: *mut JSTracer) {
+        for item in self.iter() {
+            item.trace(tracer);
+        }
+    }
+}
+
+// Arrays
+unsafe impl<T: Traceable, const N: usize> Traceable for [T; N] {
+    #[inline]
+    unsafe fn trace(&self, tracer: *mut JSTracer) {
+        for item in self.iter() {
+            item.trace(tracer);
+        }
+    }
+}
+
+// VecDeque
+use std::collections::VecDeque;
+
+unsafe impl<T: Traceable> Traceable for VecDeque<T> {
+    #[inline]
+    unsafe fn trace(&self, tracer: *mut JSTracer) {
+        for item in self.iter() {
+            item.trace(tracer);
+        }
+    }
+}
+
+// HashMap
+use std::collections::HashMap;
+use std::hash::{BuildHasher, Hash};
+
+unsafe impl<K: Traceable, V: Traceable, S> Traceable for HashMap<K, V, S> {
+    #[inline]
+    unsafe fn trace(&self, tracer: *mut JSTracer) {
+        for (k, v) in self.iter() {
+            k.trace(tracer);
+            v.trace(tracer);
+        }
+    }
+}
+
+// HashSet
+use std::collections::HashSet;
+
+unsafe impl<T: Traceable, S> Traceable for HashSet<T, S> {
+    #[inline]
+    unsafe fn trace(&self, tracer: *mut JSTracer) {
+        for item in self.iter() {
+            item.trace(tracer);
+        }
+    }
+}
+
+// BTreeMap
+use std::collections::BTreeMap;
+
+unsafe impl<K: Traceable, V: Traceable> Traceable for BTreeMap<K, V> {
+    #[inline]
+    unsafe fn trace(&self, tracer: *mut JSTracer) {
+        for (k, v) in self.iter() {
+            k.trace(tracer);
+            v.trace(tracer);
+        }
+    }
+}
+
+// Rc and Arc
+use std::rc::Rc;
+use std::sync::Arc;
+
+unsafe impl<T: Traceable + ?Sized> Traceable for Rc<T> {
+    #[inline]
+    unsafe fn trace(&self, tracer: *mut JSTracer) {
+        (**self).trace(tracer);
+    }
+}
+
+unsafe impl<T: Traceable + ?Sized> Traceable for Arc<T> {
+    #[inline]
+    unsafe fn trace(&self, tracer: *mut JSTracer) {
+        (**self).trace(tracer);
+    }
+}
+
+// Tuples
+unsafe impl<A: Traceable, B: Traceable> Traceable for (A, B) {
+    #[inline]
+    unsafe fn trace(&self, tracer: *mut JSTracer) {
+        self.0.trace(tracer);
+        self.1.trace(tracer);
+    }
+}
+
+unsafe impl<A: Traceable, B: Traceable, C: Traceable> Traceable for (A, B, C) {
+    #[inline]
+    unsafe fn trace(&self, tracer: *mut JSTracer) {
+        self.0.trace(tracer);
+        self.1.trace(tracer);
+        self.2.trace(tracer);
+    }
+}
+
+// PhantomData
+unsafe impl<T: ?Sized> Traceable for PhantomData<T> {
+    #[inline]
+    unsafe fn trace(&self, _: *mut JSTracer) {}
+}
+
+// References
+unsafe impl<T: Traceable + ?Sized> Traceable for &T {
+    #[inline]
+    unsafe fn trace(&self, tracer: *mut JSTracer) {
+        (*self).trace(tracer);
+    }
+}
+
+unsafe impl<T: Traceable + ?Sized> Traceable for &mut T {
+    #[inline]
+    unsafe fn trace(&self, tracer: *mut JSTracer) {
+        (**self).trace(tracer);
     }
 }
 

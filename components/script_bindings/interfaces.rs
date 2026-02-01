@@ -106,7 +106,8 @@ pub trait WebGL2RenderingContextHelpers {
     fn is_webgl2_enabled(cx: JSContext, global: HandleObject) -> bool;
 }
 
-pub trait WindowHelpers {
+pub trait WindowHelpers<D: DomTypes>: DomObject {
+    fn Document(&self) -> DomRoot<D::Document>;
     fn create_named_properties_object(
         cx: JSContext,
         proto: HandleObject,

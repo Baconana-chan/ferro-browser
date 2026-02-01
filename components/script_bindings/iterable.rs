@@ -176,7 +176,7 @@ fn dict_return(
 ) -> Fallible<()> {
     let mut dict = IterableKeyOrValueResult::empty();
     dict.done = done;
-    dict.value.set(value.get());
+    dict.value = Some(value.get());
     rooted!(in(*cx) let mut dict_value = UndefinedValue());
     unsafe {
         dict.to_jsval(*cx, dict_value.handle_mut());
@@ -193,12 +193,7 @@ fn key_and_value_return(
 ) -> Fallible<()> {
     let mut dict = IterableKeyAndValueResult::empty();
     dict.done = false;
-    dict.value = Some(
-        vec![key, value]
-            .into_iter()
-            .map(|handle| RootedTraceableBox::from_box(Heap::boxed(handle.get())))
-            .collect(),
-    );
+    dict.value = Some((key.get(), value.get()));
     rooted!(in(*cx) let mut dict_value = UndefinedValue());
     unsafe {
         dict.to_jsval(*cx, dict_value.handle_mut());

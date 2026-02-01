@@ -25,6 +25,11 @@ impl CurrentRealm {
     pub fn get(&self) -> *mut c_void {
         ptr::null_mut()
     }
+    
+    /// Assert that the current realm matches expected
+    pub fn assert(_cx: *mut RawJSContext, _realm: *mut c_void) {
+        // Stub - in debug mode would assert realms match
+    }
 }
 
 /// Context options

@@ -130,7 +130,17 @@ pub mod IterableIteratorBinding;
     let window_binding = bindings_dir.join("WindowBinding.rs");
     fs::write(&window_binding, r#"
 // Auto-generated WindowBinding stub for Boa engine
+
 pub struct WindowMethods;
+
+/// Window binding constants
+pub mod Window_Binding {
+    pub const MAX_PROTO_CHAIN_LENGTH: usize = 3;
+    
+    pub trait WindowMethods {
+        // Window method stubs - add as needed
+    }
+}
 "#).unwrap();
 
     // Create EventModifierInitBinding.rs stub  
@@ -138,23 +148,26 @@ pub struct WindowMethods;
     fs::write(&event_modifier_binding, r#"
 // Auto-generated EventModifierInitBinding stub for Boa engine
 
+use std::marker::PhantomData;
+
 /// EventModifierInit dictionary
 #[derive(Clone, Debug, Default)]
-pub struct EventModifierInit {
-    pub alt_key: bool,
-    pub ctrl_key: bool,
-    pub meta_key: bool,
-    pub shift_key: bool,
-    pub modifier_alt_graph: bool,
-    pub modifier_caps_lock: bool,
-    pub modifier_fn: bool,
-    pub modifier_fn_lock: bool,
-    pub modifier_hyper: bool,
-    pub modifier_num_lock: bool,
-    pub modifier_scroll_lock: bool,
-    pub modifier_super: bool,
-    pub modifier_symbol: bool,
-    pub modifier_symbol_lock: bool,
+pub struct EventModifierInit<D> {
+    pub altKey: bool,
+    pub ctrlKey: bool,
+    pub metaKey: bool,
+    pub shiftKey: bool,
+    pub keyModifierStateAltGraph: bool,
+    pub keyModifierStateCapsLock: bool,
+    pub keyModifierStateFn: bool,
+    pub keyModifierStateFnLock: bool,
+    pub keyModifierStateHyper: bool,
+    pub keyModifierStateNumLock: bool,
+    pub keyModifierStateScrollLock: bool,
+    pub keyModifierStateSuper: bool,
+    pub keyModifierStateSymbol: bool,
+    pub keyModifierStateSymbolLock: bool,
+    pub _marker: PhantomData<D>,
 }
 "#).unwrap();
 
@@ -162,7 +175,54 @@ pub struct EventModifierInit {
     let iterable_iterator_binding = bindings_dir.join("IterableIteratorBinding.rs");
     fs::write(&iterable_iterator_binding, r#"
 // Auto-generated IterableIteratorBinding stub for Boa engine
+
 pub struct IterableIteratorMethods;
+
+/// Iterable key or value result wrapper
+#[derive(Clone, Debug)]
+pub struct IterableKeyOrValueResult {
+    pub done: bool,
+    pub value: Option<crate::js::jsapi::Value>,
+}
+
+impl IterableKeyOrValueResult {
+    pub fn empty() -> Self {
+        Self::default()
+    }
+    
+    pub fn to_jsval(&self, _cx: *mut crate::js::jsapi::JSContext, _rval: crate::js::rust::MutableHandleValue<'_>) {
+        // Stub: convert to JSVal
+    }
+}
+
+impl Default for IterableKeyOrValueResult {
+    fn default() -> Self {
+        Self { done: false, value: None }
+    }
+}
+
+/// Iterable key and value result wrapper
+#[derive(Clone, Debug)]
+pub struct IterableKeyAndValueResult {
+    pub done: bool,
+    pub value: Option<(crate::js::jsapi::Value, crate::js::jsapi::Value)>,
+}
+
+impl IterableKeyAndValueResult {
+    pub fn empty() -> Self {
+        Self::default()
+    }
+    
+    pub fn to_jsval(&self, _cx: *mut crate::js::jsapi::JSContext, _rval: crate::js::rust::MutableHandleValue<'_>) {
+        // Stub: convert to JSVal
+    }
+}
+
+impl Default for IterableKeyAndValueResult {
+    fn default() -> Self {
+        Self { done: false, value: None }
+    }
+}
 "#).unwrap();
 
     // Create InterfaceObjectMapPhf.rs with empty map
@@ -452,21 +512,13 @@ impl ID {
     }
 }
 
+/// Constructor IDs (mirrors ID but for constructors)
+pub type Constructor = ID;
+
 /// Convert prototype ID to string name
-pub fn proto_id_to_name(id: ID) -> &'static str {
-    match id {
-        ID::Window => "Window",
-        ID::Document => "Document",
-        ID::Element => "Element",
-        ID::Node => "Node",
-        ID::EventTarget => "EventTarget",
-        ID::HTMLElement => "HTMLElement",
-        ID::HTMLDivElement => "HTMLDivElement",
-        ID::HTMLSpanElement => "HTMLSpanElement",
-        ID::HTMLParagraphElement => "HTMLParagraphElement",
-        ID::HTMLAnchorElement => "HTMLAnchorElement",
-        ID::Last => "Unknown",
-    }
+pub fn proto_id_to_name(id: u16) -> &'static str {
+    // Just return a placeholder - real implementation would match on ID
+    "Unknown"
 }
 "#).unwrap();
 
@@ -476,17 +528,21 @@ pub fn proto_id_to_name(id: ID) -> &'static str {
 // Auto-generated stub for Boa engine
 
 use crate::reflector::DomObject;
+use crate::inheritance::{Castable, DerivedFrom};
+use crate::interfaces::{DomHelpers, GlobalScopeHelpers, WindowHelpers, DocumentHelpers};
+use crate::conversions::IDLInterface;
+use crate::js::gc::Traceable;
 
 /// DomTypes marker trait with all required associated types for DOM interfaces
-pub trait DomTypes: Sized + 'static {
+pub trait DomTypes: Sized + 'static + DomHelpers<Self> + Traceable {
     // Core DOM types
-    type GlobalScope: DomObject;
-    type Window: DomObject;
-    type WindowProxy;
-    type Document: DomObject;
+    type GlobalScope: DomObject + Castable + GlobalScopeHelpers<Self> + DerivedFrom<Self::GlobalScope>;
+    type Window: DomObject + DerivedFrom<Self::GlobalScope> + WindowHelpers<Self>;
+    type WindowProxy: DomObject;
+    type Document: DomObject + DocumentHelpers;
     type DocumentFragment: DomObject;
     type DocumentType: DomObject;
-    type Element: DomObject;
+    type Element: DomObject + Castable;
     type Node: DomObject;
     type Comment: DomObject;
     type Text: DomObject;
@@ -526,13 +582,13 @@ pub trait DomTypes: Sized + 'static {
     type HTMLSlotElement: DomObject;
 
     // Collections and lists
-    type NodeList: DomObject;
-    type HTMLCollection: DomObject;
-    type HTMLOptionsCollection: DomObject;
-    type HTMLFormControlsCollection: DomObject;
-    type DOMTokenList: DomObject;
+    type NodeList: DomObject + IDLInterface;
+    type HTMLCollection: DomObject + IDLInterface;
+    type HTMLOptionsCollection: DomObject + IDLInterface;
+    type HTMLFormControlsCollection: DomObject + IDLInterface;
+    type DOMTokenList: DomObject + IDLInterface;
     type NamedNodeMap: DomObject;
-    type FileList: DomObject;
+    type FileList: DomObject + IDLInterface;
     type File: DomObject;
     type Blob: DomObject;
 
@@ -693,5 +749,87 @@ pub enum ElementOrString<D: crate::codegen::DomTypes::DomTypes> {
 pub fn register<D: crate::codegen::DomTypes::DomTypes>() {
     // TODO: Register DOM constructors using boa_bindings
 }
+"#).unwrap();
+
+    // Create InterfaceTypes.rs stub (required by script/build.rs)
+    let interface_types_rs = out_dir.join("InterfaceTypes.rs");
+    fs::write(&interface_types_rs, r#"
+// Auto-generated stub for Boa engine
+// Interface type definitions
+
+/// Marker trait for interface types
+pub trait InterfaceType {}
+"#).unwrap();
+
+    // Create DomTypeHolder.rs stub (required by script/build.rs)
+    let dom_type_holder_rs = out_dir.join("DomTypeHolder.rs");
+    fs::write(&dom_type_holder_rs, r#"
+// Auto-generated stub for Boa engine
+// DOM type holder for concrete types
+
+/// Marker struct for DOM type holder
+pub struct DomTypeHolder;
+
+impl DomTypeHolder {
+    pub fn new() -> Self { Self }
+}
+
+impl Default for DomTypeHolder {
+    fn default() -> Self { Self::new() }
+}
+"#).unwrap();
+
+    // Create InterfaceObjectMap.rs stub (required by script/build.rs)
+    let interface_object_map_rs = out_dir.join("InterfaceObjectMap.rs");
+    fs::write(&interface_object_map_rs, r#"
+// Auto-generated stub for Boa engine
+// Interface object map for DOM interfaces
+
+use phf::Map;
+
+/// Interface definition stub
+#[derive(Clone, Copy, Debug)]
+pub struct Interface;
+
+/// Empty interface object map
+pub static MAP: Map<&'static [u8], Interface> = phf::phf_map! {};
+
+/// Get interface by name
+pub fn get(_name: &[u8]) -> Option<Interface> {
+    None
+}
+"#).unwrap();
+
+    // Create ConcreteInheritTypes.rs stub (required by script/build.rs)
+    let concrete_inherit_types_rs = out_dir.join("ConcreteInheritTypes.rs");
+    fs::write(&concrete_inherit_types_rs, r#"
+// Auto-generated stub for Boa engine
+// Concrete inheritance types for DOM elements
+
+/// Trait for types with concrete inheritance info
+pub trait ConcreteInheritTypes {}
+"#).unwrap();
+
+    // Create UnionTypes.rs stub (required by script/build.rs)
+    let union_types_rs = out_dir.join("UnionTypes.rs");
+    fs::write(&union_types_rs, r#"
+// Auto-generated stub for Boa engine
+// Union types for WebIDL union definitions
+
+/// Placeholder for union type stubs
+pub mod unions {
+    // Union types would be generated here
+}
+"#).unwrap();
+
+    // Create ConcreteBindings folder (required by script/build.rs)
+    let concrete_bindings_dir = out_dir.join("ConcreteBindings");
+    fs::create_dir_all(&concrete_bindings_dir).unwrap();
+    
+    // Create a placeholder file in ConcreteBindings
+    let placeholder = concrete_bindings_dir.join("mod.rs");
+    fs::write(&placeholder, r#"
+// Auto-generated stub for Boa engine
+// Concrete bindings module
 "#).unwrap();
 }

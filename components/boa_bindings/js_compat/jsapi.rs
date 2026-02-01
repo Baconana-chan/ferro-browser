@@ -93,10 +93,15 @@ impl JSContext {
     pub fn as_ptr(&self) -> *mut RawJSContext {
         self.inner as *mut RawJSContext
     }
+    
+    /// Create JSContext from raw pointer
+    pub unsafe fn from_ptr(ptr: *mut c_void) -> Self {
+        Self { inner: ptr }
+    }
 }
 
-/// Raw JSContext pointer type
-pub type RawJSContext = c_void;
+/// Raw JSContext pointer type - must be JSContext for compatibility with script_bindings
+pub type RawJSContext = JSContext;
 
 /// JSObject - represents a JavaScript object
 #[repr(C)]
@@ -130,104 +135,96 @@ pub struct JSTracer {
 
 /// JSClass - class definition for JS objects
 #[repr(C)]
+#[derive(Clone, Copy)]
 pub struct JSClass {
     pub name: *const i8,
     pub flags: u32,
-    pub c_ops: *const JSClassOps,
+    pub cOps: *const JSClassOps,
     pub spec: *const c_void,
     pub ext: *const c_void,
-    pub o_ops: *const c_void,
+    pub oOps: *const c_void,
 }
 
 unsafe impl Sync for JSClass {}
 
+/// JSNative - standard JS native function signature
+pub type JSNative = unsafe extern "C" fn(cx: *mut JSContext, argc: u32, vp: *mut Value) -> bool;
+
 /// JSClassOps - operations for JSClass
 #[repr(C)]
 pub struct JSClassOps {
-    pub add_property: Option<unsafe extern "C" fn()>,
-    pub del_property: Option<unsafe extern "C" fn()>,
-    pub get_property: Option<unsafe extern "C" fn()>,
-    pub set_property: Option<unsafe extern "C" fn()>,
-    pub enumerate: Option<unsafe extern "C" fn()>,
-    pub new_enumerate: Option<unsafe extern "C" fn()>,
-    pub resolve: Option<unsafe extern "C" fn()>,
-    pub may_resolve: Option<unsafe extern "C" fn()>,
-    pub finalize: Option<unsafe extern "C" fn()>,
-    pub call: Option<unsafe extern "C" fn()>,
-    pub has_instance: Option<unsafe extern "C" fn()>,
-    pub construct: Option<unsafe extern "C" fn()>,
-    pub trace: Option<unsafe extern "C" fn()>,
+    pub addProperty: Option<JSNative>,
+    pub delProperty: Option<JSNative>,
+    pub getProperty: Option<JSNative>,
+    pub setProperty: Option<JSNative>,
+    pub enumerate: Option<JSNative>,
+    pub newEnumerate: Option<JSNewEnumerateOp>,
+    pub resolve: Option<JSResolveOp>,
+    pub mayResolve: Option<JSMayResolveOp>,
+    pub finalize: Option<JSFinalizeOp>,
+    pub call: Option<JSNative>,
+    pub hasInstance: Option<JSHasInstanceOp>,
+    pub construct: Option<JSNative>,
+    pub trace: Option<JSTraceOp>,
 }
 
-/// Handle types - safe wrappers around raw pointers
-#[repr(transparent)]
-pub struct Handle<'a, T> {
-    ptr: *const T,
-    _marker: PhantomData<&'a T>,
-}
-
-impl<'a, T> Handle<'a, T> {
-    pub fn get(&self) -> &T {
-        unsafe { &*self.ptr }
-    }
-    
-    pub unsafe fn from_raw(ptr: *const T) -> Self {
-        Self { ptr, _marker: PhantomData }
-    }
-}
-
-impl<'a, T> Clone for Handle<'a, T> {
-    fn clone(&self) -> Self {
-        Self { ptr: self.ptr, _marker: PhantomData }
+impl Default for JSClassOps {
+    fn default() -> Self {
+        Self {
+            addProperty: None,
+            delProperty: None,
+            getProperty: None,
+            setProperty: None,
+            enumerate: None,
+            newEnumerate: None,
+            resolve: None,
+            mayResolve: None,
+            finalize: None,
+            call: None,
+            hasInstance: None,
+            construct: None,
+            trace: None,
+        }
     }
 }
 
-impl<'a, T> Copy for Handle<'a, T> {}
+/// JSNewEnumerateOp signature
+pub type JSNewEnumerateOp = unsafe extern "C" fn(cx: *mut JSContext, obj: HandleObject<'_>, properties: *mut c_void, enumerableOnly: bool) -> bool;
 
-/// HandleObject - Handle to a JSObject
-pub type HandleObject<'a> = Handle<'a, *mut JSObject>;
+/// JSResolveOp signature  
+pub type JSResolveOp = unsafe extern "C" fn(cx: *mut JSContext, obj: HandleObject<'_>, id: *mut c_void, resolved: *mut bool) -> bool;
+
+/// JSMayResolveOp signature
+pub type JSMayResolveOp = unsafe extern "C" fn(names: *const c_void, id: *mut c_void, maybeObj: *mut JSObject) -> bool;
+
+/// JSFinalizeOp signature
+pub type JSFinalizeOp = unsafe extern "C" fn(gcx: *mut c_void, obj: *mut JSObject);
+
+/// JSHasInstanceOp signature
+pub type JSHasInstanceOp = unsafe extern "C" fn(cx: *mut JSContext, obj: HandleObject<'_>, val: *mut c_void, bp: *mut bool) -> bool;
+
+/// JSTraceOp signature
+pub type JSTraceOp = unsafe extern "C" fn(trc: *mut JSTracer, obj: *mut JSObject);
+
+// Re-export Handle and MutableHandle from rust module to avoid duplication
+pub use super::rust::{Handle, MutableHandle, HandleValue, HandleObject, MutableHandleValue, MutableHandleObject};
+pub use super::rust::{IntoRawPtr, IntoMutRawPtr};
+
+/// RawHandleObject - raw pointer type
 pub type RawHandleObject = *mut JSObject;
 
-/// HandleValue - Handle to a Value
-pub type HandleValue<'a> = Handle<'a, Value>;
+/// RawHandleValue - raw pointer type
 pub type RawHandleValue = *mut Value;
 
 /// HandleString - Handle to a JSString
 pub type HandleString<'a> = Handle<'a, *mut JSString>;
 
-/// MutableHandle types
-#[repr(transparent)]
-pub struct MutableHandle<'a, T> {
-    ptr: *mut T,
-    _marker: PhantomData<&'a mut T>,
-}
-
-impl<'a, T> MutableHandle<'a, T> {
-    pub fn get(&self) -> &T {
-        unsafe { &*self.ptr }
-    }
-    
-    pub fn set(&mut self, val: T) {
-        unsafe { *self.ptr = val; }
-    }
-    
-    pub unsafe fn from_raw(ptr: *mut T) -> Self {
-        Self { ptr, _marker: PhantomData }
-    }
-}
-
-/// MutableHandleObject
-pub type MutableHandleObject<'a> = MutableHandle<'a, *mut JSObject>;
-
 /// MutableHandleString
 pub type MutableHandleString<'a> = MutableHandle<'a, *mut JSString>;
 
-/// MutableHandleValue
-pub type MutableHandleValue<'a> = MutableHandle<'a, Value>;
-
 /// Value - JavaScript value (NaN-boxed in SpiderMonkey, we use Boa's JsValue)
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Value {
     pub data: u64,
 }
@@ -247,6 +244,10 @@ impl Value {
     
     pub fn is_null(&self) -> bool {
         self.data == 1
+    }
+    
+    pub fn is_null_or_undefined(&self) -> bool {
+        self.is_null() || self.is_undefined()
     }
     
     pub fn is_object(&self) -> bool {
@@ -326,6 +327,20 @@ impl Value {
     pub fn from_object(obj: *mut JSObject) -> Self {
         Self { data: obj as u64 }
     }
+    
+    /// Get the value as a private pointer
+    pub fn to_private(&self) -> *const std::ffi::c_void {
+        self.data as *const std::ffi::c_void
+    }
+    
+    /// Get object or null (returns null for non-object values)
+    pub fn to_object_or_null(&self) -> *mut JSObject {
+        if self.is_null() || self.is_undefined() {
+            ptr::null_mut()
+        } else {
+            self.to_object()
+        }
+    }
 }
 
 impl Default for Value {
@@ -337,33 +352,51 @@ impl Default for Value {
 /// Heap - GC-traced storage for values
 #[repr(C)]
 pub struct Heap<T> {
-    value: T,
+    pub ptr: std::cell::UnsafeCell<T>,
 }
 
 impl<T: Default> Heap<T> {
     pub fn new() -> Self {
-        Self { value: T::default() }
+        Self { ptr: std::cell::UnsafeCell::new(T::default()) }
     }
-    
+}
+
+impl<T> Heap<T> {
     pub fn get(&self) -> T where T: Copy {
-        self.value
+        unsafe { *self.ptr.get() }
     }
     
-    pub fn set(&mut self, val: T) {
-        self.value = val;
+    /// Set the heap value (interior mutable, SpiderMonkey-compatible signature)
+    pub fn set(&self, val: T) {
+        unsafe { *self.ptr.get() = val; }
     }
     
     pub fn handle(&self) -> Handle<'_, T> {
-        Handle {
-            ptr: &self.value,
-            _marker: PhantomData,
-        }
+        unsafe { Handle::from_raw(self.ptr.get() as *const T) }
+    }
+    
+    /// Create a boxed Heap
+    pub fn boxed(value: T) -> Box<Self> {
+        Box::new(Self { ptr: std::cell::UnsafeCell::new(value) })
+    }
+    
+    /// Get unsafe pointer to the value
+    pub fn get_unsafe(&self) -> *mut T {
+        self.ptr.get()
     }
 }
 
 impl<T: Default> Default for Heap<T> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// Implement Traceable for Heap
+unsafe impl<T> super::gc::Traceable for Heap<T> {
+    #[inline]
+    unsafe fn trace(&self, _tracer: *mut JSTracer) {
+        // Heap values are traced via the GC automatically
     }
 }
 
@@ -389,6 +422,11 @@ impl CallArgs {
         self.argc
     }
     
+    /// Create CallArgs from vp pointer (SpiderMonkey-style)
+    pub unsafe fn from_vp(vp: *mut Value, argc: u32) -> Self {
+        Self { argc, vp }
+    }
+    
     pub fn get(&self, i: u32) -> HandleValue<'_> {
         unsafe {
             Handle::from_raw(self.vp.add(2 + i as usize))
@@ -406,28 +444,56 @@ impl CallArgs {
             Handle::from_raw(self.vp.add(1))
         }
     }
+    
+    /// Get the `this` value (alias for SpiderMonkey compatibility)
+    pub fn thisv(&self) -> HandleValue<'_> {
+        self.this()
+    }
+    
+    /// Check if this is a constructor call (new Foo())
+    pub fn is_constructing(&self) -> bool {
+        // TODO: implement proper constructing check
+        false
+    }
+    
+    /// Get the new.target value for constructor calls
+    pub fn new_target(&self) -> MutableHandleValue<'_> {
+        unsafe {
+            MutableHandle::from_raw(self.vp.add(self.argc as usize + 2))
+        }
+    }
+    
+    /// Get callee (the function being called)
+    pub fn callee(&self) -> *mut JSObject {
+        unsafe { (*self.vp).to_object() }
+    }
 }
 
 /// HandleValueArray - array of HandleValues
 pub struct HandleValueArray {
-    length: usize,
-    elements: *const Value,
+    pub length_: usize,
+    pub elements_: *const Value,
 }
 
 impl HandleValueArray {
     pub fn new() -> Self {
-        Self { length: 0, elements: ptr::null() }
+        Self { length_: 0, elements_: ptr::null() }
+    }
+    
+    /// Create an empty HandleValueArray
+    pub fn empty() -> Self {
+        Self::new()
     }
     
     pub fn from_rooted_slice(slice: &[Value]) -> Self {
         Self {
-            length: slice.len(),
-            elements: slice.as_ptr(),
+            length_: slice.len(),
+            elements_: slice.as_ptr(),
         }
     }
     
     pub fn len(&self) -> usize {
-        self.length
+        self.length_
     }
 }
 
@@ -438,7 +504,24 @@ pub type GCProgress = u32;
 pub type GCDescription = u32;
 pub type JSGCStatus = u32;
 pub type JSGCParamKey = u32;
-pub type TraceKind = u32;
+
+/// TraceKind - kinds of GC things that can be traced
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TraceKind {
+    Object = 0,
+    BigInt = 1,
+    String = 2,
+    Symbol = 3,
+    Script = 4,
+    Shape = 5,
+    BaseShape = 6,
+    JitCode = 7,
+    GetterSetter = 8,
+    PropMap = 9,
+    Scope = 10,
+    RegExpShared = 11,
+}
 
 // Compilation types
 pub type CompilationType = u32;
@@ -472,7 +555,12 @@ pub struct BuildIdCharVector {
 pub type AsmJSOption = u32;
 
 /// Exception stack behavior
-pub type ExceptionStackBehavior = u32;
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExceptionStackBehavior {
+    DoNotCapture = 0,
+    Capture = 1,
+}
 
 /// JSJitCompilerOption
 pub type JSJitCompilerOption = u32;
@@ -494,7 +582,7 @@ pub unsafe fn JS_NewStringCopyUTF8N(
     ptr::null_mut()
 }
 
-pub unsafe fn JS_SetReservedSlot(_obj: *mut JSObject, _slot: u32, _val: Value) {}
+pub unsafe fn JS_SetReservedSlot(_obj: *mut JSObject, _slot: u32, _val: &Value) {}
 
 pub unsafe fn CurrentGlobalOrNull(_cx: *mut RawJSContext) -> *mut JSObject {
     ptr::null_mut()
@@ -1254,7 +1342,7 @@ pub type Latin1Char = u8;
 /// Create a new function
 pub unsafe fn JS_NewFunction(
     _cx: *mut RawJSContext,
-    _call: Option<unsafe extern "C" fn() -> bool>,
+    _call: Option<JSNative>,
     _nargs: u32,
     _flags: u32,
     _name: *const std::os::raw::c_char,
@@ -1265,7 +1353,7 @@ pub unsafe fn JS_NewFunction(
 /// Create a new function with reserved slots
 pub unsafe fn NewFunctionWithReserved(
     _cx: *mut RawJSContext,
-    _call: Option<unsafe extern "C" fn() -> bool>,
+    _call: Option<JSNative>,
     _nargs: u32,
     _flags: u32,
     _name: *const std::os::raw::c_char,
@@ -1334,7 +1422,7 @@ pub unsafe fn JS_DeprecatedStringHasLatin1Chars(_s: *mut JSString) -> bool {
 /// Get two-byte string chars and length
 pub unsafe fn JS_GetTwoByteStringCharsAndLength(
     _cx: *mut RawJSContext,
-    _nogc: &AutoNoGC,
+    _nogc: *const AutoNoGC,
     _str: *mut JSString,
     _length: *mut usize,
 ) -> *const u16 {
@@ -1665,8 +1753,8 @@ pub unsafe fn JS_DefinePropertyById(
     _cx: *mut RawJSContext,
     _obj: HandleObject<'_>,
     _id: HandleId<'_>,
-    _value: HandleValue<'_>,
-    _attrs: u32,
+    _desc: Handle<'_, super::glue::PropertyDescriptor>,
+    _result: *mut ObjectOpResult,
 ) -> bool {
     true
 }
@@ -1720,24 +1808,24 @@ pub unsafe fn JS_HasPropertyById(
 /// Object operation result
 #[repr(C)]
 pub struct ObjectOpResult {
-    code: u32,
+    pub code_: usize,  // libc::uintptr_t
 }
 
 impl ObjectOpResult {
     pub fn new() -> Self {
-        Self { code: 0 }
+        Self { code_: 0 }
     }
     
     pub fn succeed(&mut self) {
-        self.code = 0;
+        self.code_ = 0;
     }
     
-    pub fn fail(&mut self, reason: u32) {
-        self.code = reason;
+    pub fn fail(&mut self, reason: usize) {
+        self.code_ = reason;
     }
     
     pub fn ok(&self) -> bool {
-        self.code == 0
+        self.code_ == 0
     }
 }
 
@@ -1756,9 +1844,14 @@ pub struct GCContext {
 /// JS error number enum
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(non_camel_case_types)]
 pub enum JSErrNum {
     JSMSG_OK = 0,
     JSMSG_NOT_AN_ERROR = 1,
+    JSMSG_CANT_PREVENT_EXTENSIONS = 2,
+    JSMSG_CANT_SET_PROTO = 3,
+    JSMSG_CANT_DEFINE_INVALID = 4,
+    JSMSG_OBJECT_NOT_EXTENSIBLE = 5,
     // Add more as needed
 }
 
@@ -1808,8 +1901,7 @@ pub unsafe fn JS_AtomizeAndPinString(
 // Function/Property Specification
 // ===================
 
-/// JSNative function type
-pub type JSNative = Option<unsafe extern "C" fn(*mut RawJSContext, u32, *mut Value) -> bool>;
+// JSNative is defined earlier in this file
 
 /// JSFunctionSpec - specification for defining functions
 #[repr(C)]
@@ -1850,7 +1942,7 @@ pub union JSFunctionSpec_Name {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct JSNativeWrapper {
-    pub op: JSNative,
+    pub op: Option<JSNative>,
     pub info: *const JSJitInfo,
 }
 
@@ -1946,7 +2038,7 @@ pub union JSPropertySpec_ValueWrapper_Value {
 // ===================
 
 /// JSFUN_CONSTRUCTOR - function is a constructor
-pub const JSFUN_CONSTRUCTOR: u16 = 0x400;
+pub const JSFUN_CONSTRUCTOR: u32 = 0x400;
 
 /// JSPROP_RESOLVING - property is being resolved
 pub const JSPROP_RESOLVING: u32 = 0x8000;
@@ -1955,6 +2047,12 @@ pub const JSPROP_RESOLVING: u32 = 0x8000;
 // Compartment/Realm Functions
 // ===================
 
+/// Zone - opaque type for GC zones
+#[repr(C)]
+pub struct Zone {
+    _private: [u8; 0],
+}
+
 /// Compartment - opaque type for compartments
 #[repr(C)]
 pub struct Compartment {
@@ -1962,9 +2060,12 @@ pub struct Compartment {
 }
 
 /// CompartmentSpecifier - specifies a compartment for an operation
-#[repr(C)]
-pub struct CompartmentSpecifier {
-    _private: [u8; 0],
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CompartmentSpecifier {
+    NewCompartmentInExistingZone = 0,
+    NewCompartmentAndZone = 1,
+    ExistingCompartment = 2,
 }
 
 /// CheckedUnwrapStatic - unwrap an object with checks
@@ -2088,6 +2189,7 @@ pub type DOMProxyShadowsCheck = Option<unsafe extern "C" fn(*mut RawJSContext, H
 pub unsafe fn SetDOMProxyInformation(
     _handler_family: *const c_void,
     _shadows_check: DOMProxyShadowsCheck,
+    _expando_slots: *const c_void,
 ) {
 }
 
@@ -2095,32 +2197,35 @@ pub unsafe fn SetDOMProxyInformation(
 // Object Operations
 // ===================
 
+/// FunToStringOp - function to string operation signature (uses raw pointer)
+pub type FunToStringOp = unsafe extern "C" fn(cx: *mut JSContext, obj: *mut JSObject, isToSource: bool) -> *mut JSString;
+
 /// ObjectOps - object operations struct
 #[repr(C)]
 pub struct ObjectOps {
-    pub lookup_property: Option<unsafe extern "C" fn() -> bool>,
-    pub define_property: Option<unsafe extern "C" fn() -> bool>,
-    pub has_property: Option<unsafe extern "C" fn() -> bool>,
-    pub get_property: Option<unsafe extern "C" fn() -> bool>,
-    pub set_property: Option<unsafe extern "C" fn() -> bool>,
-    pub get_own_property_descriptor: Option<unsafe extern "C" fn() -> bool>,
-    pub delete_property: Option<unsafe extern "C" fn() -> bool>,
-    pub get_elements: Option<unsafe extern "C" fn() -> bool>,
-    pub fun_to_string: Option<unsafe extern "C" fn() -> *mut JSString>,
+    pub lookupProperty: Option<unsafe extern "C" fn() -> bool>,
+    pub defineProperty: Option<unsafe extern "C" fn() -> bool>,
+    pub hasProperty: Option<unsafe extern "C" fn() -> bool>,
+    pub getProperty: Option<unsafe extern "C" fn() -> bool>,
+    pub setProperty: Option<unsafe extern "C" fn() -> bool>,
+    pub getOwnPropertyDescriptor: Option<unsafe extern "C" fn() -> bool>,
+    pub deleteProperty: Option<unsafe extern "C" fn() -> bool>,
+    pub getElements: Option<unsafe extern "C" fn() -> bool>,
+    pub funToString: Option<FunToStringOp>,
 }
 
 impl Default for ObjectOps {
     fn default() -> Self {
         Self {
-            lookup_property: None,
-            define_property: None,
-            has_property: None,
-            get_property: None,
-            set_property: None,
-            get_own_property_descriptor: None,
-            delete_property: None,
-            get_elements: None,
-            fun_to_string: None,
+            lookupProperty: None,
+            defineProperty: None,
+            hasProperty: None,
+            getProperty: None,
+            setProperty: None,
+            getOwnPropertyDescriptor: None,
+            deleteProperty: None,
+            getElements: None,
+            funToString: None,
         }
     }
 }
@@ -2231,10 +2336,7 @@ pub struct JSJitGetterCallArgs {
 
 impl JSJitGetterCallArgs {
     pub fn rval(&self) -> MutableHandleValue<'_> {
-        MutableHandleValue { 
-            ptr: self.rval.ptr,
-            _marker: PhantomData,
-        }
+        unsafe { MutableHandleValue::from_raw(self.rval.as_raw()) }
     }
 }
 
@@ -2246,10 +2348,7 @@ pub struct JSJitSetterCallArgs {
 
 impl JSJitSetterCallArgs {
     pub fn get(&self, _index: u32) -> HandleValue<'_> {
-        HandleValue {
-            ptr: self.value.ptr,
-            _marker: PhantomData,
-        }
+        unsafe { HandleValue::from_raw(self.value.as_raw()) }
     }
 }
 
@@ -2373,4 +2472,417 @@ pub unsafe fn JS_CALLEE(_cx: *mut RawJSContext, vp: *mut Value) -> Value {
     // For our stub, just return undefined
     let _ = vp;
     Value::undefined()
+}
+
+// ===================
+// SymbolId - wrapper for jsid that is a Symbol
+// ===================
+
+/// SymbolId - jsid for symbols (tuple struct to allow SymbolId(...) syntax)
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+pub struct SymbolId(pub *mut Symbol);
+
+impl SymbolId {
+    pub fn new(symbol: *mut Symbol) -> Self {
+        Self(symbol)
+    }
+}
+
+/// StringId - jsid for strings (wrapper around a jsid that holds a string)
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+pub struct StringId(pub *mut JSString);
+
+impl StringId {
+    pub fn new(s: *mut JSString) -> Self {
+        Self(s)
+    }
+    
+    /// Create from JSAtom (atoms are interned strings)
+    pub fn from_atom(atom: *mut JSAtom) -> Self {
+        Self(atom as *mut JSString)
+    }
+}
+
+// ===================
+// JSJitMethodCallArgs
+// ===================
+
+/// JSJitMethodCallArgs - arguments for JIT method calls
+#[repr(C)]
+pub struct JSJitMethodCallArgs {
+    pub argc: u32,
+    pub vp: *mut Value,
+}
+
+impl JSJitMethodCallArgs {
+    pub fn get(&self, i: u32) -> HandleValue<'_> {
+        unsafe { Handle::from_raw(self.vp.add(i as usize)) }
+    }
+    
+    pub fn length(&self) -> u32 {
+        self.argc
+    }
+    
+    pub fn rval(&self) -> MutableHandleValue<'_> {
+        unsafe { MutableHandle::from_raw(self.vp.sub(2)) }
+    }
+}
+
+// ===================
+// JSPropertySpec types
+// ===================
+
+/// JSPropertySpec_Kind - kind of property spec
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum JSPropertySpec_Kind {
+    NativeAccessor = 0,
+    SelfHostedAccessor = 1,
+    Value = 2,
+}
+
+/// JSPropertySpec_ValueWrapper__bindgen_ty_1 - value wrapper inner union
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub union JSPropertySpec_ValueWrapper__bindgen_ty_1 {
+    pub int32_: i32,
+    pub double_: f64,
+    pub string_: *const i8,
+}
+
+impl JSPropertySpec_ValueWrapper__bindgen_ty_1 {
+    pub fn is_string_null(&self) -> bool {
+        unsafe { self.string_.is_null() }
+    }
+}
+
+// ===================
+// JS_GetPropertyDescriptorById
+// ===================
+
+/// Get property descriptor by ID
+pub unsafe fn JS_GetPropertyDescriptorById(
+    _cx: *mut RawJSContext,
+    _obj: HandleObject<'_>,
+    _id: super::glue::HandleId<'_>,
+    _desc: *mut super::glue::PropertyDescriptor,
+    _holder: MutableHandleObject<'_>,
+    _is_none: *mut bool,
+) -> bool {
+    true
+}
+
+// ===================
+// JS_WrapObject  
+// ===================
+
+/// Wrap object for cross-realm use
+pub unsafe fn JS_WrapObject(
+    _cx: *mut RawJSContext,
+    _obj: MutableHandleObject<'_>,
+) -> bool {
+    true
+}
+
+// ===================
+// UndefinedHandleValue as constant
+// ===================
+
+/// Static undefined value for constant handle
+static UNDEFINED_VALUE: Value = Value { data: 0 };
+
+/// UndefinedHandleValue as a direct handle (for imports)
+pub static UndefinedHandleValue: &'static Value = &UNDEFINED_VALUE;
+
+// ===================
+// JSCLASS constants (for crate::js::jsapi::JSCLASS_*)
+// ===================
+pub const JSCLASS_IS_DOMJSCLASS: u32 = 1 << 0;
+pub const JSCLASS_IS_GLOBAL: u32 = 1 << 1;
+pub const JSCLASS_RESERVED_SLOTS_SHIFT: u32 = 8;
+pub const JSCLASS_RESERVED_SLOTS_MASK: u32 = 0xFF;
+pub const JSCLASS_DELAY_METADATA_BUILDER: u32 = 1 << 16;
+pub const JSCLASS_IS_PROXY: u32 = 1 << 17;
+pub const JSCLASS_FOREGROUND_FINALIZE: u32 = 1 << 19;
+pub const JSCLASS_BACKGROUND_FINALIZE: u32 = 1 << 20;
+pub const JSCLASS_HAS_PRIVATE: u32 = 1 << 21;
+pub const JSCLASS_RESERVED_SLOTS_WIDTH: u32 = 8;
+pub const JSCLASS_GLOBAL_SLOT_COUNT: u32 = 78;
+pub const JSClass_NON_NATIVE: u32 = 1 << 18;
+
+// ===================
+// JSITER constants (for crate::js::jsapi::JSITER_*)
+// ===================
+pub const JSITER_OWNONLY: u32 = 0x8;
+pub const JSITER_HIDDEN: u32 = 0x10;
+pub const JSITER_SYMBOLS: u32 = 0x20;
+
+// ===================
+// Symbol types and functions (for crate::js::jsapi::Symbol*)
+// ===================
+
+/// Symbol type - JS symbol
+#[repr(C)]
+pub struct Symbol {
+    _private: [u8; 0],
+}
+
+/// Symbol code enum
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(non_camel_case_types)]
+pub enum SymbolCode {
+    Iterator = 0,
+    Match = 1,
+    Replace = 2,
+    Search = 3,
+    Split = 4,
+    HasInstance = 5,
+    IsConcatSpreadable = 6,
+    Unscopables = 7,
+    Species = 8,
+    ToPrimitive = 9,
+    ToStringTag = 10,
+    AsyncIterator = 11,
+    MatchAll = 12,
+}
+
+// Lowercase aliases for SpiderMonkey compatibility
+impl SymbolCode {
+    pub const iterator: SymbolCode = SymbolCode::Iterator;
+    pub const match_: SymbolCode = SymbolCode::Match;
+    pub const replace: SymbolCode = SymbolCode::Replace;
+    pub const search: SymbolCode = SymbolCode::Search;
+    pub const split: SymbolCode = SymbolCode::Split;
+    pub const hasInstance: SymbolCode = SymbolCode::HasInstance;
+    pub const isConcatSpreadable: SymbolCode = SymbolCode::IsConcatSpreadable;
+    pub const unscopables: SymbolCode = SymbolCode::Unscopables;
+    pub const species: SymbolCode = SymbolCode::Species;
+    pub const toPrimitive: SymbolCode = SymbolCode::ToPrimitive;
+    pub const toStringTag: SymbolCode = SymbolCode::ToStringTag;
+    pub const asyncIterator: SymbolCode = SymbolCode::AsyncIterator;
+    pub const matchAll: SymbolCode = SymbolCode::MatchAll;
+}
+
+/// Get well-known symbol
+pub unsafe fn GetWellKnownSymbol(
+    _cx: *mut RawJSContext,
+    _which: SymbolCode,
+) -> *mut Symbol {
+    ptr::null_mut()
+}
+
+// ===================
+// HideScriptedCaller/UnhideScriptedCaller
+// ===================
+
+/// AutoHideScriptedCaller - RAII guard for hiding scripted caller
+#[repr(C)]
+pub struct AutoHideScriptedCaller {
+    _private: [u8; 0],
+}
+
+/// Hide the scripted caller
+pub unsafe fn HideScriptedCaller(_cx: *mut RawJSContext) {
+}
+
+/// Unhide the scripted caller
+pub unsafe fn UnhideScriptedCaller(_cx: *mut RawJSContext) {
+}
+
+// ===================
+// JSAtom and LinearString APIs
+// ===================
+
+/// JSAtom - interned string type
+#[repr(C)]
+pub struct JSAtom {
+    _private: [u8; 0],
+}
+
+/// JSAtomState - atoms table state
+#[repr(C)]
+pub struct JSAtomState {
+    _private: [u8; 0],
+}
+
+/// Atomize a string by length
+pub unsafe fn JS_AtomizeStringN(
+    _cx: *mut RawJSContext,
+    _s: *const i8,
+    _len: usize,
+) -> *mut JSAtom {
+    ptr::null_mut()
+}
+
+/// LinearString - flat (linear) JS string
+#[repr(C)]
+pub struct LinearString {
+    _private: [u8; 0],
+}
+
+/// Convert atom to linear string
+pub unsafe fn AtomToLinearString(_atom: *mut JSAtom) -> *mut LinearString {
+    ptr::null_mut()
+}
+
+/// Get length of linear string
+pub unsafe fn GetLinearStringLength(_s: *mut LinearString) -> usize {
+    0
+}
+
+/// Get character at index of linear string
+pub unsafe fn GetLinearStringCharAt(_s: *mut LinearString, _idx: usize) -> u16 {
+    0
+}
+
+/// Check if string is array index
+pub unsafe fn StringIsArrayIndex(
+    _s: *mut LinearString,
+    _index: *mut u32,
+) -> bool {
+    false
+}
+
+// ===================
+// Global Object APIs
+// ===================
+
+/// Check if object is a global object
+pub unsafe fn JS_IsGlobalObject(_obj: *mut JSObject) -> bool {
+    false
+}
+
+/// Check if a standard class may need resolving
+pub unsafe fn JS_MayResolveStandardClass(
+    _names: *const JSAtomState,
+    _id: super::glue::jsid,
+    _resolved: *mut bool,
+) -> bool {
+    true
+}
+
+/// Resolve a standard class
+pub unsafe fn JS_ResolveStandardClass(
+    _cx: *mut RawJSContext,
+    _obj: HandleObject<'_>,
+    _id: super::glue::HandleId<'_>,
+    _resolved: *mut bool,
+) -> bool {
+    true
+}
+
+/// Enumerate standard classes
+pub unsafe fn JS_NewEnumerateStandardClasses(
+    _cx: *mut RawJSContext,
+    _obj: HandleObject<'_>,
+    _props: MutableHandleIdVector<'_>,
+    _enumerate_standard: bool,
+) -> bool {
+    true
+}
+
+// ===================
+// Additional jsapi functions
+// ===================
+
+/// Get object prototype
+pub unsafe fn GetObjectProto(
+    _cx: *mut RawJSContext,
+    _obj: HandleObject<'_>,
+    _proto: MutableHandleObject<'_>,
+) -> bool {
+    true
+}
+
+/// Create object with given prototype
+pub unsafe fn JS_NewObjectWithGivenProto(
+    _cx: *mut RawJSContext,
+    _clasp: *const JSClass,
+    _proto: HandleObject<'_>,
+) -> *mut JSObject {
+    ptr::null_mut()
+}
+
+/// Define properties on an object
+pub unsafe fn JS_DefineProperties(
+    _cx: *mut RawJSContext,
+    _obj: HandleObject<'_>,
+    _props: *const JSPropertySpec,
+) -> bool {
+    true
+}
+
+/// Define functions on an object
+pub unsafe fn JS_DefineFunctions(
+    _cx: *mut RawJSContext,
+    _obj: HandleObject<'_>,
+    _funcs: *const JSFunctionSpec,
+) -> bool {
+    true
+}
+
+/// ID to Value conversion
+pub unsafe fn JS_IdToValue(
+    _cx: *mut RawJSContext,
+    _id: super::glue::jsid,
+    _vp: MutableHandleValue<'_>,
+) -> bool {
+    true
+}
+
+/// Value to source string
+pub unsafe fn JS_ValueToSource(
+    _cx: *mut RawJSContext,
+    _v: HandleValue<'_>,
+) -> *mut JSString {
+    ptr::null_mut()
+}
+
+/// Set property ignoring named getter
+pub unsafe fn SetPropertyIgnoringNamedGetter(
+    _cx: *mut RawJSContext,
+    _obj: HandleObject<'_>,
+    _id: super::glue::HandleId<'_>,
+    _v: HandleValue<'_>,
+    _receiver: HandleValue<'_>,
+    _own_desc: *const super::glue::PropertyDescriptor,
+    _result: *mut ObjectOpResult,
+) -> bool {
+    true
+}
+
+/// Call a JS function
+pub unsafe fn Call(
+    _cx: *mut RawJSContext,
+    _this: HandleValue<'_>,
+    _func: HandleObject<'_>,
+    _args: &HandleValueArray,
+    _rval: MutableHandleValue<'_>,
+) -> bool {
+    true
+}
+
+// ===================
+// glue submodule (for crate::js::jsapi::glue)
+// ===================
+pub mod glue {
+    pub use super::super::glue::*;
+    use super::*;
+    
+    /// JS_GetOwnPropertyDescriptorById - get own property descriptor by ID
+    pub unsafe fn JS_GetOwnPropertyDescriptorById(
+        _cx: *mut RawJSContext,
+        _obj: HandleObject<'_>,
+        _id: super::super::glue::HandleId<'_>,
+        _desc: *mut super::super::glue::PropertyDescriptor,
+        _is_none: *mut bool,
+    ) -> bool {
+        if !_is_none.is_null() {
+            *_is_none = true;
+        }
+        true
+    }
 }

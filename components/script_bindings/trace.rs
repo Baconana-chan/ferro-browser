@@ -32,10 +32,17 @@ use xml5ever::interface::TreeSink as XmlTreeSink;
 use xml5ever::tokenizer::XmlTokenizer;
 use xml5ever::tree_builder::{Tracer as XmlTracer, XmlTreeBuilder};
 
-use crate::JSTraceable;
 use crate::error::Error;
 use crate::reflector::Reflector;
 use crate::str::USVString;
+
+// ===================
+// JSTraceable trait
+// ===================
+
+// For both SpiderMonkey and Boa, JSTraceable is an alias for js::gc::Traceable
+// This ensures consistency across all modules
+pub use crate::js::gc::Traceable as JSTraceable;
 
 /// Trace the `JSObject` held by `reflector`.
 ///
@@ -84,6 +91,9 @@ macro_rules! unsafe_no_jsmanaged_fields(
 
 unsafe_no_jsmanaged_fields!(USVString);
 unsafe_no_jsmanaged_fields!(Error);
+
+// For Boa, JSTraceable (=Traceable) implementations for Heap and standard library types 
+// are in boa_bindings/jsapi.rs and boa_bindings/gc.rs
 
 /// A trait to allow tracing only DOM sub-objects.
 ///
@@ -356,7 +366,7 @@ where
     T: GCMethods + Copy,
 {
     pub fn handle(&self) -> Handle<'_, T> {
-        unsafe { Handle::from_raw(&*(*self.inner).get()) }
+        unsafe { Handle::from_raw((*self.inner).get_unsafe()) }
     }
 }
 

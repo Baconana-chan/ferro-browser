@@ -76,7 +76,7 @@ impl NonCallbackInterfaceObjectClass {
                 cOps: &constructor_behavior.0,
                 spec: ptr::null(),
                 ext: ptr::null(),
-                oOps: &OBJECT_OPS,
+                oOps: &OBJECT_OPS as *const _ as *const libc::c_void,
             },
             _proto_id: proto_id,
             _proto_depth: proto_depth,
@@ -103,12 +103,15 @@ impl InterfaceConstructorBehavior {
         InterfaceConstructorBehavior(JSClassOps {
             addProperty: None,
             delProperty: None,
+            getProperty: None,
+            setProperty: None,
             enumerate: None,
             newEnumerate: None,
             resolve: None,
             mayResolve: None,
             finalize: None,
             call: Some(invalid_constructor),
+            hasInstance: None,
             construct: Some(invalid_constructor),
             trace: None,
         })
@@ -119,12 +122,15 @@ impl InterfaceConstructorBehavior {
         InterfaceConstructorBehavior(JSClassOps {
             addProperty: None,
             delProperty: None,
+            getProperty: None,
+            setProperty: None,
             enumerate: None,
             newEnumerate: None,
             resolve: None,
             mayResolve: None,
             finalize: None,
             call: Some(non_new_constructor),
+            hasInstance: None,
             construct: Some(hook),
             trace: None,
         })
@@ -175,7 +181,7 @@ pub(crate) unsafe fn create_global_object<D: DomTypes>(
         class,
         principal.as_raw(),
         OnNewGlobalHookOption::DontFireOnNewGlobalHook,
-        &*options,
+        &options as *const _ as *const libc::c_void,
     ));
     assert!(!rval.is_null());
 
@@ -410,7 +416,7 @@ pub(crate) fn define_guarded_methods<D: DomTypes>(
     for guard in methods {
         if let Some(specs) = guard.expose::<D>(cx, obj, global) {
             unsafe {
-                define_methods(*cx, obj, specs).unwrap();
+                assert!(define_methods(*cx, obj, specs));
             }
         }
     }
@@ -426,7 +432,7 @@ pub(crate) fn define_guarded_properties<D: DomTypes>(
     for guard in properties {
         if let Some(specs) = guard.expose::<D>(cx, obj, global) {
             unsafe {
-                define_properties(*cx, obj, specs).unwrap();
+                assert!(define_properties(*cx, obj, specs));
             }
         }
     }
@@ -470,15 +476,15 @@ const OBJECT_OPS: ObjectOps = ObjectOps {
     getOwnPropertyDescriptor: None,
     deleteProperty: None,
     getElements: None,
-    funToString: Some(fun_to_string_hook),
+    funToString: Some(fun_to_string_hook as _),
 };
 
 unsafe extern "C" fn fun_to_string_hook(
     cx: *mut JSContext,
-    obj: RawHandleObject,
+    obj: *mut JSObject,
     _is_to_source: bool,
 ) -> *mut JSString {
-    let js_class = get_object_class(obj.get());
+    let js_class = get_object_class(obj);
     assert!(!js_class.is_null());
     let repr = (*(js_class as *const NonCallbackInterfaceObjectClass)).representation;
     assert!(!repr.is_empty());
@@ -502,7 +508,7 @@ fn create_unscopable_object(cx: SafeJSContext, names: &[&CStr], mut rval: Mutabl
                 *cx,
                 rval.handle(),
                 name.as_ptr(),
-                HandleValue::from_raw(TrueHandleValue),
+                unsafe { TrueHandleValue() },
                 JSPROP_ENUMERATE as u32,
             ));
         }
@@ -511,13 +517,14 @@ fn create_unscopable_object(cx: SafeJSContext, names: &[&CStr], mut rval: Mutabl
 
 fn define_name(cx: SafeJSContext, obj: HandleObject, name: &CStr) {
     unsafe {
-        rooted!(in(*cx) let name = JS_AtomizeAndPinString(*cx, name.as_ptr()));
-        assert!(!name.is_null());
+        rooted!(in(*cx) let name_str = JS_AtomizeAndPinString(*cx, name.as_ptr()));
+        assert!(!name_str.is_null());
+        rooted!(in(*cx) let name_val = crate::js::jsval::StringValue(name_str.get()));
         assert!(JS_DefineProperty4(
             *cx,
             obj,
             c"name".as_ptr(),
-            name.handle(),
+            name_val.handle(),
             JSPROP_READONLY as u32
         ));
     }

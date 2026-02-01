@@ -8,6 +8,8 @@ use std::ffi::c_void;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
+use super::jsapi::{Zone, Compartment};
+
 use super::jsapi::{
     JSObject, JSContext, RawJSContext, JSString, JSTracer, Value, JSClass,
     Handle as RawHandle, MutableHandle as RawMutableHandle,
@@ -15,6 +17,19 @@ use super::jsapi::{
 
 // Re-export CustomAutoRooter from gc for compatibility (some code imports from rust)
 pub use super::gc::{CustomAutoRooter, CustomAutoRooterGuard};
+
+/// Trait for types that can be converted to *mut PropertyDescriptor
+pub trait IntoPropDescPtr {
+    fn into_prop_desc_ptr(self) -> *mut super::glue::PropertyDescriptor;
+}
+
+impl IntoPropDescPtr for *mut super::glue::PropertyDescriptor {
+    fn into_prop_desc_ptr(self) -> *mut super::glue::PropertyDescriptor {
+        self
+    }
+}
+
+// Implementation for MutableHandle<PropertyDescriptor> is below after MutableHandle definition
 
 /// Runtime - the JavaScript runtime
 pub struct Runtime {
@@ -28,6 +43,12 @@ impl Runtime {
     
     pub fn cx(&self) -> *mut RawJSContext {
         ptr::null_mut()
+    }
+    
+    /// Get the current runtime (thread-local)
+    pub fn get() -> Option<std::ptr::NonNull<RawJSContext>> {
+        // TODO: Implement proper thread-local runtime storage
+        None
     }
 }
 
@@ -64,8 +85,29 @@ unsafe impl Sync for ThreadSafeJSContext {}
 /// Handle - immutable rooted reference
 #[repr(transparent)]
 pub struct Handle<'a, T> {
-    ptr: *const T,
-    _marker: PhantomData<&'a T>,
+    pub ptr: *const T,
+    pub _marker: PhantomData<&'a T>,
+}
+
+/// Trait for types that can be converted to a raw pointer for Handle::from_raw
+pub trait IntoRawPtr<T> {
+    fn into_raw_ptr(self) -> *const T;
+}
+
+impl<T> IntoRawPtr<T> for *const T {
+    fn into_raw_ptr(self) -> *const T { self }
+}
+
+impl<T> IntoRawPtr<T> for *mut T {
+    fn into_raw_ptr(self) -> *const T { self as *const T }
+}
+
+impl<T> IntoRawPtr<T> for &T {
+    fn into_raw_ptr(self) -> *const T { self as *const T }
+}
+
+impl<'a, T> IntoRawPtr<T> for Handle<'a, T> {
+    fn into_raw_ptr(self) -> *const T { self.ptr }
 }
 
 impl<'a, T> Handle<'a, T> {
@@ -73,12 +115,23 @@ impl<'a, T> Handle<'a, T> {
         unsafe { *self.ptr }
     }
     
-    pub unsafe fn from_raw(ptr: *const T) -> Self {
-        Self { ptr, _marker: PhantomData }
+    /// Create Handle from raw pointer or another Handle (SpiderMonkey API compatible)
+    pub unsafe fn from_raw<P: IntoRawPtr<T>>(ptr: P) -> Self {
+        Self { ptr: ptr.into_raw_ptr(), _marker: PhantomData }
+    }
+    
+    /// Create Handle from an existing Handle (no-op, for API compatibility)
+    pub fn from_handle(h: Handle<'a, T>) -> Self {
+        h
     }
     
     pub fn into_handle(self) -> Self {
         self
+    }
+    
+    /// Get the raw pointer for functions that need it
+    pub fn as_raw(&self) -> *const T {
+        self.ptr
     }
 }
 
@@ -90,17 +143,88 @@ impl<'a, T> Clone for Handle<'a, T> {
 
 impl<'a, T> Copy for Handle<'a, T> {}
 
+// Deref for Handle<T> where T: Copy - dereferences to T
+impl<'a, T: Copy> Deref for Handle<'a, T> {
+    type Target = T;
+    
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*self.ptr }
+    }
+}
+
+// Specific implementation for Handle<*mut JSObject>
+impl Handle<'static, *mut JSObject> {
+    /// Create a null handle with 'static lifetime
+    pub fn null() -> Self {
+        // We use a static AtomicPtr to make it Sync-safe
+        use std::sync::atomic::{AtomicPtr, Ordering};
+        static NULL_OBJ: AtomicPtr<JSObject> = AtomicPtr::new(ptr::null_mut());
+        // This is safe because null_mut() is always the same value
+        Self { 
+            ptr: NULL_OBJ.as_ptr() as *const *mut JSObject,
+            _marker: PhantomData 
+        }
+    }
+}
+
+// Specific implementation for Handle<Value>
+impl Handle<'static, Value> {
+    /// Create an undefined value handle with 'static lifetime
+    pub fn undefined() -> Self {
+        static UNDEFINED: Value = Value::undefined();
+        Self {
+            ptr: &UNDEFINED as *const Value,
+            _marker: PhantomData
+        }
+    }
+    
+    /// Create a null value handle with 'static lifetime
+    pub fn null() -> Self {
+        static NULL: Value = Value::null();
+        Self {
+            ptr: &NULL as *const Value,
+            _marker: PhantomData
+        }
+    }
+}
+
 /// HandleValue - Handle to a Value
 pub type HandleValue<'a> = Handle<'a, Value>;
 
 /// HandleObject - Handle to an object pointer
 pub type HandleObject<'a> = Handle<'a, *mut JSObject>;
 
+// Conversion from Handle<Value> to Handle<*mut JSObject>
+impl<'a> From<Handle<'a, Value>> for Handle<'a, *mut JSObject> {
+    fn from(handle: Handle<'a, Value>) -> Self {
+        // This is safe because we're treating the value's object pointer
+        // Note: In a real implementation, we'd need to verify the value is actually an object
+        unsafe { Handle::from_raw(handle.ptr as *const *mut JSObject) }
+    }
+}
+
+/// Trait for types that can be converted to a mutable raw pointer for MutableHandle::from_raw
+pub trait IntoMutRawPtr<T> {
+    fn into_mut_raw_ptr(self) -> *mut T;
+}
+
+impl<T> IntoMutRawPtr<T> for *mut T {
+    fn into_mut_raw_ptr(self) -> *mut T { self }
+}
+
+impl<T> IntoMutRawPtr<T> for &mut T {
+    fn into_mut_raw_ptr(self) -> *mut T { self as *mut T }
+}
+
+impl<'a, T> IntoMutRawPtr<T> for MutableHandle<'a, T> {
+    fn into_mut_raw_ptr(self) -> *mut T { self.ptr }
+}
+
 /// MutableHandle - mutable rooted reference
 #[repr(transparent)]
 pub struct MutableHandle<'a, T> {
-    ptr: *mut T,
-    _marker: PhantomData<&'a mut T>,
+    pub ptr: *mut T,
+    pub _marker: PhantomData<&'a mut T>,
 }
 
 impl<'a, T> MutableHandle<'a, T> {
@@ -116,8 +240,39 @@ impl<'a, T> MutableHandle<'a, T> {
         Handle { ptr: self.ptr, _marker: PhantomData }
     }
     
-    pub unsafe fn from_raw(ptr: *mut T) -> Self {
-        Self { ptr, _marker: PhantomData }
+    /// Create MutableHandle from raw pointer or another MutableHandle (SpiderMonkey API compatible)
+    pub unsafe fn from_raw<P: IntoMutRawPtr<T>>(ptr: P) -> Self {
+        Self { ptr: ptr.into_mut_raw_ptr(), _marker: PhantomData }
+    }
+    
+    /// Check if the pointer value is null (for *mut T types)
+    pub fn is_null(&self) -> bool where T: Copy + PartialEq<T> {
+        // For pointer types, we check if the inner value is null
+        false  // Default implementation - actual null check is type-specific
+    }
+    
+    /// Reborrow this mutable handle with a shorter lifetime
+    pub fn reborrow(&mut self) -> MutableHandle<'_, T> {
+        MutableHandle { ptr: self.ptr, _marker: PhantomData }
+    }
+    
+    /// Get the raw pointer for functions that need it
+    pub fn as_raw(&self) -> *mut T {
+        self.ptr
+    }
+}
+
+// Specific implementation for MutableHandle<*mut JSObject>
+impl<'a> MutableHandle<'a, *mut JSObject> {
+    pub fn is_null_ptr(&self) -> bool {
+        unsafe { (*self.ptr).is_null() }
+    }
+}
+
+// Specific implementation for MutableHandle<Value> to get object
+impl<'a> MutableHandle<'a, Value> {
+    pub fn to_object(&self) -> *mut JSObject {
+        unsafe { (*self.ptr).to_object() }
     }
 }
 
@@ -126,6 +281,27 @@ pub type MutableHandleValue<'a> = MutableHandle<'a, Value>;
 
 /// MutableHandleObject
 pub type MutableHandleObject<'a> = MutableHandle<'a, *mut JSObject>;
+
+// IntoPropDescPtr impl for MutableHandle<PropertyDescriptor>
+impl<'a> IntoPropDescPtr for MutableHandle<'a, super::glue::PropertyDescriptor> {
+    fn into_prop_desc_ptr(self) -> *mut super::glue::PropertyDescriptor {
+        self.ptr
+    }
+}
+
+// From impl for converting MutableHandle<PropertyDescriptor> to *mut PropertyDescriptor
+impl<'a> From<MutableHandle<'a, super::glue::PropertyDescriptor>> for *mut super::glue::PropertyDescriptor {
+    fn from(handle: MutableHandle<'a, super::glue::PropertyDescriptor>) -> Self {
+        handle.ptr
+    }
+}
+
+// From impl for converting Handle<PropertyDescriptor> to PropertyDescriptor 
+impl<'a> From<Handle<'a, super::glue::PropertyDescriptor>> for super::glue::PropertyDescriptor {
+    fn from(handle: Handle<'a, super::glue::PropertyDescriptor>) -> Self {
+        unsafe { *handle.ptr }
+    }
+}
 
 /// IntoHandle trait
 pub trait IntoHandle<'a, T> {
@@ -154,6 +330,9 @@ pub type RustHandleObject<'a> = HandleObject<'a>;
 
 /// HandleId - handle to a property ID
 pub type HandleId<'a> = Handle<'a, super::glue::jsid>;
+
+/// RawMutableHandleIdVector - mutable handle to ID vector for enumeration functions
+pub type RawMutableHandleIdVector<'a> = MutableHandle<'a, *mut c_void>;
 
 /// ToString - convert to string
 pub unsafe fn ToString(_cx: *mut RawJSContext, _v: HandleValue<'_>) -> *mut JSString {
@@ -209,50 +388,39 @@ pub use super::gc::GCMethods;
 // RealmOptions
 // ===================
 
-/// RealmOptions - options for creating a realm
+/// Anonymous union for compartment specification
 #[repr(C)]
-pub struct RealmOptions {
-    pub creation_options: RealmCreationOptions,
-    pub behaviors: RealmBehaviors,
+pub union RealmCreationOptions__bindgen_anon_1 {
+    pub comp_: *mut Compartment,
+    pub zone_: *mut Zone,
 }
 
-impl Default for RealmOptions {
+impl Default for RealmCreationOptions__bindgen_anon_1 {
     fn default() -> Self {
-        Self {
-            creation_options: RealmCreationOptions::default(),
-            behaviors: RealmBehaviors::default(),
-        }
+        Self { comp_: std::ptr::null_mut() }
     }
 }
 
-impl RealmOptions {
-    pub fn new() -> Self {
-        Self::default()
-    }
-    
-    pub fn creation_options(&self) -> &RealmCreationOptions {
-        &self.creation_options
-    }
-    
-    pub fn behaviors(&self) -> &RealmBehaviors {
-        &self.behaviors
-    }
-}
-
-/// RealmCreationOptions - options for realm creation
+/// RealmCreationOptions - options for realm creation (SpiderMonkey-compatible names)
 #[repr(C)]
 pub struct RealmCreationOptions {
-    /// Whether this realm is for DOM use
-    pub class_is_dom: bool,
+    /// Trace function for global object
+    pub traceGlobal_: Option<unsafe extern "C" fn(*mut super::jsapi::JSTracer, *mut super::jsapi::JSObject)>,
+    /// Compartment specifier
+    pub compSpec_: super::jsapi::CompartmentSpecifier,
+    /// Anonymous union for compartment/zone
+    pub __bindgen_anon_1: RealmCreationOptions__bindgen_anon_1,
     /// Enable shared memory and atomics
-    pub shared_memory_and_atomics: bool,
+    pub sharedMemoryAndAtomics_: bool,
 }
 
 impl Default for RealmCreationOptions {
     fn default() -> Self {
         Self {
-            class_is_dom: false,
-            shared_memory_and_atomics: false,
+            traceGlobal_: None,
+            compSpec_: super::jsapi::CompartmentSpecifier::NewCompartmentAndZone,
+            __bindgen_anon_1: RealmCreationOptions__bindgen_anon_1::default(),
+            sharedMemoryAndAtomics_: false,
         }
     }
 }
@@ -272,25 +440,93 @@ impl Default for RealmBehaviors {
     }
 }
 
+/// RealmOptions - options for creating a realm (SpiderMonkey-compatible names)
+#[repr(C)]
+pub struct RealmOptions {
+    pub creationOptions_: RealmCreationOptions,
+    pub behaviors_: RealmBehaviors,
+}
+
+impl Default for RealmOptions {
+    fn default() -> Self {
+        Self {
+            creationOptions_: RealmCreationOptions::default(),
+            behaviors_: RealmBehaviors::default(),
+        }
+    }
+}
+
+impl RealmOptions {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    
+    pub fn creation_options(&self) -> &RealmCreationOptions {
+        &self.creationOptions_
+    }
+    
+    pub fn behaviors(&self) -> &RealmBehaviors {
+        &self.behaviors_
+    }
+    
+    /// creationOptions() method for SpiderMonkey compatibility
+    pub fn creationOptions(&self) -> &RealmCreationOptions {
+        &self.creationOptions_
+    }
+    
+    /// behaviors() method for SpiderMonkey compatibility
+    pub fn behaviors_method(&self) -> &RealmBehaviors {
+        &self.behaviors_
+    }
+}
+
 // ===================
 // Define Methods/Properties
 // ===================
 
+/// Trait for types that can be converted to *const JSFunctionSpec
+pub trait IntoFunctionSpecPtr {
+    fn into_ptr(self) -> *const super::jsapi::JSFunctionSpec;
+}
+
+impl IntoFunctionSpecPtr for *const super::jsapi::JSFunctionSpec {
+    fn into_ptr(self) -> *const super::jsapi::JSFunctionSpec { self }
+}
+
+impl<'a> IntoFunctionSpecPtr for &'a [super::jsapi::JSFunctionSpec] {
+    fn into_ptr(self) -> *const super::jsapi::JSFunctionSpec { self.as_ptr() }
+}
+
+/// Trait for types that can be converted to *const JSPropertySpec
+pub trait IntoPropertySpecPtr {
+    fn into_ptr(self) -> *const super::jsapi::JSPropertySpec;
+}
+
+impl IntoPropertySpecPtr for *const super::jsapi::JSPropertySpec {
+    fn into_ptr(self) -> *const super::jsapi::JSPropertySpec { self }
+}
+
+impl<'a> IntoPropertySpecPtr for &'a [super::jsapi::JSPropertySpec] {
+    fn into_ptr(self) -> *const super::jsapi::JSPropertySpec { self.as_ptr() }
+}
+
 /// define_methods - define methods on an object
-pub unsafe fn define_methods(
+pub unsafe fn define_methods<P: IntoFunctionSpecPtr>(
     _cx: *mut RawJSContext,
     _obj: HandleObject<'_>,
-    _methods: *const super::jsapi::JSFunctionSpec,
+    methods: P,
 ) -> bool {
+    let _ = methods.into_ptr();
     true
 }
 
 /// define_properties - define properties on an object
-pub unsafe fn define_properties(
+pub unsafe fn define_properties<P: IntoPropertySpecPtr>(
     _cx: *mut RawJSContext,
     _obj: HandleObject<'_>,
-    _props: *const super::jsapi::JSPropertySpec,
+    props: P,
 ) -> bool {
+    let _ = props.into_ptr();
     true
 }
 
@@ -583,7 +819,7 @@ pub mod wrappers {
         _cx: *mut RawJSContext,
         _obj: HandleObject<'_>,
         _flags: u32,
-        _props: *mut IdVector,
+        _props: MutableHandle<'_, IdVector>,
     ) -> bool {
         true
     }
@@ -720,7 +956,7 @@ pub mod wrappers {
     /// AppendToIdVector - append an ID to an ID vector
     pub unsafe fn AppendToIdVector(
         _vec: MutableHandleIdVector<'_>,
-        _id: super::super::glue::jsid,
+        _id: Handle<'_, super::super::glue::jsid>,
     ) -> bool {
         true
     }
@@ -799,15 +1035,17 @@ pub mod wrappers {
     pub unsafe fn RUST_INTERNED_STRING_TO_JSID(
         _cx: *mut RawJSContext,
         _str: *mut JSString,
-    ) -> super::super::glue::jsid {
-        super::super::glue::jsid::VOID
+        id: MutableHandle<'_, super::super::glue::jsid>,
+    ) {
+        id.set(super::super::glue::jsid::VOID);
     }
     
     /// RUST_SYMBOL_TO_JSID - convert a symbol to jsid
     pub unsafe fn RUST_SYMBOL_TO_JSID(
-        _symbol: *mut c_void,
-    ) -> super::super::glue::jsid {
-        super::super::glue::jsid::VOID
+        _symbol: *mut super::super::jsapi::Symbol,
+        id: MutableHandle<'_, super::super::glue::jsid>,
+    ) {
+        id.set(super::super::glue::jsid::VOID);
     }
     
     /// int_to_jsid - convert an integer to jsid
@@ -815,8 +1053,30 @@ pub mod wrappers {
         super::super::glue::jsid { bits: ((i as u32) << 1) as usize | 1 }
     }
     
-    /// JS_DefineProperty3 - define property with getter/setter
+    /// JS_DefineProperty3 - define property with value and attrs
     pub unsafe fn JS_DefineProperty3(
+        _cx: *mut RawJSContext,
+        _obj: HandleObject<'_>,
+        _name: *const i8,
+        _value: HandleObject<'_>,
+        _attrs: u32,
+    ) -> bool {
+        true
+    }
+    
+    /// JS_DefineProperty3Value - define property with HandleValue and attrs
+    pub unsafe fn JS_DefineProperty3Value(
+        _cx: *mut RawJSContext,
+        _obj: HandleObject<'_>,
+        _name: *const i8,
+        _value: HandleValue<'_>,
+        _attrs: u32,
+    ) -> bool {
+        true
+    }
+    
+    /// JS_DefineProperty3WithGetterSetter - define property with getter/setter
+    pub unsafe fn JS_DefineProperty3WithGetterSetter(
         _cx: *mut RawJSContext,
         _obj: HandleObject<'_>,
         _name: *const i8,
@@ -839,8 +1099,19 @@ pub mod wrappers {
         true
     }
     
-    /// JS_DefineProperty5 - define property with native getter/setter
+    /// JS_DefineProperty5 - define property with i32 value
     pub unsafe fn JS_DefineProperty5(
+        _cx: *mut RawJSContext,
+        _obj: HandleObject<'_>,
+        _name: *const i8,
+        _value: i32,
+        _attrs: u32,
+    ) -> bool {
+        true
+    }
+    
+    /// JS_DefineProperty5WithAccessors - define property with native getter/setter
+    pub unsafe fn JS_DefineProperty5WithAccessors(
         _cx: *mut RawJSContext,
         _obj: HandleObject<'_>,
         _name: *const i8,
@@ -851,8 +1122,19 @@ pub mod wrappers {
         true
     }
     
-    /// JS_DefinePropertyById5 - define property by ID with native getter/setter
+    /// JS_DefinePropertyById5 - define property by ID with value
     pub unsafe fn JS_DefinePropertyById5(
+        _cx: *mut RawJSContext,
+        _obj: HandleObject<'_>,
+        _id: super::super::glue::HandleId<'_>,
+        _value: HandleObject<'_>,
+        _attrs: u32,
+    ) -> bool {
+        true
+    }
+    
+    /// JS_DefinePropertyById5WithAccessors - define property by ID with native getter/setter
+    pub unsafe fn JS_DefinePropertyById5WithAccessors(
         _cx: *mut RawJSContext,
         _obj: HandleObject<'_>,
         _id: super::super::glue::HandleId<'_>,
@@ -893,19 +1175,92 @@ pub mod wrappers {
     }
     
     /// SetDataPropertyDescriptor - set a data property descriptor
-    pub unsafe fn SetDataPropertyDescriptor(
-        _desc: *mut super::super::glue::PropertyDescriptor,
+    /// Accepts either *mut PropertyDescriptor or MutableHandle<PropertyDescriptor>
+    pub unsafe fn SetDataPropertyDescriptor<T: IntoPropDescPtr>(
+        desc: T,
         _value: HandleValue<'_>,
         _attrs: u32,
     ) {
-        if !_desc.is_null() {
-            (*_desc).value = *_value.ptr;
-            (*_desc).attrs = _attrs;
+        let ptr = desc.into_prop_desc_ptr();
+        if !ptr.is_null() {
+            (*ptr).value_ = *_value.ptr;
+            (*ptr).attrs = _attrs;
         }
     }
     
     /// MutableHandleIdVector type alias
     pub type MutableHandleIdVector<'a> = super::MutableHandle<'a, *mut c_void>;
+    
+    // ===================
+    // Additional missing wrappers
+    // ===================
+    
+    /// JS_DefineUCProperty2 - define property using UTF-16 name
+    pub unsafe fn JS_DefineUCProperty2(
+        _cx: *mut RawJSContext,
+        _obj: HandleObject<'_>,
+        _name: *const u16,
+        _namelen: usize,
+        _value: HandleValue<'_>,
+        _attrs: u32,
+    ) -> bool {
+        true
+    }
+    
+    /// JS_DeletePropertyById - delete property by ID
+    pub unsafe fn JS_DeletePropertyById(
+        _cx: *mut RawJSContext,
+        _obj: HandleObject<'_>,
+        _id: super::super::glue::HandleId<'_>,
+        _result: *mut super::super::jsapi::ObjectOpResult,
+    ) -> bool {
+        true
+    }
+    
+    /// JS_ForwardGetPropertyTo - forward get property to another object
+    pub unsafe fn JS_ForwardGetPropertyTo(
+        _cx: *mut RawJSContext,
+        _obj: HandleObject<'_>,
+        _id: super::super::glue::HandleId<'_>,
+        _receiver: HandleValue<'_>,
+        _vp: MutableHandleValue<'_>,
+    ) -> bool {
+        true
+    }
+    
+    /// JS_GetPrototype - get object prototype
+    pub unsafe fn JS_GetPrototype(
+        _cx: *mut RawJSContext,
+        _obj: HandleObject<'_>,
+        _proto: MutableHandleObject<'_>,
+    ) -> bool {
+        true
+    }
+    
+    /// JS_HasPropertyById - check if object has property by ID
+    pub unsafe fn JS_HasPropertyById(
+        _cx: *mut RawJSContext,
+        _obj: HandleObject<'_>,
+        _id: super::super::glue::HandleId<'_>,
+        _found: *mut bool,
+    ) -> bool {
+        if !_found.is_null() {
+            *_found = false;
+        }
+        true
+    }
+    
+    /// ToJSON - JSON.stringify value
+    pub unsafe fn ToJSON(
+        _cx: *mut RawJSContext,
+        _vp: HandleValue<'_>,
+        _replacer: HandleObject<'_>,
+        _space: HandleValue<'_>,
+        _callback: Option<unsafe extern "C" fn(*const u16, u32, *mut c_void) -> bool>,
+        _data: *mut c_void,
+    ) -> bool {
+        true
+    }
 }
 
 /// Wrappers2 module - additional wrappers
@@ -1110,11 +1465,28 @@ impl IdVector {
     pub fn iter(&self) -> impl Iterator<Item = &super::glue::jsid> {
         self.ids.iter()
     }
+    
+    /// Get a mutable handle to the vector (for SpiderMonkey API compatibility)
+    pub fn handle_mut(&mut self) -> MutableHandle<'_, IdVector> {
+        unsafe { MutableHandle::from_raw(self as *mut _) }
+    }
+    
+    /// Get raw pointer to self
+    pub fn as_ptr(&mut self) -> *mut IdVector {
+        self as *mut _
+    }
 }
 
 impl Default for IdVector {
     fn default() -> Self {
         Self { ids: Vec::new() }
+    }
+}
+
+impl std::ops::Deref for IdVector {
+    type Target = [super::glue::jsid];
+    fn deref(&self) -> &Self::Target {
+        &self.ids
     }
 }
 

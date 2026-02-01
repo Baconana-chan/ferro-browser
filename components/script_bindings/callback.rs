@@ -20,7 +20,7 @@ use crate::DomTypes;
 use crate::codegen::GenericBindings::WindowBinding::Window_Binding::WindowMethods;
 use crate::error::{Error, Fallible};
 use crate::inheritance::Castable;
-use crate::interfaces::{DocumentHelpers, DomHelpers, GlobalScopeHelpers};
+use crate::interfaces::{DocumentHelpers, DomHelpers, GlobalScopeHelpers, WindowHelpers};
 use crate::realms::{InRealm, enter_realm};
 use crate::reflector::DomObject;
 use crate::root::{Dom, DomRoot};

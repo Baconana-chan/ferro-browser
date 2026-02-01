@@ -157,7 +157,7 @@ impl ToJSValConvertible for ByteString {
         if jsstr.is_null() {
             panic!("JS_NewStringCopyN failed");
         }
-        rval.set(StringValue(&*jsstr));
+        rval.set(StringValue(jsstr));
     }
 }
 

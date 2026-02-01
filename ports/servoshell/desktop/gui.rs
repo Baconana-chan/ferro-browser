@@ -10,8 +10,8 @@ use dpi::PhysicalSize;
 use egui::text::{CCursor, CCursorRange};
 use egui::text_edit::TextEditState;
 use egui::{
-    Key, Label, LayerId, Modifiers, PaintCallback, TopBottomPanel, Vec2, WidgetInfo,
-    WidgetType, pos2,
+    Key, Label, LayerId, Modifiers, PaintCallback, TopBottomPanel, Vec2, WidgetInfo, WidgetType,
+    pos2,
 };
 use egui_glow::{CallbackFn, EguiGlow};
 use egui_winit::EventResponse;
@@ -210,19 +210,21 @@ impl Gui {
     /// Create a styled navigation button (back, forward, reload, stop)
     #[allow(dead_code)]
     fn nav_button(text: &str) -> egui::Button<'_> {
-        egui::Button::new(
-            egui::RichText::new(text).size(16.0)
-        )
-        .frame(false)
-        .min_size(Vec2 { x: 32.0, y: 32.0 })
-        .corner_radius(6.0)
+        egui::Button::new(egui::RichText::new(text).size(16.0))
+            .frame(false)
+            .min_size(Vec2 { x: 32.0, y: 32.0 })
+            .corner_radius(6.0)
     }
 
     /// Calculate the width for each tab based on available space
-    fn calculate_tab_width(available_width: f32, tab_count: usize, new_tab_button_width: f32) -> f32 {
-        const MIN_TAB_WIDTH: f32 = 60.0;  // Minimum width to show at least icon + X
+    fn calculate_tab_width(
+        available_width: f32,
+        tab_count: usize,
+        new_tab_button_width: f32,
+    ) -> f32 {
+        const MIN_TAB_WIDTH: f32 = 60.0; // Minimum width to show at least icon + X
         const MAX_TAB_WIDTH: f32 = 200.0; // Maximum comfortable tab width
-        const TAB_MARGIN: f32 = 4.0;      // Margin between tabs
+        const TAB_MARGIN: f32 = 4.0; // Margin between tabs
 
         if tab_count == 0 {
             return MAX_TAB_WIDTH;
@@ -230,7 +232,7 @@ impl Gui {
 
         let usable_width = available_width - new_tab_button_width - 16.0; // 16px padding
         let width_per_tab = (usable_width / tab_count as f32) - TAB_MARGIN;
-        
+
         width_per_tab.clamp(MIN_TAB_WIDTH, MAX_TAB_WIDTH)
     }
 
@@ -252,7 +254,7 @@ impl Gui {
         };
 
         let active = window.active_webview().map(|webview| webview.id()) == Some(webview.id());
-        
+
         // Modern color scheme
         let visuals = ui.visuals();
         let inactive_bg_color = if visuals.dark_mode {
@@ -329,12 +331,12 @@ impl Gui {
                         let tab = ui.add(
                             egui::Label::new(
                                 egui::RichText::new(truncate_with_ellipsis(&label, max_chars))
-                                    .size(12.0)
+                                    .size(12.0),
                             )
                             .selectable(false)
-                            .sense(egui::Sense::click())
+                            .sense(egui::Sense::click()),
                         );
-                        
+
                         if !active && tab.clicked() {
                             window.activate_webview(webview.id());
                         }
@@ -344,14 +346,14 @@ impl Gui {
                         tab.on_hover_ui(|ui| {
                             ui.label(&label);
                         });
-                    }
+                    },
                 );
 
                 // Close button
                 let close_response = ui.add(
                     egui::Button::new(egui::RichText::new("x").size(14.0))
                         .frame(false)
-                        .min_size(egui::vec2(18.0, 18.0))
+                        .min_size(egui::vec2(18.0, 18.0)),
                 );
                 if close_response.hovered() {
                     ui.painter().rect_filled(
@@ -380,7 +382,7 @@ impl Gui {
             inactive_bg_color
         };
         tab_frame.frame.fill = fill_color;
-        
+
         // Add bottom border for active tab (like Chrome)
         if active {
             let rect = response.rect;
@@ -392,13 +394,13 @@ impl Gui {
             ui.painter().rect_filled(
                 egui::Rect::from_min_size(
                     egui::pos2(rect.left(), rect.bottom() - 2.0),
-                    egui::vec2(rect.width(), 2.0)
+                    egui::vec2(rect.width(), 2.0),
                 ),
                 0.0,
                 accent_color,
             );
         }
-        
+
         tab_frame.end(ui);
     }
 
@@ -433,24 +435,24 @@ impl Gui {
                 } else {
                     egui::Color32::from_rgb(248, 249, 250)
                 };
-                
+
                 let frame = egui::Frame::NONE
                     .fill(toolbar_bg)
                     .inner_margin(egui::Margin::symmetric(8, 6));
-                    
+
                 TopBottomPanel::top("toolbar").frame(frame).show(ctx, |ui| {
                     ui.horizontal_centered(|ui| {
                         ui.spacing_mut().item_spacing.x = 4.0;
-                        
+
                         // Navigation buttons group
                         let nav_button_size = egui::vec2(32.0, 32.0);
-                        
+
                         let back_button = ui.add_enabled(
-                            self.can_go_back, 
+                            self.can_go_back,
                             egui::Button::new(egui::RichText::new("<").size(14.0))
                                 .frame(false)
                                 .min_size(nav_button_size)
-                                .corner_radius(6.0)
+                                .corner_radius(6.0),
                         );
                         back_button.widget_info(|| {
                             let mut info = WidgetInfo::new(WidgetType::Button);
@@ -462,11 +464,11 @@ impl Gui {
                         }
 
                         let forward_button = ui.add_enabled(
-                            self.can_go_forward, 
+                            self.can_go_forward,
                             egui::Button::new(egui::RichText::new(">").size(14.0))
                                 .frame(false)
                                 .min_size(nav_button_size)
-                                .corner_radius(6.0)
+                                .corner_radius(6.0),
                         );
                         forward_button.widget_info(|| {
                             let mut info = WidgetInfo::new(WidgetType::Button);
@@ -483,7 +485,7 @@ impl Gui {
                                     egui::Button::new(egui::RichText::new("x").size(14.0))
                                         .frame(false)
                                         .min_size(nav_button_size)
-                                        .corner_radius(6.0)
+                                        .corner_radius(6.0),
                                 );
                                 stop_button.widget_info(|| {
                                     let mut info = WidgetInfo::new(WidgetType::Button);
@@ -499,7 +501,7 @@ impl Gui {
                                     egui::Button::new(egui::RichText::new("R").size(14.0))
                                         .frame(false)
                                         .min_size(nav_button_size)
-                                        .corner_radius(6.0)
+                                        .corner_radius(6.0),
                                 );
                                 reload_button.widget_info(|| {
                                     let mut info = WidgetInfo::new(WidgetType::Button);
@@ -511,7 +513,7 @@ impl Gui {
                                 }
                             },
                         }
-                        
+
                         ui.add_space(8.0);
 
                         // Modern address bar - takes remaining width
@@ -520,12 +522,12 @@ impl Gui {
                         } else {
                             egui::Color32::from_rgb(255, 255, 255)
                         };
-                        
+
                         // Reserve space for: prefs button (32) + spacing (12)
                         let available_width = (ui.available_width() - 48.0).max(100.0);
-                        
+
                         let location_id = egui::Id::new("location_input");
-                        
+
                         // Styled address bar frame
                         egui::Frame::NONE
                             .fill(address_bar_bg)
@@ -534,43 +536,53 @@ impl Gui {
                             .inner_margin(egui::Margin::symmetric(12, 6))
                             .show(ui, |ui| {
                                 ui.set_min_width(available_width);
-                                
+
                                 // Lock/security icon
                                 let url_text = location.as_str();
                                 if url_text.starts_with("https://") {
-                                    ui.label(egui::RichText::new("[S]").size(10.0).color(egui::Color32::GREEN));
+                                    ui.label(
+                                        egui::RichText::new("[S]")
+                                            .size(10.0)
+                                            .color(egui::Color32::GREEN),
+                                    );
                                 } else if url_text.starts_with("http://") {
-                                    ui.label(egui::RichText::new("[!]").size(10.0).color(egui::Color32::from_rgb(200, 150, 0)));
+                                    ui.label(
+                                        egui::RichText::new("[!]")
+                                            .size(10.0)
+                                            .color(egui::Color32::from_rgb(200, 150, 0)),
+                                    );
                                 }
-                                
+
                                 let location_field = ui.add(
                                     egui::TextEdit::singleline(location)
                                         .id(location_id)
                                         .frame(false)
                                         .desired_width(available_width - 30.0)
                                         .hint_text("Search or enter address")
-                                        .font(egui::TextStyle::Body)
+                                        .font(egui::TextStyle::Body),
                                 );
 
                                 if location_field.changed() {
                                     *location_dirty = true;
                                 }
-                                
+
                                 // Handle address bar shortcut.
                                 if ui.input(|i| {
                                     if cfg!(target_os = "macos") {
                                         i.clone().consume_key(Modifiers::COMMAND, Key::L)
                                     } else {
-                                        i.clone().consume_key(Modifiers::COMMAND, Key::L) ||
-                                            i.clone().consume_key(Modifiers::ALT, Key::D)
+                                        i.clone().consume_key(Modifiers::COMMAND, Key::L)
+                                            || i.clone().consume_key(Modifiers::ALT, Key::D)
                                     }
                                 }) {
                                     location_field.request_focus();
                                 }
-                                
+
                                 // Select address bar text when it's focused
                                 if location_field.gained_focus() {
-                                    if let Some(mut state) = TextEditState::load(ui.ctx(), location_id) {
+                                    if let Some(mut state) =
+                                        TextEditState::load(ui.ctx(), location_id)
+                                    {
                                         state.cursor.set_char_range(Some(CCursorRange::two(
                                             CCursor::new(0),
                                             CCursor::new(location.len()),
@@ -578,42 +590,31 @@ impl Gui {
                                         state.store(ui.ctx(), location_id);
                                     }
                                 }
-                                
+
                                 // Navigate when enter is pressed
-                                if location_field.lost_focus() &&
-                                    ui.input(|i| i.clone().key_pressed(Key::Enter))
+                                if location_field.lost_focus()
+                                    && ui.input(|i| i.clone().key_pressed(Key::Enter))
                                 {
                                     event_queue.push(GuiCommand::Go(location.clone()));
                                 }
                             });
-                        
+
                         ui.add_space(4.0);
-                        
+
                         ui.add_space(4.0);
-                        
-                        // Settings/experimental prefs button
-                        let prefs_toggle = ui
+
+                        // Settings button
+                        let settings_btn = ui
                             .add(
-                                egui::Button::new(egui::RichText::new("[=]").size(12.0))
+                                egui::Button::new(egui::RichText::new("⚙").size(16.0))
                                     .frame(false)
                                     .min_size(egui::vec2(32.0, 32.0))
-                                    .corner_radius(6.0)
-                                    .selected(self.experimental_prefs_enabled)
+                                    .corner_radius(6.0),
                             )
-                            .on_hover_text("Experimental features");
-                        prefs_toggle.widget_info(|| {
-                            let mut info = WidgetInfo::new(WidgetType::Button);
-                            info.label = Some("Enable experimental preferences".into());
-                            info.selected = Some(self.experimental_prefs_enabled);
-                            info
-                        });
-                        if prefs_toggle.clicked() {
-                            self.experimental_prefs_enabled = !self.experimental_prefs_enabled;
-                            let enable = self.experimental_prefs_enabled;
-                            for pref in EXPERIMENTAL_PREFS {
-                                state.servo().set_preference(pref, PrefValue::Bool(enable));
-                            }
-                            event_queue.push(GuiCommand::ReloadAll);
+                            .on_hover_text("Settings");
+
+                        if settings_btn.clicked() {
+                            event_queue.push(GuiCommand::Go("servo:preferences".to_string()));
                         }
                     });
                 });
@@ -624,7 +625,7 @@ impl Gui {
                 } else {
                     egui::Color32::from_rgb(222, 225, 230)
                 };
-                
+
                 let tabs_frame = egui::Frame::NONE
                     .fill(tabs_bg_color)
                     .inner_margin(egui::Margin {
@@ -633,7 +634,7 @@ impl Gui {
                         top: 4,
                         bottom: 0,
                     });
-                    
+
                 TopBottomPanel::top("tabs")
                     .frame(tabs_frame)
                     .show(ctx, |ui| {
@@ -642,37 +643,42 @@ impl Gui {
                         let tab_count = webviews.len();
                         let new_tab_button_width = 36.0;
                         let tab_width = Self::calculate_tab_width(
-                            available_width, 
-                            tab_count, 
-                            new_tab_button_width
+                            available_width,
+                            tab_count,
+                            new_tab_button_width,
                         );
-                        
+
                         // Use horizontal scroll for many tabs
                         egui::ScrollArea::horizontal()
-                            .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded)
+                            .scroll_bar_visibility(
+                                egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded,
+                            )
                             .auto_shrink([false, true])
                             .show(ui, |ui| {
                                 ui.horizontal(|ui| {
                                     ui.spacing_mut().item_spacing.x = 2.0;
-                                    
+
                                     for (id, webview) in webviews.into_iter() {
                                         let favicon = favicon_textures
                                             .get(&id)
                                             .map(|(_, favicon)| favicon)
                                             .copied();
                                         Self::browser_tab(
-                                            ui, window, webview, event_queue, favicon, tab_width
+                                            ui,
+                                            window,
+                                            webview,
+                                            event_queue,
+                                            favicon,
+                                            tab_width,
                                         );
                                     }
-                                    
+
                                     // New tab button - styled to match tabs
                                     let new_tab_btn = ui.add(
-                                        egui::Button::new(
-                                            egui::RichText::new("+").size(18.0)
-                                        )
-                                        .frame(false)
-                                        .min_size(egui::vec2(32.0, 28.0))
-                                        .corner_radius(6.0)
+                                        egui::Button::new(egui::RichText::new("+").size(18.0))
+                                            .frame(false)
+                                            .min_size(egui::vec2(32.0, 28.0))
+                                            .corner_radius(6.0),
                                     );
                                     new_tab_btn.widget_info(|| {
                                         let mut info = WidgetInfo::new(WidgetType::Button);
@@ -704,19 +710,16 @@ impl Gui {
                 egui::Color32::from_rgb(255, 255, 255)
             };
             let available_rect = ctx.available_rect();
-            ctx.layer_painter(LayerId::background()).rect_filled(
-                available_rect,
-                0.0,
-                webview_bg,
-            );
+            ctx.layer_painter(LayerId::background())
+                .rect_filled(available_rect, 0.0, webview_bg);
 
             // If the top parts of the GUI changed size, then update the size of the WebView and also
             // the size of its RenderingContext.
             let rect = ctx.available_rect();
             let size = Size2D::new(rect.width(), rect.height()) * scale;
             let rect = Box2D::from_origin_and_size(Point2D::origin(), size);
-            if let Some(webview) = window.active_webview() &&
-                rect != webview.rect()
+            if let Some(webview) = window.active_webview()
+                && rect != webview.rect()
             {
                 // `rect` is sized to just the WebView viewport, which is required by
                 // `OffscreenRenderingContext` See:
@@ -819,10 +822,10 @@ impl Gui {
         //       because logical OR would short-circuit if any of the functions return true.
         //       We want to ensure that all functions are called. The "bitwise OR" operator
         //       does not short-circuit.
-        self.update_location_in_toolbar(window) |
-            self.update_load_status(window) |
-            self.update_status_text(window) |
-            self.update_can_go_back_and_forward(window)
+        self.update_location_in_toolbar(window)
+            | self.update_load_status(window)
+            | self.update_status_text(window)
+            | self.update_can_go_back_and_forward(window)
     }
 
     /// Returns true if a redraw is required after handling the provided event.

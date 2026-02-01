@@ -712,7 +712,7 @@ impl ToJSValConvertible for DOMString {
                 s.to_jsval(cx, rval);
             },
             DOMStringType::JSString(ref rooted_traceable_box) => unsafe {
-                rval.set(StringValue(&*rooted_traceable_box.get()));
+                rval.set(StringValue(rooted_traceable_box.get()));
             },
             #[cfg(test)]
             DOMStringType::Latin1Vec(ref items) => {

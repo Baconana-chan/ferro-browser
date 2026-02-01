@@ -339,9 +339,41 @@ impl FromJSValConvertible for String {
     }
 }
 
+impl FromJSValConvertible for *mut JSObject {
+    type Config = ();
+    
+    unsafe fn from_jsval(
+        _cx: *mut JSContext,
+        val: HandleValue<'_>,
+        _config: Self::Config,
+    ) -> Result<ConversionResult<Self>, ()> {
+        // Extract object pointer from value
+        Ok(ConversionResult::Success(val.get().to_object_or_null()))
+    }
+}
+
 /// Convert a JSString to a Rust String
-pub unsafe fn jsstr_to_string(_cx: *mut JSContext, _s: *mut JSString) -> String {
+/// Accepts both *mut JSString and NonNull<JSString>
+pub unsafe fn jsstr_to_string<T: IntoJSStringPtr>(_cx: *mut JSContext, s: T) -> String {
+    let _ptr = s.into_jsstring_ptr();
     String::new()
+}
+
+/// Trait for types that can be converted to *mut JSString
+pub trait IntoJSStringPtr {
+    fn into_jsstring_ptr(self) -> *mut JSString;
+}
+
+impl IntoJSStringPtr for *mut JSString {
+    fn into_jsstring_ptr(self) -> *mut JSString {
+        self
+    }
+}
+
+impl IntoJSStringPtr for std::ptr::NonNull<JSString> {
+    fn into_jsstring_ptr(self) -> *mut JSString {
+        self.as_ptr()
+    }
 }
 
 /// Convert a Latin1 encoded buffer to a String

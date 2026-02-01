@@ -265,7 +265,7 @@ pub(crate) fn cross_origin_own_property_keys(
     cx: SafeJSContext,
     _proxy: RawHandleObject,
     cross_origin_properties: &'static CrossOriginProperties,
-    props: RawMutableHandleIdVector,
+    mut props: RawMutableHandleIdVector,
 ) -> bool {
     // > 2. For each `e` of `! CrossOriginProperties(O)`, append
     // >    `e.[[Property]]` to `keys`.
@@ -274,7 +274,7 @@ pub(crate) fn cross_origin_own_property_keys(
             rooted!(in(*cx) let rooted = JS_AtomizeAndPinString(*cx, key));
             rooted!(in(*cx) let mut rooted_jsid: jsid);
             RUST_INTERNED_STRING_TO_JSID(*cx, rooted.handle().get(), rooted_jsid.handle_mut());
-            AppendToIdVector(props, rooted_jsid.handle());
+            AppendToIdVector(props.reborrow(), rooted_jsid.handle());
         }
     }
 
@@ -407,7 +407,7 @@ pub(crate) fn cross_origin_get_own_property_helper(
         holder.handle_mut().into(),
     );
 
-    unsafe { JS_GetOwnPropertyDescriptorById(*cx, holder.handle().into(), id, desc, is_none) }
+    unsafe { JS_GetOwnPropertyDescriptorById(*cx, holder.handle().into(), id, desc.as_raw() as *mut _, is_none) }
 }
 
 const ALLOWLISTED_SYMBOL_CODES: &[SymbolCode] = &[
@@ -436,18 +436,18 @@ pub(crate) fn is_cross_origin_allowlisted_prop(cx: SafeJSContext, id: RawHandleI
 /// `props`. This is used to implement [`CrossOriginOwnPropertyKeys`].
 ///
 /// [`CrossOriginOwnPropertyKeys`]: https://html.spec.whatwg.org/multipage/#crossoriginownpropertykeys-(-o-)
-fn append_cross_origin_allowlisted_prop_keys(cx: SafeJSContext, props: RawMutableHandleIdVector) {
+fn append_cross_origin_allowlisted_prop_keys(cx: SafeJSContext, mut props: RawMutableHandleIdVector) {
     unsafe {
         rooted!(in(*cx) let mut id: jsid);
 
         let jsstring = JS_AtomizeAndPinString(*cx, c"then".as_ptr());
         rooted!(in(*cx) let rooted = jsstring);
         RUST_INTERNED_STRING_TO_JSID(*cx, rooted.handle().get(), id.handle_mut());
-        AppendToIdVector(props, id.handle());
+        AppendToIdVector(props.reborrow(), id.handle());
 
         for &allowed_code in ALLOWLISTED_SYMBOL_CODES.iter() {
             id.set(SymbolId(GetWellKnownSymbol(*cx, allowed_code)));
-            AppendToIdVector(props, id.handle());
+            AppendToIdVector(props.reborrow(), id.handle());
         }
     }
 }
@@ -551,7 +551,7 @@ pub(crate) unsafe extern "C" fn maybe_cross_origin_set_rawcx<D: DomTypes>(
     receiver: RawHandleValue,
     result: *mut ObjectOpResult,
 ) -> bool {
-    let mut cx = crate::js::context::JSContext::from_ptr(NonNull::new(cx).unwrap());
+    let mut cx = crate::js::context::JSContext::from_ptr(cx as *mut _);
     let mut realm = crate::js::realm::CurrentRealm::assert(&mut cx);
     let proxy_handle = unsafe { HandleObject::from_raw(proxy) };
 
@@ -574,8 +574,8 @@ pub(crate) unsafe extern "C" fn maybe_cross_origin_set_rawcx<D: DomTypes>(
     rooted!(&in(&mut realm) let mut own_desc = PropertyDescriptor::default());
     let mut is_none = false;
     if !crate::js::glue::InvokeGetOwnPropertyDescriptor(
-        GetProxyHandler(*proxy),
         realm.raw_cx(),
+        GetProxyHandler(*proxy) as *const _,
         proxy,
         id,
         own_desc.handle_mut().into(),
@@ -607,18 +607,17 @@ pub(crate) fn maybe_cross_origin_get_prototype<D: DomTypes>(
     cx: &mut CurrentRealm,
     proxy: RawHandleObject,
     get_proto_object: fn(cx: SafeJSContext, global: HandleObject, rval: MutableHandleObject),
-    proto: RawMutableHandleObject,
+    mut proto: RawMutableHandleObject,
 ) -> bool {
     let proxy = unsafe { Handle::from_raw(proxy) };
     // > 1. If ! IsPlatformObjectSameOrigin(this) is true, then return ! OrdinaryGetPrototypeOf(this).
     if <D as DomHelpers<D>>::is_platform_object_same_origin(cx, proxy.into_handle()) {
-        let mut realm = AutoRealm::new_from_handle(cx, proxy);
-        let mut realm = realm.current_realm();
-        let global = D::GlobalScope::from_current_realm(&realm);
+        let realm = AutoRealm::new_from_handle(cx, proxy);
+        let global = D::GlobalScope::from_current_realm(cx);
         get_proto_object(
             unsafe { SafeJSContext::from_ptr(realm.raw_cx()) },
             global.reflector().get_jsobject(),
-            unsafe { MutableHandleObject::from_raw(proto) },
+            unsafe { MutableHandleObject::from_raw(proto.reborrow()) },
         );
         return !proto.is_null();
     }
@@ -646,8 +645,8 @@ pub(crate) fn cross_origin_get<D: DomTypes>(
     let mut is_none = false;
     if !unsafe {
         InvokeGetOwnPropertyDescriptor(
-            GetProxyHandler(*proxy),
             *cx,
+            GetProxyHandler(*proxy) as *const _,
             proxy,
             id,
             descriptor.handle_mut().into(),
@@ -718,8 +717,8 @@ pub(crate) unsafe fn cross_origin_set<D: DomTypes>(
     rooted!(in(*cx) let mut descriptor = PropertyDescriptor::default());
     let mut is_none = false;
     if !InvokeGetOwnPropertyDescriptor(
-        GetProxyHandler(*proxy),
         *cx,
+        GetProxyHandler(*proxy) as *const _,
         proxy,
         id,
         descriptor.handle_mut().into(),

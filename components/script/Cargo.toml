@@ -134,7 +134,7 @@ range = { path = "../range" }
 regex = { workspace = true }
 rustc-hash = { workspace = true }
 # SpiderMonkey bindings (optional - use js-spidermonkey feature)
-script_bindings = { path = "../script_bindings", optional = true }
+script_bindings = { path = "../script_bindings", optional = true, default-features = false }
 script_traits = { workspace = true }
 sec1 = { workspace = true }
 selectors = { workspace = true }

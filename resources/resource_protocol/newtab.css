@@ -75,6 +75,18 @@ body {
   background-clip: text;
   -webkit-text-fill-color: transparent;
   letter-spacing: -0.02em;
+  transition: transform 0.3s ease;
+}
+
+.logo:hover h1 {
+  transform: scale(1.05);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.8; }
+  100% { opacity: 1; }
 }
 
 .tagline {

@@ -5,9 +5,11 @@
 
 use std::ptr;
 use std::ffi::c_void;
+use std::marker::PhantomData;
 
 use super::jsapi::{RawJSContext, JSObject};
 use super::rust::HandleObject;
+use super::context::JSContext;
 
 /// Realm - a JavaScript realm (global scope)
 pub struct Realm {
@@ -15,24 +17,39 @@ pub struct Realm {
 }
 
 /// CurrentRealm - represents the current realm in the context
-pub struct CurrentRealm {
+pub struct CurrentRealm<'a> {
     realm: *mut c_void,
+    cx: *mut RawJSContext,
+    _phantom: PhantomData<&'a mut JSContext>,
 }
 
-impl CurrentRealm {
+impl<'a> CurrentRealm<'a> {
     /// Get the current realm from a context
     pub fn new(cx: *mut RawJSContext) -> Option<Self> {
         let realm = unsafe { GetCurrentRealmOrNull(cx) };
         if realm.is_null() {
             None
         } else {
-            Some(Self { realm })
+            Some(Self { realm, cx, _phantom: PhantomData })
         }
     }
     
     /// Get the raw realm pointer
     pub fn as_ptr(&self) -> *mut c_void {
         self.realm
+    }
+    
+    /// Get the raw context
+    pub fn raw_cx(&self) -> *mut RawJSContext {
+        self.cx
+    }
+    
+    /// Assert that we are in a realm and return a CurrentRealm
+    pub fn assert(cx: &'a mut JSContext) -> Self {
+        let raw = cx.as_ptr();
+        let realm = unsafe { GetCurrentRealmOrNull(raw) };
+        assert!(!realm.is_null(), "Not in a realm");
+        Self { realm, cx: raw, _phantom: PhantomData }
     }
 }
 
@@ -53,6 +70,22 @@ impl AutoRealm {
             cx,
             old_realm: ptr::null_mut(),
         }
+    }
+    
+    /// Create AutoRealm from a CurrentRealm and handle to an object
+    pub fn new_from_handle<'a>(realm: &'a mut CurrentRealm<'_>, obj: HandleObject<'_>) -> Self {
+        let cx = realm.raw_cx();
+        Self::with_obj(cx, obj)
+    }
+    
+    /// Get the raw JSContext pointer
+    pub fn raw_cx(&self) -> *mut RawJSContext {
+        self.cx
+    }
+    
+    /// Get the current realm pointer
+    pub fn current_realm(&self) -> *mut c_void {
+        self.old_realm
     }
 }
 

@@ -49,38 +49,15 @@ pub fn UndefinedHandleValue() -> jsapi::HandleValue<'static> {
     unsafe { jsapi::HandleValue::from_raw(&UNDEFINED as *const _) }
 }
 
-/// Get well-known symbol
+/// Get well-known symbol - uses jsapi::Symbol
 pub unsafe fn GetWellKnownSymbol(
     _cx: *mut jsapi::RawJSContext,
-    _which: SymbolCode,
-) -> *mut Symbol {
+    _which: jsapi::SymbolCode,
+) -> *mut jsapi::Symbol {
     std::ptr::null_mut()
 }
 
-/// Symbol type - JS symbol
-#[repr(C)]
-pub struct Symbol {
-    _private: [u8; 0],
-}
-
-/// Symbol code enum
-#[repr(u32)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SymbolCode {
-    Iterator = 0,
-    Match = 1,
-    Replace = 2,
-    Search = 3,
-    Split = 4,
-    HasInstance = 5,
-    IsConcatSpreadable = 6,
-    Unscopables = 7,
-    Species = 8,
-    ToPrimitive = 9,
-    ToStringTag = 10,
-    AsyncIterator = 11,
-    MatchAll = 12,
-}
+// Note: Symbol and SymbolCode are defined in jsapi.rs and re-exported via pub use jsapi::*
 
 /// Set immutable prototype
 pub unsafe fn JS_SetImmutablePrototype(
@@ -124,20 +101,145 @@ pub unsafe fn SetProcessBuildIdOp(
 ) {
 }
 
-// Re-export jsid from glue at root level
-pub use glue::jsid;
+// Re-export jsid type via glue module (accessible as crate::js::glue::jsid)
 pub use jsapi::HandleId;
 pub use jsapi::MutableHandleId;
 
 // Re-export CurrentRealm from realm module
 pub use realm::CurrentRealm;
 
+// jsid module - re-exports for crate::js::jsid access pattern
+#[allow(non_camel_case_types)]
+pub mod jsid {
+    //! jsid types - for accessing SymbolId, StringId, jsid type, etc.
+    pub use super::glue::{jsid, PropertyKey, HandleId, MutableHandleId, JSID_VOID};
+    pub use super::jsapi::{SymbolId, StringId};
+}
+
+// ===================
+// Additional JSITER flags
+// ===================
+pub const JSITER_OWNONLY: u32 = 0x8;
+pub const JSITER_HIDDEN: u32 = 0x10;
+pub const JSITER_SYMBOLS: u32 = 0x20;
+
+// ===================
+// Additional JSCLASS constants
+// ===================
+pub const JSCLASS_RESERVED_SLOTS_WIDTH: u32 = 8;
+
+// ===================
+// HideScriptedCaller/UnhideScriptedCaller
+// ===================
+/// Hide the scripted caller
+pub unsafe fn HideScriptedCaller(_cx: *mut jsapi::RawJSContext) {
+}
+
+/// Unhide the scripted caller
+pub unsafe fn UnhideScriptedCaller(_cx: *mut jsapi::RawJSContext) {
+}
+
+/// AutoHideScriptedCaller - RAII guard for hiding scripted caller
+pub struct AutoHideScriptedCaller {
+    _private: [u8; 0],
+}
+
+// ===================
+// JSAtom and LinearString APIs
+// ===================
+/// JSAtom - interned string type
+#[repr(C)]
+pub struct JSAtom {
+    _private: [u8; 0],
+}
+
+/// JSAtomState - atoms table state
+#[repr(C)]
+pub struct JSAtomState {
+    _private: [u8; 0],
+}
+
+/// Atomize a string
+pub unsafe fn JS_AtomizeStringN(
+    _cx: *mut jsapi::RawJSContext,
+    _s: *const i8,
+    _len: usize,
+) -> *mut JSAtom {
+    std::ptr::null_mut()
+}
+
+/// Convert atom to linear string
+pub unsafe fn AtomToLinearString(_atom: *mut JSAtom) -> *mut LinearString {
+    std::ptr::null_mut()
+}
+
+/// LinearString - flat (linear) JS string
+#[repr(C)]
+pub struct LinearString {
+    _private: [u8; 0],
+}
+
+/// Get length of linear string
+pub unsafe fn GetLinearStringLength(_s: *mut LinearString) -> usize {
+    0
+}
+
+/// Get character at index of linear string
+pub unsafe fn GetLinearStringCharAt(_s: *mut LinearString, _idx: usize) -> u16 {
+    0
+}
+
+/// Check if string is array index
+pub unsafe fn StringIsArrayIndex(
+    _s: *mut LinearString,
+    _index: *mut u32,
+) -> bool {
+    false
+}
+
+// ===================
+// Global Object APIs
+// ===================
+/// Check if object is a global object
+pub unsafe fn JS_IsGlobalObject(_obj: *mut jsapi::JSObject) -> bool {
+    false
+}
+
+/// Check if a standard class may need resolving
+pub unsafe fn JS_MayResolveStandardClass(
+    _names: *const JSAtomState,
+    _id: glue::jsid,
+    _resolved: *mut bool,
+) -> bool {
+    true
+}
+
+/// Resolve a standard class
+pub unsafe fn JS_ResolveStandardClass(
+    _cx: *mut jsapi::RawJSContext,
+    _obj: rust::HandleObject<'_>,
+    _id: glue::HandleId<'_>,
+    _resolved: *mut bool,
+) -> bool {
+    true
+}
+
+/// Enumerate standard classes
+pub unsafe fn JS_NewEnumerateStandardClasses(
+    _cx: *mut jsapi::RawJSContext,
+    _obj: rust::HandleObject<'_>,
+    _props: *mut rust::IdVector,
+    _enumerate_standard: bool,
+) -> bool {
+    true
+}
+
 /// GetPropertyKeys wrapper at root level
 pub unsafe fn GetPropertyKeys(
     _cx: *mut jsapi::RawJSContext,
     _obj: rust::HandleObject<'_>,
     _flags: u32,
-    _props: *mut rust::IdVector,
+    _props: rust::MutableHandle<'_, rust::IdVector>,
 ) -> bool {
     true
 }

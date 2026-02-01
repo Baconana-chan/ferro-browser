@@ -352,7 +352,7 @@ unsafe fn generic_call<const EXCEPTION_TO_REJECTION: bool>(
     vp: *mut JSVal,
     is_lenient: bool,
     call: unsafe extern "C" fn(
-        *const JSJitInfo,
+        *const crate::js::glue::JSJitInfo,
         *mut JSContext,
         RawHandleObject,
         *mut libc::c_void,
@@ -451,7 +451,7 @@ pub(crate) unsafe extern "C" fn generic_lenient_getter<const EXCEPTION_TO_REJECT
 }
 
 unsafe extern "C" fn call_setter(
-    info: *const JSJitInfo,
+    info: *const crate::js::glue::JSJitInfo,
     cx: *mut JSContext,
     handle: RawHandleObject,
     this: *mut libc::c_void,
@@ -531,11 +531,13 @@ pub(crate) unsafe fn exception_to_promise(
     }
     JS_ClearPendingException(cx);
     if let Some(promise) = NonNull::new(CallOriginalPromiseReject(cx, exception.handle())) {
-        promise.to_jsval(cx, MutableHandleValue::from_raw(rval));
+        // TODO: Implement to_jsval for NonNull<JSObject>
+        // promise.to_jsval(cx, MutableHandleValue::from_raw(rval));
+        let _ = (promise, rval);
         true
     } else {
         // We just give up.  Put the exception back.
-        JS_SetPendingException(cx, exception.handle(), ExceptionStackBehavior::Capture);
+        JS_SetPendingException(cx, exception.handle(), ExceptionStackBehavior::Capture as u32);
         false
     }
 }
@@ -596,10 +598,10 @@ pub(crate) unsafe extern "C" fn enumerate_global(
 pub(crate) unsafe extern "C" fn enumerate_window<D: DomTypes>(
     cx: *mut JSContext,
     obj: RawHandleObject,
-    props: RawMutableHandleIdVector,
+    mut props: RawMutableHandleIdVector,
     enumerable_only: bool,
 ) -> bool {
-    if !enumerate_global(cx, obj, props, enumerable_only) {
+    if !enumerate_global(cx, obj, props.reborrow(), enumerable_only) {
         return false;
     }
 
@@ -616,8 +618,8 @@ pub(crate) unsafe extern "C" fn enumerate_window<D: DomTypes>(
             continue;
         }
         let s = JS_AtomizeStringN(*cx, name.as_c_char_ptr(), name.len());
-        rooted!(in(*cx) let id = StringId(s));
-        if s.is_null() || !AppendToIdVector(props, id.handle().into()) {
+        rooted!(in(*cx) let id = StringId::from_atom(s));
+        if s.is_null() || !AppendToIdVector(props.reborrow().as_raw() as *mut _, id.handle()) {
             return false;
         }
     }
@@ -630,9 +632,11 @@ pub(crate) unsafe extern "C" fn enumerate_window<D: DomTypes>(
 pub(crate) unsafe extern "C" fn may_resolve_global(
     names: *const JSAtomState,
     id: PropertyKey,
-    maybe_obj: *mut JSObject,
+    _maybe_obj: *mut JSObject,
 ) -> bool {
-    JS_MayResolveStandardClass(names, id, maybe_obj)
+    let mut resolved = false;
+    JS_MayResolveStandardClass(names, jsid { bits: 0 }, &mut resolved);
+    resolved
 }
 
 /// Returns true if the resolve hook for this window may resolve the provided id.

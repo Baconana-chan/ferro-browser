@@ -36,11 +36,11 @@ fn expand_dom_object(input: syn::DeriveInput) -> proc_macro2::TokenStream {
     let name = &input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
     let items = quote! {
-        impl #impl_generics ::js::conversions::ToJSValConvertible for #name #ty_generics #where_clause {
+        impl #impl_generics crate::js::conversions::ToJSValConvertible for #name #ty_generics #where_clause {
             #[expect(unsafe_code)]
             unsafe fn to_jsval(&self,
-                                cx: *mut js::jsapi::JSContext,
-                                rval: js::rust::MutableHandleValue) {
+                                cx: *mut crate::js::jsapi::JSContext,
+                                rval: crate::js::rust::MutableHandleValue) {
                 let object = crate::DomObject::reflector(self).get_jsobject();
                 object.to_jsval(cx, rval)
             }
@@ -54,7 +54,7 @@ fn expand_dom_object(input: syn::DeriveInput) -> proc_macro2::TokenStream {
         }
 
         impl #impl_generics crate::MutDomObject for #name #ty_generics #where_clause {
-            unsafe fn init_reflector(&self, obj: *mut js::jsapi::JSObject) {
+            unsafe fn init_reflector(&self, obj: *mut crate::js::jsapi::JSObject) {
                 self.#first_field_name.init_reflector(obj);
             }
         }

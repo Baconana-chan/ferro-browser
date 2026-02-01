@@ -6,7 +6,7 @@
 use std::ptr;
 use std::ffi::c_void;
 
-use super::jsapi::{JSContext, RawJSContext, JSObject, JSString, JSTracer, Value, JSClass};
+use super::jsapi::{JSContext, RawJSContext, JSObject, JSString, JSTracer, Value, JSClass, JSPrincipals};
 use super::rust::{HandleObject, HandleValue, MutableHandleValue, MutableHandleObject};
 
 /// Get reserved slot from object
@@ -93,6 +93,49 @@ impl jsid {
     pub fn is_string(&self) -> bool {
         !self.is_int() && !self.is_void()
     }
+    
+    /// Convert to integer (for integer property keys)
+    pub fn to_int(&self) -> i32 {
+        (self.bits >> 1) as i32
+    }
+    
+    /// Convert to JSString (for string property keys)
+    pub fn to_string(&self) -> *mut super::jsapi::JSString {
+        // Return the bits as a pointer - in our stub, this is just a placeholder
+        self.bits as *mut super::jsapi::JSString
+    }
+    
+    /// asBits_ getter for SpiderMonkey compatibility
+    #[inline]
+    pub fn asBits_(&self) -> usize {
+        self.bits
+    }
+}
+
+/// Deref to allow access to asBits_ as a field
+impl std::ops::Deref for jsid {
+    type Target = JsidFields;
+    fn deref(&self) -> &Self::Target {
+        unsafe { std::mem::transmute(self) }
+    }
+}
+
+/// Wrapper struct to provide asBits_ as a field
+#[repr(transparent)]
+pub struct JsidFields {
+    pub asBits_: usize,
+}
+
+impl std::fmt::Display for jsid {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.is_void() {
+            write!(f, "[void]")
+        } else if self.is_int() {
+            write!(f, "{}", self.to_int())
+        } else {
+            write!(f, "[string id]")
+        }
+    }
 }
 
 /// JSID_VOID constant
@@ -101,21 +144,106 @@ pub const JSID_VOID: jsid = jsid::VOID;
 /// PropertyKey - alias for jsid
 pub type PropertyKey = jsid;
 
+// Conversion from StringId to PropertyKey
+impl From<super::jsapi::StringId> for PropertyKey {
+    fn from(s: super::jsapi::StringId) -> Self {
+        // String IDs are stored as pointers, need to encode as jsid
+        jsid { bits: s.0 as usize }
+    }
+}
+
+// Conversion from Handle<StringId> to PropertyKey 
+impl<'a> From<super::rust::Handle<'a, super::jsapi::StringId>> for PropertyKey {
+    fn from(h: super::rust::Handle<'a, super::jsapi::StringId>) -> Self {
+        let string_id = unsafe { *h.as_raw() };
+        PropertyKey::from(string_id)
+    }
+}
+
+// Conversion from SymbolId to PropertyKey
+impl From<super::jsapi::SymbolId> for PropertyKey {
+    fn from(s: super::jsapi::SymbolId) -> Self {
+        // Symbol IDs are stored as pointers with a special tag
+        jsid { bits: (s.0 as usize) | 0x4 } // Symbol tag
+    }
+}
+
 /// Property descriptor
 #[repr(C)]
+#[derive(Clone, Copy)]
 pub struct PropertyDescriptor {
-    pub value: Value,
-    pub getter: *mut JSObject,
-    pub setter: *mut JSObject,
+    pub value_: Value,
+    pub getter_: *mut JSObject,
+    pub setter_: *mut JSObject,
     pub attrs: u32,
+}
+
+impl PropertyDescriptor {
+    /// Check if this descriptor has a getter
+    pub fn hasGetter_(&self) -> bool {
+        !self.getter_.is_null()
+    }
+    
+    /// Check if this descriptor has a setter
+    pub fn hasSetter_(&self) -> bool {
+        !self.setter_.is_null()
+    }
+    
+    /// Check if this descriptor has writable attribute
+    pub fn hasWritable_(&self) -> bool {
+        // JSPROP_READONLY = 0x10, if attrs includes info about writable
+        true  // TODO: Proper implementation based on attrs flags
+    }
+    
+    /// Check if this descriptor has a value
+    pub fn hasValue_(&self) -> bool {
+        !self.value_.is_undefined()
+    }
+    
+    /// Check if this descriptor is configurable
+    pub fn configurable_(&self) -> bool {
+        // JSPROP_PERMANENT = 0x4 means NOT configurable
+        (self.attrs & 0x4) == 0
+    }
+    
+    /// Check if this descriptor has configurable attribute
+    pub fn hasConfigurable_(&self) -> bool {
+        true  // TODO: Proper implementation
+    }
+    
+    /// Check if this descriptor has enumerable attribute
+    pub fn hasEnumerable_(&self) -> bool {
+        true  // TODO: Proper implementation
+    }
+    
+    /// Check if this property is enumerable
+    pub fn enumerable_(&self) -> bool {
+        // JSPROP_ENUMERATE = 0x1, if set the property is enumerable
+        (self.attrs & 0x1) != 0
+    }
+    
+    /// Get the getter (method form)
+    pub fn getter(&self) -> *mut JSObject {
+        self.getter_
+    }
+    
+    /// Get the setter (method form)
+    pub fn setter(&self) -> *mut JSObject {
+        self.setter_
+    }
+    
+    /// Get the value (method form)
+    pub fn value(&self) -> Value {
+        self.value_
+    }
 }
 
 impl Default for PropertyDescriptor {
     fn default() -> Self {
         Self {
-            value: Value::undefined(),
-            getter: ptr::null_mut(),
-            setter: ptr::null_mut(),
+            value_: Value::undefined(),
+            getter_: ptr::null_mut(),
+            setter_: ptr::null_mut(),
             attrs: 0,
         }
     }
@@ -213,7 +341,7 @@ pub unsafe fn JS_GetStringLength(_str: *mut JSString) -> usize {
 /// AppendToIdVector
 pub unsafe fn AppendToIdVector(
     _ids: *mut c_void,
-    _id: jsid,
+    _id: super::rust::Handle<'_, super::jsapi::StringId>,
 ) -> bool {
     true
 }
@@ -244,18 +372,6 @@ pub unsafe fn JS_NewUCStringCopyN(_cx: *mut RawJSContext, _chars: *const u16, _l
 /// JS_AtomizeAndPinString
 pub unsafe fn JS_AtomizeAndPinString(_cx: *mut RawJSContext, _chars: *const i8) -> *mut JSString {
     ptr::null_mut()
-}
-
-/// JSPrincipals - security principals
-#[repr(C)]
-pub struct JSPrincipals {
-    pub refcount: i32,
-}
-
-impl JSPrincipals {
-    pub const fn new() -> Self {
-        Self { refcount: 1 }
-    }
 }
 
 /// Evaluate script
@@ -319,13 +435,13 @@ pub unsafe fn NewProxyObject(
     ptr::null_mut()
 }
 
-/// Get proxy private
-pub unsafe fn GetProxyPrivate(_obj: *mut JSObject) -> Value {
-    Value::undefined()
+/// Get proxy private (SpiderMonkey-compatible signature with out parameter)
+pub unsafe fn GetProxyPrivate(_obj: *mut JSObject, val: &mut Value) {
+    *val = Value::undefined();
 }
 
 /// Set proxy private
-pub unsafe fn SetProxyPrivate(_obj: *mut JSObject, _priv: Value) {
+pub unsafe fn SetProxyPrivate(_obj: *mut JSObject, _priv: &Value) {
 }
 
 /// Get proxy handler
@@ -366,7 +482,7 @@ pub unsafe fn DestroyRustJSPrincipals(_principals: *mut c_void) {
 }
 
 /// Get Rust JS principals private data
-pub unsafe fn GetRustJSPrincipalsPrivate(_principals: *mut c_void) -> *mut c_void {
+pub unsafe fn GetRustJSPrincipalsPrivate(_principals: *mut JSPrincipals) -> *mut c_void {
     ptr::null_mut()
 }
 
@@ -522,12 +638,13 @@ pub unsafe fn CreateWrapperProxyHandler(
 pub unsafe fn DeleteWrapperProxyHandler(_handler: *const c_void) {
 }
 
-/// Get proxy reserved slot
+/// Get proxy reserved slot (SpiderMonkey-compatible signature with out parameter)
 pub unsafe fn GetProxyReservedSlot(
     _obj: *mut JSObject,
     _slot: u32,
-) -> Value {
-    Value::undefined()
+    val: &mut Value,
+) {
+    *val = Value::undefined();
 }
 
 /// Set proxy reserved slot
@@ -611,12 +728,13 @@ pub struct JSErrorFormatString {
     pub exception_type: i16,
 }
 
-/// Get reserved slot from object
+/// Get reserved slot from object (SpiderMonkey-compatible signature with out parameter)
 pub unsafe fn JS_GetReservedSlot(
     _obj: *mut JSObject,
     _slot: u32,
-) -> Value {
-    Value::undefined()
+    val: &mut Value,
+) {
+    *val = Value::undefined();
 }
 
 /// Set build ID operation
@@ -676,8 +794,10 @@ pub unsafe fn GetProxyHandlerExtra(_obj: *mut JSObject) -> *const c_void {
     ptr::null()
 }
 
-/// IsProxyHandlerFamily - check if object uses a specific proxy handler family
-pub unsafe fn IsProxyHandlerFamily(_obj: *mut JSObject, _family: *const c_void) -> bool {
+/// IsProxyHandlerFamily - check if object uses the DOM proxy handler family
+/// Note: In SpiderMonkey this takes a family parameter, but Servo's usage
+/// checks against the global DOM proxy family set via SetDOMProxyInformation
+pub unsafe fn IsProxyHandlerFamily(_obj: *mut JSObject) -> bool {
     false
 }
 
@@ -691,16 +811,18 @@ pub unsafe fn UncheckedUnwrapObject(
 
 /// CreateRustJSPrincipals - create principals from Rust
 pub unsafe fn CreateRustJSPrincipals(
-    _destroy: Option<unsafe extern "C" fn(*mut c_void)>,
-    _write: Option<unsafe extern "C" fn(*mut RawJSContext, *mut c_void, *mut c_void) -> bool>,
+    _callbacks: &'static JSPrincipalsCallbacks,
     _private: *mut c_void,
 ) -> *mut JSPrincipals {
     ptr::null_mut()
 }
 
 /// GetProxyHandlerFamily - get the handler family for a proxy
-pub unsafe fn GetProxyHandlerFamily(_handler: *const c_void) -> *const c_void {
-    ptr::null()
+/// Returns a pointer to the DOM proxy handler family
+pub unsafe fn GetProxyHandlerFamily() -> *const c_void {
+    // Return a static address as the family identifier
+    static FAMILY: u8 = 0;
+    &FAMILY as *const u8 as *const c_void
 }
 
 /// InvokeGetOwnPropertyDescriptor - invoke the getOwnPropertyDescriptor trap
@@ -713,4 +835,127 @@ pub unsafe fn InvokeGetOwnPropertyDescriptor(
     _is_none: *mut bool,
 ) -> bool {
     true
+}
+
+// ===================
+// JIT Operation Functions
+// ===================
+
+/// JSJitInfo anonymous union 1 - function pointers
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub union JSJitInfo__bindgen_anon_1 {
+    pub getter: Option<unsafe extern "C" fn(*mut RawJSContext, super::jsapi::RawHandleObject, *mut c_void, super::rust::MutableHandleValue<'_>) -> bool>,
+    pub setter: Option<unsafe extern "C" fn(*mut RawJSContext, super::jsapi::RawHandleObject, *mut c_void, super::rust::HandleValue<'_>) -> bool>,
+    pub method: Option<unsafe extern "C" fn(*mut RawJSContext, super::jsapi::RawHandleObject, *mut c_void, *const super::jsapi::JSJitMethodCallArgs) -> bool>,
+    pub staticMethod: Option<unsafe extern "C" fn(*mut RawJSContext, u32, *mut super::jsapi::Value) -> bool>,
+}
+
+impl Default for JSJitInfo__bindgen_anon_1 {
+    fn default() -> Self {
+        Self { getter: None }
+    }
+}
+
+/// JSJitInfo anonymous union 2 - protoID
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub union JSJitInfo__bindgen_anon_2 {
+    pub protoID: u16,
+}
+
+impl Default for JSJitInfo__bindgen_anon_2 {
+    fn default() -> Self {
+        Self { protoID: 0 }
+    }
+}
+
+/// JSJitInfo anonymous union 3 - depth
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub union JSJitInfo__bindgen_anon_3 {
+    pub depth: u16,
+}
+
+impl Default for JSJitInfo__bindgen_anon_3 {
+    fn default() -> Self {
+        Self { depth: 0 }
+    }
+}
+
+/// JSJitInfo - JIT info for bindings
+#[repr(C)]
+pub struct JSJitInfo {
+    pub __bindgen_anon_1: JSJitInfo__bindgen_anon_1,
+    pub __bindgen_anon_2: JSJitInfo__bindgen_anon_2,
+    pub __bindgen_anon_3: JSJitInfo__bindgen_anon_3,
+    pub returnType_: u8,
+    pub aliasSet_: u8,
+    pub isInfallible_: bool,
+    pub isMovable_: bool,
+    pub isEliminatable_: bool,
+    pub isAlwaysInSlot_: bool,
+    pub isLazilyCachedInSlot_: bool,
+    pub isTypedMethod_: bool,
+    pub slotIndex_: u8,
+}
+
+impl Default for JSJitInfo {
+    fn default() -> Self {
+        Self {
+            __bindgen_anon_1: JSJitInfo__bindgen_anon_1::default(),
+            __bindgen_anon_2: JSJitInfo__bindgen_anon_2::default(),
+            __bindgen_anon_3: JSJitInfo__bindgen_anon_3::default(),
+            returnType_: 0,
+            aliasSet_: 0,
+            isInfallible_: false,
+            isMovable_: false,
+            isEliminatable_: false,
+            isAlwaysInSlot_: false,
+            isLazilyCachedInSlot_: false,
+            isTypedMethod_: false,
+            slotIndex_: 0,
+        }
+    }
+}
+
+/// CallJitGetterOp - call a JIT getter
+pub unsafe extern "C" fn CallJitGetterOp(
+    _info: *const JSJitInfo,
+    _cx: *mut RawJSContext,
+    _obj: HandleObject<'_>,
+    _priv: *mut c_void,
+    _argc: u32,
+    _vp: *mut super::jsapi::Value,
+) -> bool {
+    true
+}
+
+/// CallJitSetterOp - call a JIT setter
+pub unsafe extern "C" fn CallJitSetterOp(
+    _info: *const JSJitInfo,
+    _cx: *mut RawJSContext,
+    _obj: HandleObject<'_>,
+    _priv: *mut c_void,
+    _argc: u32,
+    _vp: *mut super::jsapi::Value,
+) -> bool {
+    true
+}
+
+/// CallJitMethodOp - call a JIT method
+pub unsafe extern "C" fn CallJitMethodOp(
+    _info: *const JSJitInfo,
+    _cx: *mut RawJSContext,
+    _obj: HandleObject<'_>,
+    _priv: *mut c_void,
+    _argc: u32,
+    _vp: *mut super::jsapi::Value,
+) -> bool {
+    true
+}
+
+/// RUST_FUNCTION_VALUE_TO_JITINFO - get jitinfo from function value
+pub unsafe fn RUST_FUNCTION_VALUE_TO_JITINFO(_v: super::jsapi::Value) -> *const JSJitInfo {
+    std::ptr::null()
 }

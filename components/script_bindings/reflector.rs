@@ -23,7 +23,8 @@ pub struct Reflector {
     object: Heap<*mut JSObject>,
 }
 
-unsafe impl crate::js::gc::Traceable for Reflector {
+// JSTraceable = js::gc::Traceable for both SpiderMonkey and Boa
+unsafe impl JSTraceable for Reflector {
     unsafe fn trace(&self, _: *mut crate::js::jsapi::JSTracer) {}
 }
 
@@ -71,7 +72,8 @@ impl Reflector {
 }
 
 /// A trait to provide access to the `Reflector` for a DOM object.
-pub trait DomObject: crate::js::gc::Traceable + 'static {
+/// JSTraceable = js::gc::Traceable for both SpiderMonkey and Boa
+pub trait DomObject: JSTraceable + 'static {
     /// Returns the receiver's reflector.
     fn reflector(&self) -> &Reflector;
 }

@@ -6,9 +6,12 @@
 
 use std::mem;
 
-use crate::conversions::{DerivedFrom, IDLInterface, get_dom_class};
+use crate::conversions::{IDLInterface, get_dom_class};
 use crate::reflector::DomObject;
 use crate::script_runtime::runtime_is_alive;
+
+// Re-export DerivedFrom for use in generated code
+pub use crate::conversions::DerivedFrom;
 
 /// A trait to hold the cast functions of IDL interfaces that either derive
 /// or are derived from other interfaces.
