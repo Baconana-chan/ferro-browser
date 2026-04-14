@@ -3,15 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 use std::marker::PhantomData;
-use std::thread;
-
-use crate::js::jsapi::{HideScriptedCaller, UnhideScriptedCaller};
-use crate::js::rust::Runtime;
 
 use crate::DomTypes;
-use crate::interfaces::{DomHelpers, GlobalScopeHelpers};
-use crate::root::{Dom, DomRoot};
-use crate::script_runtime::CanGc;
 
 #[derive(Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "js-spidermonkey", derive(JSTraceable))]
@@ -25,19 +18,80 @@ unsafe impl crate::JSTraceable for StackEntryKind {
     unsafe fn trace(&self, _tracer: *mut crate::js::jsapi::JSTracer) {}
 }
 
-#[cfg_attr(crown, allow(crown::unrooted_must_root))]
-#[cfg_attr(feature = "js-spidermonkey", derive(JSTraceable))]
-pub struct StackEntry<D: DomTypes> {
-    pub global: Dom<D::GlobalScope>,
-    pub kind: StackEntryKind,
+// Minimal stub for js-boa
+#[cfg(feature = "js-boa")]
+mod boa_impl {
+    use std::marker::PhantomData;
+    use crate::DomTypes;
+    use super::StackEntryKind;
+
+    pub struct StackEntry<D: DomTypes> {
+        pub kind: StackEntryKind,
+        _marker: PhantomData<D>,
+    }
+
+    impl<D: DomTypes> StackEntry<D> {
+        pub fn new(kind: StackEntryKind) -> Self {
+            Self { kind, _marker: PhantomData }
+        }
+    }
+
+    unsafe impl<D: DomTypes> crate::JSTraceable for StackEntry<D> {
+        unsafe fn trace(&self, _tracer: *mut crate::js::jsapi::JSTracer) {}
+    }
+
+    pub struct GenericAutoEntryScript<D: DomTypes> {
+        _marker: PhantomData<D>,
+    }
+
+    impl<D: DomTypes> GenericAutoEntryScript<D> {
+        pub fn new<G>(_global: &G) -> Self {
+            Self { _marker: PhantomData }
+        }
+    }
+
+    impl<D: DomTypes> Drop for GenericAutoEntryScript<D> {
+        fn drop(&mut self) {}
+    }
+
+    pub struct GenericAutoIncumbentScript<D: DomTypes> {
+        _marker: PhantomData<D>,
+    }
+
+    impl<D: DomTypes> GenericAutoIncumbentScript<D> {
+        pub fn new<G>(_global: &G) -> Self {
+            Self { _marker: PhantomData }
+        }
+    }
+
+    impl<D: DomTypes> Drop for GenericAutoIncumbentScript<D> {
+        fn drop(&mut self) {}
+    }
 }
 
 #[cfg(feature = "js-boa")]
-unsafe impl<D: DomTypes> crate::JSTraceable for StackEntry<D> {
-    unsafe fn trace(&self, tracer: *mut crate::js::jsapi::JSTracer) {
-        // Trace global
-        unsafe { self.global.trace(tracer); }
-    }
+pub use boa_impl::*;
+
+#[cfg(not(feature = "js-boa"))]
+mod spidermonkey_impl {
+use std::marker::PhantomData;
+use std::thread;
+
+use crate::js::jsapi::{HideScriptedCaller, UnhideScriptedCaller};
+use crate::js::rust::Runtime;
+
+use crate::DomTypes;
+use crate::interfaces::{DomHelpers, GlobalScopeHelpers};
+use crate::root::{Dom, DomRoot};
+use crate::script_runtime::CanGc;
+
+use super::StackEntryKind;
+
+#[cfg_attr(crown, allow(crown::unrooted_must_root))]
+#[derive(JSTraceable)]
+pub struct StackEntry<D: DomTypes> {
+    pub global: Dom<D::GlobalScope>,
+    pub kind: StackEntryKind,
 }
 
 /// RAII struct that pushes and pops entries from the script settings stack.
@@ -156,3 +210,7 @@ impl<D: DomTypes> Drop for GenericAutoIncumbentScript<D> {
         }
     }
 }
+} // end spidermonkey_impl
+
+#[cfg(not(feature = "js-boa"))]
+pub use spidermonkey_impl::*;

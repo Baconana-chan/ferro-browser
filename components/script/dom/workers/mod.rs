@@ -15,3 +15,15 @@ pub(crate) mod worker;
 pub(crate) mod workerglobalscope;
 pub(crate) mod workerlocation;
 pub(crate) mod workernavigator;
+
+// Re-export types for use in dom::types
+// Note: AbstractWorkerGlobalScope and AbstractWorker are traits, not structs
+pub(crate) use dedicatedworkerglobalscope::DedicatedWorkerGlobalScope;
+pub(crate) use serviceworker::ServiceWorker;
+pub(crate) use serviceworkercontainer::ServiceWorkerContainer;
+pub(crate) use serviceworkerglobalscope::ServiceWorkerGlobalScope;
+pub(crate) use serviceworkerregistration::ServiceWorkerRegistration;
+pub(crate) use worker::Worker;
+pub(crate) use workerglobalscope::WorkerGlobalScope;
+pub(crate) use workerlocation::WorkerLocation;
+pub(crate) use workernavigator::WorkerNavigator;

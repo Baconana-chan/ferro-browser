@@ -18,11 +18,9 @@ crate-type = ["rlib"]
 # Ferro Browser: Default to Boa JS engine (pure Rust, no C++ dependencies)
 default = ["clipboard", "vello_cpu", "js-boa"]
 
-# JavaScript Engine Selection (mutually exclusive)
+# JavaScript Engine Selection
 # js-boa: Pure Rust Boa engine - faster builds, 94% ECMAScript conformance
-# js-spidermonkey: Mozilla SpiderMonkey - full compatibility but requires C++ toolchain
 js-boa = ["script/js-boa", "dep:boa_bindings"]
-js-spidermonkey = ["script/js-spidermonkey"]
 
 background_hang_monitor = ["background_hang_monitor/sampler"]
 bluetooth = [
@@ -34,18 +32,18 @@ bluetooth = [
     "script_traits/bluetooth",
 ]
 clipboard = ["dep:arboard"]
-# SpiderMonkey-specific features (only work with js-spidermonkey)
-crown = ["script/crown"]
-debugmozjs = ["script/debugmozjs"]
+# Legacy JS-engine-tuning flags retained as no-ops for compatibility.
+crown = []
+debugmozjs = []
 dynamic_freetype = ["webrender/dynamic_freetype"]
-jitspew = ["script/jitspew"]
+jitspew = []
 js_backtrace = ["script/js_backtrace"]
-js_jit = ["script/js_jit"]
+js_jit = []
 # GStreamer removed - using FFmpeg via ferro_media
 media-ferro = ["servo-media-ferro"]
 native-bluetooth = ["bluetooth/native-bluetooth"]
 no-wgl = ["mozangle/egl", "mozangle/build_dlls", "surfman/sm-angle-default", "compositing_traits/no-wgl"]
-profilemozjs = ["script/profilemozjs"]
+profilemozjs = []
 refcell_backtrace = ["script/refcell_backtrace"]
 testbinding = ["script/testbinding"]
 tracing = [
@@ -117,7 +115,7 @@ profile = { path = "../profile" }
 profile_traits = { workspace = true }
 rayon = { workspace = true }
 rustc-hash = { workspace = true }
-script = { path = "../script" }
+script = { path = "../script", default-features = false }
 script_traits = { workspace = true }
 serde = { workspace = true }
 servo-media = { workspace = true }

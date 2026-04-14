@@ -97,11 +97,7 @@ fn get_must_not_have_traceable(sym: &Symbols, attrs: &[hir::Attribute]) -> Optio
 }
 
 fn find_jstraceable<'tcx>(cx: &LateContext<'tcx>) -> Option<DefId> {
-    // mozjs_sys::trace::Traceable
-    if let Some(mozjs) = find_first_crate(&cx.tcx, Symbol::intern("mozjs_sys")) {
-        return trait_in_crate(&cx.tcx, mozjs, Symbol::intern("Traceable"));
-    }
-    // when running tests
+    // when running tests or with the Boa compatibility layer
     trait_in_crate(&cx.tcx, LOCAL_CRATE, Symbol::intern("JSTraceable"))
 }
 

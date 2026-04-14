@@ -6,12 +6,7 @@
 // Register the linter `crown`, which is the Servo-specific linter for the script crate.
 #![cfg_attr(crown, register_tool(crown))]
 
-// JS Engine selection - use SpiderMonkey or Boa
-#[cfg(feature = "js-spidermonkey")]
-#[macro_use]
-extern crate js;
-
-#[cfg(feature = "js-boa")]
+// JS engine integration via Boa compatibility layer.
 #[macro_use]
 extern crate boa_bindings;
 
@@ -22,11 +17,7 @@ extern crate log;
 #[macro_use]
 extern crate malloc_size_of_derive;
 
-// Re-export js module - either from SpiderMonkey or Boa compatibility layer
-#[cfg(feature = "js-spidermonkey")]
-pub use js;
-
-#[cfg(feature = "js-boa")]
+// Re-export Boa's SpiderMonkey-compatible JS module.
 pub mod js {
     //! JavaScript engine compatibility layer for Boa
     pub use boa_bindings::js_compat::*;
@@ -44,6 +35,8 @@ pub mod js {
     pub use boa_bindings::js_compat::panic;
     // Re-export the rooted macro from gc
     pub use boa_bindings::rooted;
+    pub use boa_bindings::auto_root;
+    pub use boa_bindings::rooted_vec;
 }
 
 pub mod callback;
@@ -116,19 +109,19 @@ pub mod codegen {
     pub mod RegisterBindings {
         include!(concat!(env!("OUT_DIR"), "/RegisterBindings.rs"));
     }
+    
+    // Re-export GenericUnionTypes as UnionTypes for compatibility
+    pub use GenericUnionTypes as UnionTypes;
 }
 
 // These trait exports are public, because they are used in the DOM bindings.
 // Since they are used in derive macros,
 // it is useful that they are accessible at the root of the crate.
-#[cfg(feature = "js-spidermonkey")]
-pub(crate) use crate::js::gc::Traceable as JSTraceable;
 
-// For Boa, we use our own JSTraceable trait defined in trace.rs
-// This is compatible with the SpiderMonkey API signature
-#[cfg(feature = "js-boa")]
+// For Boa, we use our own JSTraceable trait defined in trace.rs.
 pub use crate::trace::JSTraceable;
 
 pub use crate::codegen::DomTypes::DomTypes;
+pub trait DomObjectPlaceholder {}
 pub(crate) use crate::reflector::{DomObject, MutDomObject, Reflector};
 pub(crate) use crate::trace::CustomTraceable;

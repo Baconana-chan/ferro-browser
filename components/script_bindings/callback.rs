@@ -4,6 +4,181 @@
 
 //! Base classes to work with IDL callbacks.
 
+// For js-boa, we use a minimal stub implementation
+#[cfg(feature = "js-boa")]
+mod boa_impl {
+    use std::rc::Rc;
+    use malloc_size_of::MallocSizeOf;
+    use crate::js::jsapi::{Heap, JSObject};
+    use crate::js::jsval::JSVal;
+    use crate::DomTypes;
+    use crate::script_runtime::JSContext;
+    use crate::JSTraceable;
+
+    pub trait ThisReflector {
+        fn jsobject(&self) -> *mut JSObject { std::ptr::null_mut() }
+    }
+
+    #[derive(Clone, Copy, PartialEq)]
+    pub enum ExceptionHandling {
+        Report,
+        Rethrow,
+    }
+
+    pub struct CallbackObject<D: DomTypes> {
+        callback: Heap<*mut JSObject>,
+        _marker: std::marker::PhantomData<D>,
+    }
+
+    impl<D: DomTypes> CallbackObject<D> {
+        pub fn new() -> Self {
+            Self {
+                callback: Heap::default(),
+                _marker: std::marker::PhantomData,
+            }
+        }
+
+        pub fn get(&self) -> *mut JSObject {
+            self.callback.get()
+        }
+
+        pub unsafe fn init(&mut self, _cx: JSContext, callback: *mut JSObject) {
+            self.callback.set(callback);
+        }
+    }
+
+    impl<D: DomTypes> Drop for CallbackObject<D> {
+        fn drop(&mut self) {}
+    }
+
+    impl<D: DomTypes> PartialEq for CallbackObject<D> {
+        fn eq(&self, other: &CallbackObject<D>) -> bool {
+            self.callback.get() == other.callback.get()
+        }
+    }
+
+    pub trait CallbackContainer<D: DomTypes> {
+        unsafe fn new(cx: JSContext, callback: *mut JSObject) -> Rc<Self>;
+        fn callback_holder(&self) -> &CallbackObject<D>;
+        fn callback(&self) -> *mut JSObject {
+            self.callback_holder().get()
+        }
+    }
+
+    pub struct CallbackFunction<D: DomTypes> {
+        object: CallbackObject<D>,
+    }
+
+    impl<D: DomTypes> CallbackFunction<D> {
+        pub fn new() -> Self {
+            Self { object: CallbackObject::new() }
+        }
+
+        pub fn callback_holder(&self) -> &CallbackObject<D> {
+            &self.object
+        }
+
+        pub unsafe fn init(&mut self, cx: JSContext, callback: *mut JSObject) {
+            unsafe { self.object.init(cx, callback) };
+        }
+    }
+
+    unsafe impl<D: DomTypes> JSTraceable for CallbackFunction<D> {
+        unsafe fn trace(&self, _tracer: *mut crate::js::jsapi::JSTracer) {
+            // Stub: no-op for Boa
+        }
+    }
+
+    impl<D: DomTypes> MallocSizeOf for CallbackFunction<D> {
+        fn size_of(&self, _ops: &mut malloc_size_of::MallocSizeOfOps) -> usize {
+            // Stub: return 0 for now
+            0
+        }
+    }
+
+    impl<D: DomTypes> PartialEq for CallbackFunction<D> {
+        fn eq(&self, other: &CallbackFunction<D>) -> bool {
+            self.object.callback.get() == other.object.callback.get()
+        }
+    }
+
+    pub struct CallbackInterface<D: DomTypes> {
+        object: CallbackObject<D>,
+    }
+
+    impl<D: DomTypes> CallbackInterface<D> {
+        pub fn new() -> Self {
+            Self { object: CallbackObject::new() }
+        }
+
+        pub fn callback_holder(&self) -> &CallbackObject<D> {
+            &self.object
+        }
+
+        pub unsafe fn init(&mut self, cx: JSContext, callback: *mut JSObject) {
+            unsafe { self.object.init(cx, callback) };
+        }
+
+        /// Returns the property with the given `name`, if it is a callable object,
+        /// or an error otherwise (stub for Boa)
+        pub fn get_callable_property(&self, _cx: JSContext, _name: &str) -> crate::error::Fallible<JSVal> {
+            // Stub: return undefined for now
+            Ok(JSVal::Undefined)
+        }
+    }
+
+    unsafe impl<D: DomTypes> JSTraceable for CallbackInterface<D> {
+        unsafe fn trace(&self, _tracer: *mut crate::js::jsapi::JSTracer) {
+            // Stub: no-op for Boa
+        }
+    }
+
+    impl<D: DomTypes> MallocSizeOf for CallbackInterface<D> {
+        fn size_of(&self, _ops: &mut malloc_size_of::MallocSizeOfOps) -> usize {
+            // Stub: return 0 for now
+            0
+        }
+    }
+
+    impl<D: DomTypes> PartialEq for CallbackInterface<D> {
+        fn eq(&self, other: &CallbackInterface<D>) -> bool {
+            self.object.callback.get() == other.object.callback.get()
+        }
+    }
+
+    pub struct CallSetup<D: DomTypes> {
+        cx: JSContext,
+        _marker: std::marker::PhantomData<D>,
+    }
+
+    impl<D: DomTypes> CallSetup<D> {
+        pub fn new<T: CallbackContainer<D>>(_callback: &T, _handling: ExceptionHandling) -> Self {
+            unimplemented!("CallSetup not implemented for Boa")
+        }
+
+        pub fn get_context(&self) -> JSContext {
+            self.cx
+        }
+    }
+
+    impl<D: DomTypes> Drop for CallSetup<D> {
+        fn drop(&mut self) {}
+    }
+
+    pub fn wrap_call_this_value<T: ThisReflector>(
+        _cx: JSContext,
+        _p: &T,
+        _rval: crate::js::rust::MutableHandleValue,
+    ) -> bool {
+        false
+    }
+}
+
+#[cfg(feature = "js-boa")]
+pub use boa_impl::*;
+
+#[cfg(not(feature = "js-boa"))]
+mod spidermonkey_impl {
 use std::default::Default;
 use std::ffi::CString;
 use std::mem::drop;
@@ -322,4 +497,7 @@ impl<D: DomTypes> Drop for CallSetup<D> {
         drop(self.incumbent_script.take());
         drop(self.entry_script.take().unwrap());
     }
-}
+}} // end of spidermonkey_impl module
+
+#[cfg(not(feature = "js-boa"))]
+pub use spidermonkey_impl::*;

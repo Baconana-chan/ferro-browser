@@ -61,3 +61,11 @@ pub trait HasParent {
     type Parent;
     fn as_parent(&self) -> &Self::Parent;
 }
+
+// Re-export TypeIds from InheritTypes for use in script crate
+pub use crate::codegen::InheritTypes::{
+    NodeTypeId, CharacterDataTypeId, TextTypeId, ElementTypeId, HTMLElementTypeId,
+    SVGElementTypeId, SVGGraphicsElementTypeId, EventTargetTypeId, DocumentFragmentTypeId,
+    HTMLMediaElementTypeId, WorkerGlobalScopeTypeId, GlobalScopeTypeId, TopTypeId,
+    EventTypeId, UIEventTypeId, AudioNodeTypeId, AudioScheduledSourceNodeTypeId,
+};

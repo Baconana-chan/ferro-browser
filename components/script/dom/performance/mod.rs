@@ -18,3 +18,13 @@ pub(crate) mod performancepainttiming;
 pub(crate) mod performanceresourcetiming;
 
 pub(crate) use self::performance::Performance;
+pub(crate) use largestcontentfulpaint::LargestContentfulPaint;
+pub(crate) use performanceentry::PerformanceEntry;
+pub(crate) use performancemark::PerformanceMark;
+pub(crate) use performancemeasure::PerformanceMeasure;
+pub(crate) use performancenavigation::PerformanceNavigation;
+pub(crate) use performancenavigationtiming::PerformanceNavigationTiming;
+pub(crate) use performanceobserver::PerformanceObserver;
+pub(crate) use performanceobserverentrylist::PerformanceObserverEntryList;
+pub(crate) use performancepainttiming::PerformancePaintTiming;
+pub(crate) use performanceresourcetiming::PerformanceResourceTiming;

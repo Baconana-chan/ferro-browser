@@ -4,7 +4,11 @@
 
 #[expect(clippy::module_inception, reason = "The interface name is Geolocation")]
 pub(crate) mod geolocation;
-pub(crate) use geolocation::Geolocation;
 pub(crate) mod geolocationcoordinates;
 pub(crate) mod geolocationposition;
 pub(crate) mod geolocationpositionerror;
+
+pub(crate) use geolocation::Geolocation;
+pub(crate) use geolocationcoordinates::GeolocationCoordinates;
+pub(crate) use geolocationposition::GeolocationPosition;
+pub(crate) use geolocationpositionerror::GeolocationPositionError;

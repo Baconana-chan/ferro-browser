@@ -36,7 +36,10 @@ use crate::js::{jsapi, rooted};
 use crate::DomTypes;
 use crate::conversions::{is_dom_proxy, jsid_to_string};
 use crate::error::Error;
+#[cfg(not(feature = "js-boa"))]
 use crate::interfaces::{DomHelpers, GlobalScopeHelpers};
+#[cfg(feature = "js-boa")]
+use crate::interfaces::DomHelpers;
 use crate::realms::{AlreadyInRealm, InRealm};
 use crate::reflector::DomObject;
 use crate::script_runtime::{CanGc, JSContext as SafeJSContext};
@@ -510,6 +513,7 @@ fn ensure_cross_origin_property_holder(
 /// What this function does corresponds to the operations in
 /// <https://html.spec.whatwg.org/multipage/#the-location-interface> denoted as
 /// "Throw a `SecurityError` DOMException".
+#[cfg(not(feature = "js-boa"))]
 pub(crate) fn report_cross_origin_denial<D: DomTypes>(
     cx: SafeJSContext,
     id: RawHandleId,
@@ -540,9 +544,20 @@ pub(crate) fn report_cross_origin_denial<D: DomTypes>(
     false
 }
 
+/// Stub for Boa - Report a cross-origin denial for a property
+#[cfg(feature = "js-boa")]
+pub(crate) fn report_cross_origin_denial<D: DomTypes>(
+    _cx: SafeJSContext,
+    _id: RawHandleId,
+    _access: &str,
+) -> bool {
+    false
+}
+
 /// Implementation of `[[Set]]` for [`Location`].
 ///
 /// [`Location`]: https://html.spec.whatwg.org/multipage/#location-set
+#[cfg(not(feature = "js-boa"))]
 pub(crate) unsafe extern "C" fn maybe_cross_origin_set_rawcx<D: DomTypes>(
     cx: *mut JSContext,
     proxy: RawHandleObject,
@@ -600,9 +615,23 @@ pub(crate) unsafe extern "C" fn maybe_cross_origin_set_rawcx<D: DomTypes>(
     )
 }
 
+/// Stub for Boa - Implementation of `[[Set]]` for [`Location`].
+#[cfg(feature = "js-boa")]
+pub(crate) unsafe extern "C" fn maybe_cross_origin_set_rawcx<D: DomTypes>(
+    _cx: *mut JSContext,
+    _proxy: RawHandleObject,
+    _id: RawHandleId,
+    _v: RawHandleValue,
+    _receiver: RawHandleValue,
+    _result: *mut ObjectOpResult,
+) -> bool {
+    false
+}
+
 /// Implementation of `[[GetPrototypeOf]]` for [`Location`].
 ///
 /// [`Location`]: https://html.spec.whatwg.org/multipage/#location-getprototypeof
+#[cfg(not(feature = "js-boa"))]
 pub(crate) fn maybe_cross_origin_get_prototype<D: DomTypes>(
     cx: &mut CurrentRealm,
     proxy: RawHandleObject,
@@ -623,6 +652,18 @@ pub(crate) fn maybe_cross_origin_get_prototype<D: DomTypes>(
     }
 
     // > 2. Return null.
+    proto.set(ptr::null_mut());
+    true
+}
+
+/// Stub for Boa - Implementation of `[[GetPrototypeOf]]` for [`Location`].
+#[cfg(feature = "js-boa")]
+pub(crate) fn maybe_cross_origin_get_prototype<D: DomTypes>(
+    _cx: &mut CurrentRealm,
+    _proxy: RawHandleObject,
+    _get_proto_object: fn(cx: SafeJSContext, global: HandleObject, rval: MutableHandleObject),
+    mut proto: RawMutableHandleObject,
+) -> bool {
     proto.set(ptr::null_mut());
     true
 }

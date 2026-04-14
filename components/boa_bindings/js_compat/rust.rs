@@ -29,6 +29,22 @@ impl IntoPropDescPtr for *mut super::glue::PropertyDescriptor {
     }
 }
 
+/// Trait for types that can be converted to Handle<*mut JSObject>
+pub trait IntoHandleObject<'a> {
+    fn into_handle_object(self) -> HandleObject<'a>;
+}
+
+impl<'a> IntoHandleObject<'a> for HandleValue<'a> {
+    fn into_handle_object(self) -> HandleObject<'a> {
+        // Convert Handle<Value> to Handle<*mut JSObject>
+        // This is a stub - in real SpiderMonkey this would extract the object from the value
+        HandleObject {
+            ptr: self.ptr.cast(),
+            _marker: std::marker::PhantomData,
+        }
+    }
+}
+
 // Implementation for MutableHandle<PropertyDescriptor> is below after MutableHandle definition
 
 /// Runtime - the JavaScript runtime
@@ -332,7 +348,7 @@ pub type RustHandleObject<'a> = HandleObject<'a>;
 pub type HandleId<'a> = Handle<'a, super::glue::jsid>;
 
 /// RawMutableHandleIdVector - mutable handle to ID vector for enumeration functions
-pub type RawMutableHandleIdVector<'a> = MutableHandle<'a, *mut c_void>;
+pub type RawMutableHandleIdVector<'a> = MutableHandle<'a, IdVector>;
 
 /// ToString - convert to string
 pub unsafe fn ToString(_cx: *mut RawJSContext, _v: HandleValue<'_>) -> *mut JSString {
@@ -824,13 +840,14 @@ pub mod wrappers {
         true
     }
     
-    pub unsafe fn JS_GetOwnPropertyDescriptorById(
+    pub unsafe fn JS_GetOwnPropertyDescriptorById<T: IntoPropDescPtr>(
         _cx: *mut RawJSContext,
         _obj: HandleObject<'_>,
         _id: super::super::glue::HandleId<'_>,
-        _desc: *mut super::super::glue::PropertyDescriptor,
+        _desc: T,
         _is_none: *mut bool,
     ) -> bool {
+        let _ = _desc.into_prop_desc_ptr();
         true
     }
     
@@ -1189,7 +1206,7 @@ pub mod wrappers {
     }
     
     /// MutableHandleIdVector type alias
-    pub type MutableHandleIdVector<'a> = super::MutableHandle<'a, *mut c_void>;
+    pub type MutableHandleIdVector<'a> = super::MutableHandle<'a, IdVector>;
     
     // ===================
     // Additional missing wrappers

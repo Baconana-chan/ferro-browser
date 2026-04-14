@@ -5,9 +5,13 @@
 
 use std::ptr;
 use std::marker::PhantomData;
+use std::ptr::NonNull;
+use std::rc::Rc;
 
-use super::jsapi::{JSContext, RawJSContext, JSObject, JSString, Value};
+use super::gc::Root as GcRoot;
+use super::jsapi::{Heap, JSContext, RawJSContext, JSObject, JSString, Value};
 use super::rust::{HandleValue, MutableHandleValue};
+use super::typedarray::{ArrayBuffer, ArrayBufferView, ArrayBufferViewTrait, Float32Array, HeapArrayBuffer, HeapArrayBufferView};
 
 /// Conversion result - Ok, Failed, or couldn't convert
 #[derive(Debug, Clone)]
@@ -156,6 +160,12 @@ impl ToJSValConvertible for () {
     }
 }
 
+impl ToJSValConvertible for Value {
+    unsafe fn to_jsval(&self, _cx: *mut JSContext, rval: MutableHandleValue<'_>) {
+        rval.set(*self);
+    }
+}
+
 impl<T: ToJSValConvertible> ToJSValConvertible for Option<T> {
     unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
         match self {
@@ -173,6 +183,18 @@ impl<T: ToJSValConvertible> ToJSValConvertible for Vec<T> {
     }
 }
 
+impl<T: ToJSValConvertible + ?Sized> ToJSValConvertible for Rc<T> {
+    unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
+        unsafe { (**self).to_jsval(cx, rval) };
+    }
+}
+
+impl<T: ToJSValConvertible> ToJSValConvertible for GcRoot<T> {
+    unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
+        unsafe { (**self).to_jsval(cx, rval) };
+    }
+}
+
 impl ToJSValConvertible for *mut JSObject {
     unsafe fn to_jsval(&self, _cx: *mut JSContext, rval: MutableHandleValue<'_>) {
         if self.is_null() {
@@ -180,6 +202,54 @@ impl ToJSValConvertible for *mut JSObject {
         } else {
             rval.set(Value::from_object(*self));
         }
+    }
+}
+
+impl ToJSValConvertible for NonNull<JSObject> {
+    unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
+        unsafe { self.as_ptr().to_jsval(cx, rval) };
+    }
+}
+
+impl<T: ToJSValConvertible> ToJSValConvertible for RootedTraceableBox<T> {
+    unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
+        unsafe { (**self).to_jsval(cx, rval) };
+    }
+}
+
+impl<T: Copy + ToJSValConvertible> ToJSValConvertible for Heap<T> {
+    unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
+        unsafe { self.get().to_jsval(cx, rval) };
+    }
+}
+
+impl ToJSValConvertible for ArrayBuffer {
+    unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
+        unsafe { self.underlying_object().to_jsval(cx, rval) };
+    }
+}
+
+impl ToJSValConvertible for ArrayBufferView {
+    unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
+        unsafe { self.underlying_object().to_jsval(cx, rval) };
+    }
+}
+
+impl ToJSValConvertible for HeapArrayBuffer {
+    unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
+        unsafe { self.underlying_object().get().to_jsval(cx, rval) };
+    }
+}
+
+impl ToJSValConvertible for HeapArrayBufferView {
+    unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
+        unsafe { self.underlying_object().get().to_jsval(cx, rval) };
+    }
+}
+
+impl ToJSValConvertible for Float32Array {
+    unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
+        unsafe { self.underlying_object().to_jsval(cx, rval) };
     }
 }
 
@@ -349,6 +419,67 @@ impl FromJSValConvertible for *mut JSObject {
     ) -> Result<ConversionResult<Self>, ()> {
         // Extract object pointer from value
         Ok(ConversionResult::Success(val.get().to_object_or_null()))
+    }
+}
+
+impl FromJSValConvertible for NonNull<JSObject> {
+    type Config = ();
+    
+    unsafe fn from_jsval(
+        _cx: *mut JSContext,
+        val: HandleValue<'_>,
+        _config: Self::Config,
+    ) -> Result<ConversionResult<Self>, ()> {
+        match NonNull::new(val.get().to_object_or_null()) {
+            Some(value) => Ok(ConversionResult::Success(value)),
+            None => Ok(ConversionResult::Failure("expected non-null object".into())),
+        }
+    }
+}
+
+impl FromJSValConvertible for Value {
+    type Config = ();
+    
+    unsafe fn from_jsval(
+        _cx: *mut JSContext,
+        val: HandleValue<'_>,
+        _config: Self::Config,
+    ) -> Result<ConversionResult<Self>, ()> {
+        Ok(ConversionResult::Success(val.get()))
+    }
+}
+
+impl<T: FromJSValConvertible> FromJSValConvertible for Option<T> {
+    type Config = T::Config;
+    
+    unsafe fn from_jsval(
+        cx: *mut JSContext,
+        val: HandleValue<'_>,
+        config: Self::Config,
+    ) -> Result<ConversionResult<Self>, ()> {
+        let value = val.get();
+        if value.is_null_or_undefined() {
+            return Ok(ConversionResult::Success(None));
+        }
+        
+        match unsafe { T::from_jsval(cx, val, config) }? {
+            ConversionResult::Success(value) => Ok(ConversionResult::Success(Some(value))),
+            ConversionResult::Failure(error) => Ok(ConversionResult::Failure(error)),
+        }
+    }
+}
+
+impl<T: FromJSValConvertible> FromJSValConvertible for Vec<T> {
+    type Config = T::Config;
+    
+    unsafe fn from_jsval(
+        _cx: *mut JSContext,
+        _val: HandleValue<'_>,
+        _config: Self::Config,
+    ) -> Result<ConversionResult<Self>, ()> {
+        Ok(ConversionResult::Failure(
+            "array conversion is not implemented in Boa compat layer".into(),
+        ))
     }
 }
 

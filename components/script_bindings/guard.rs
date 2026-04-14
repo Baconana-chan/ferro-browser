@@ -71,11 +71,17 @@ pub(crate) enum Condition {
     Satisfied,
 }
 
+#[cfg(not(feature = "js-boa"))]
 fn is_secure_context<D: DomTypes>(cx: JSContext) -> bool {
     unsafe {
         let in_realm_proof = AlreadyInRealm::assert_for_cx(JSContext::from_ptr(*cx));
         D::GlobalScope::from_context(*cx, InRealm::Already(&in_realm_proof)).is_secure_context()
     }
+}
+
+#[cfg(feature = "js-boa")]
+fn is_secure_context<D: DomTypes>(_cx: JSContext) -> bool {
+    false
 }
 
 impl Condition {

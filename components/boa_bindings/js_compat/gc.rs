@@ -368,7 +368,6 @@ macro_rules! rooted {
         let _ = &$cx;
         let mut $name: $crate::js_compat::gc::Root<$ty> = $crate::js_compat::gc::Root::new($val);
     };
-    // Syntax without initializer: rooted!(in(cx) let mut name: Type)
     (in($cx:expr) let $name:ident: $ty:ty) => {
         let _ = &$cx;
         let mut $name = $crate::js_compat::gc::Root::<$ty>::new(unsafe { $crate::js_compat::gc::GCMethods::initial() });
@@ -377,14 +376,21 @@ macro_rules! rooted {
         let _ = &$cx;
         let mut $name = $crate::js_compat::gc::Root::<$ty>::new(unsafe { $crate::js_compat::gc::GCMethods::initial() });
     };
-    // SpiderMonkey syntax with &in: rooted!(&in(&mut realm) let mut name = val)
     (&in($cx:expr) let $name:ident = $val:expr) => {
-        let _ = &$cx;  // Suppress unused warning
+        let _ = &$cx;
         let mut $name = $crate::js_compat::gc::Root::new($val);
     };
     (&in($cx:expr) let mut $name:ident = $val:expr) => {
         let _ = &$cx;
         let mut $name = $crate::js_compat::gc::Root::new($val);
+    };
+    (&in($cx:expr) let $name:ident: $ty:ty) => {
+        let _ = &$cx;
+        let mut $name = $crate::js_compat::gc::Root::<$ty>::new(unsafe { $crate::js_compat::gc::GCMethods::initial() });
+    };
+    (&in($cx:expr) let mut $name:ident: $ty:ty) => {
+        let _ = &$cx;
+        let mut $name = $crate::js_compat::gc::Root::<$ty>::new(unsafe { $crate::js_compat::gc::GCMethods::initial() });
     };
     // Legacy syntax: rooted!($cx, let name = val)
     ($cx:expr, let $name:ident = $val:expr) => {
@@ -392,6 +398,42 @@ macro_rules! rooted {
     };
     ($cx:expr, let mut $name:ident = $val:expr) => {
         let mut $name = $crate::js_compat::gc::Root::new($val);
+    };
+}
+
+#[macro_export]
+macro_rules! auto_root {
+    (in($cx:expr) let $name:ident = $val:expr) => {
+        let mut $name = $crate::js_compat::gc::CustomAutoRooter::new($val);
+        let $name = $crate::js_compat::gc::CustomAutoRooterGuard::new($cx, &mut $name);
+    };
+    (in($cx:expr) let mut $name:ident = $val:expr) => {
+        let mut $name = $crate::js_compat::gc::CustomAutoRooter::new($val);
+        let mut $name = $crate::js_compat::gc::CustomAutoRooterGuard::new($cx, &mut $name);
+    };
+    (&in($cx:expr) let $name:ident = $val:expr) => {
+        let mut $name = $crate::js_compat::gc::CustomAutoRooter::new($val);
+        let $name = $crate::js_compat::gc::CustomAutoRooterGuard::new($cx, &mut $name);
+    };
+    (&in($cx:expr) let mut $name:ident = $val:expr) => {
+        let mut $name = $crate::js_compat::gc::CustomAutoRooter::new($val);
+        let mut $name = $crate::js_compat::gc::CustomAutoRooterGuard::new($cx, &mut $name);
+    };
+}
+
+#[macro_export]
+macro_rules! rooted_vec {
+    (let $name:ident) => {
+        let $name = ::std::vec::Vec::new();
+    };
+    (let mut $name:ident) => {
+        let mut $name = ::std::vec::Vec::new();
+    };
+    (let $name:ident <- $iter:expr) => {
+        let $name: ::std::vec::Vec<_> = ($iter).collect();
+    };
+    (let mut $name:ident <- $iter:expr) => {
+        let mut $name: ::std::vec::Vec<_> = ($iter).collect();
     };
 }
 

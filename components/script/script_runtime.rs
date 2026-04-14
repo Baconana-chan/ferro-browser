@@ -244,12 +244,15 @@ impl From<ScriptThreadEventCategory> for ScriptHangAnnotation {
 static HOST_DEFINED_DATA: JSClassOps = JSClassOps {
     addProperty: None,
     delProperty: None,
+    getProperty: None,
+    setProperty: None,
     enumerate: None,
     newEnumerate: None,
     resolve: None,
     mayResolve: None,
     finalize: None,
     call: None,
+    hasInstance: None,
     construct: None,
     trace: None,
 };

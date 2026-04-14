@@ -103,11 +103,6 @@ imsz = "0.4"
 indexmap = { version = "2.11.4", features = ["std"] }
 ipc-channel = "0.20.2"
 itertools = "0.14"
-# SpiderMonkey JS engine (used with js-spidermonkey feature in components/script)
-# Ferro Browser defaults to Boa for faster builds and no C++ dependencies
-# To use SpiderMonkey: cargo build --features js-spidermonkey --no-default-features
-# Note: This is kept in workspace.dependencies for components that still use SpiderMonkey
-js = { package = "mozjs", git = "https://github.com/servo/mozjs", default-features = false, features = ["libz-sys", "intl"] }
 keyboard-types = { version = "0.8.3", features = ["serde", "webdriver"] }
 kurbo = { version = "0.12", features = ["euclid"] }
 layout_api = { path = "components/shared/layout" }
@@ -144,12 +139,12 @@ raw-window-handle = "0.6"
 # Boa JavaScript Engine (pure Rust alternative to SpiderMonkey)
 # v0.21 has 94% ECMAScript conformance, NaN-boxing, register-based VM
 # and boa_runtime includes fetch, setTimeout, queueMicrotask
-boa_engine = "0.21"
-boa_parser = "0.21"
-boa_ast = "0.21"
-boa_gc = "0.21"
-boa_interner = "0.21"
-boa_runtime = "0.21"
+boa_engine = "0.21.1"
+boa_parser = "0.21.1"
+boa_ast = "0.21.1"
+boa_gc = "0.21.1"
+boa_interner = "0.21.1"
+boa_runtime = "0.21.1"
 boa_bindings = { path = "components/boa_bindings" }
 rayon = "1"
 read-fonts = "0.35.0"

@@ -547,6 +547,7 @@ where
 ///
 /// # Safety
 /// `cx` must point to a valid, non-null JSContext.
+#[cfg(not(feature = "js-boa"))]
 pub unsafe fn is_array_like<D: crate::DomTypes>(cx: *mut JSContext, value: HandleValue) -> bool {
     let mut is_array = false;
     assert!(IsArrayObject(cx, value, &mut is_array));
@@ -582,8 +583,23 @@ pub unsafe fn is_array_like<D: crate::DomTypes>(cx: *mut JSContext, value: Handl
     false
 }
 
+/// Stub is_array_like for Boa
+#[cfg(feature = "js-boa")]
+pub unsafe fn is_array_like<D: crate::DomTypes>(_cx: *mut JSContext, _value: HandleValue) -> bool {
+    false
+}
+
 /// Get a `DomRoot<T>` for a WindowProxy accessible from a `HandleValue`.
 /// Caller is responsible for throwing a JS exception if needed in case of error.
+#[cfg(feature = "js-boa")]
+pub(crate) unsafe fn windowproxy_from_handlevalue<D: crate::DomTypes>(
+    _v: HandleValue,
+    _cx: SafeJSContext,
+) -> Result<DomRoot<D::WindowProxy>, ()> {
+    Err(())
+}
+
+#[cfg(not(feature = "js-boa"))]
 pub(crate) unsafe fn windowproxy_from_handlevalue<D: crate::DomTypes>(
     v: HandleValue,
     _cx: SafeJSContext,
@@ -602,6 +618,7 @@ pub(crate) unsafe fn windowproxy_from_handlevalue<D: crate::DomTypes>(
 }
 
 #[allow(deprecated)]
+#[cfg(not(feature = "js-boa"))]
 impl<D: crate::DomTypes> EventModifierInit<D> {
     pub fn modifiers(&self) -> Modifiers {
         let mut modifiers = Modifiers::empty();

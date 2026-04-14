@@ -40,23 +40,20 @@ impl<T> PanicResult<T> {
 }
 
 /// Wrap a closure in a panic-catching boundary
-pub fn wrap_panic<F, R>(f: F) -> PanicResult<R>
+pub fn wrap_panic<F>(f: F)
 where
-    F: FnOnce() -> R + UnwindSafe,
+    F: FnOnce(),
 {
-    match panic::catch_unwind(f) {
-        Ok(r) => PanicResult::Ok(r),
-        Err(_) => PanicResult::Err,
-    }
+    let _ = panic::catch_unwind(AssertUnwindSafe(f));
 }
 
 /// Wrap a closure that may panic, catching the panic
 pub fn wrap_panic_result<F, R, E>(f: F) -> Result<R, E>
 where
-    F: FnOnce() -> Result<R, E> + UnwindSafe,
+    F: FnOnce() -> Result<R, E>,
     E: Default,
 {
-    match panic::catch_unwind(f) {
+    match panic::catch_unwind(AssertUnwindSafe(f)) {
         Ok(r) => r,
         Err(_) => Err(E::default()),
     }
@@ -65,9 +62,9 @@ where
 /// Wrapper for calling closures from JS callbacks safely
 pub fn wrap_panic_for_js<F, R>(f: F) -> Option<R>
 where
-    F: FnOnce() -> R + UnwindSafe,
+    F: FnOnce() -> R,
 {
-    match panic::catch_unwind(f) {
+    match panic::catch_unwind(AssertUnwindSafe(f)) {
         Ok(r) => Some(r),
         Err(_) => None,
     }
@@ -81,9 +78,9 @@ pub unsafe fn call_with_unwind_protection<F, R>(
     default: R,
 ) -> R
 where
-    F: FnOnce() -> R + UnwindSafe,
+    F: FnOnce() -> R,
 {
-    match panic::catch_unwind(f) {
+    match panic::catch_unwind(AssertUnwindSafe(f)) {
         Ok(r) => r,
         Err(_) => default,
     }

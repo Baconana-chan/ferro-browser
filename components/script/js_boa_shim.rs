@@ -19,6 +19,8 @@ pub use boa_bindings::js_compat::glue;
 pub use boa_bindings::js_compat::panic;
 pub use boa_bindings::js_compat::context;
 pub use boa_bindings::js_compat::error;
+// Re-export jsid module for crate::js::jsid::SymbolId imports
+pub use boa_bindings::js_compat::jsid;
 
 // Realm is a sub-module of context in our compat layer
 pub mod realm {
@@ -75,8 +77,8 @@ pub use boa_bindings::js_compat::jsapi::{
 pub use boa_bindings::js_compat::gc::CustomAutoRooter;
 pub use boa_bindings::js_compat::gc::CustomAutoRooterGuard;
 
-// Re-export jsid at root level
-pub use boa_bindings::js_compat::glue::jsid;
+// Re-export jsid type at root level (the struct, not the module)
+pub use boa_bindings::js_compat::glue::jsid as JsIdType;
 
 // Re-export additional JSCLASS constants
 pub use boa_bindings::js_compat::{

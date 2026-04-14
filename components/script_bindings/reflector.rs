@@ -6,7 +6,9 @@ use crate::js::jsapi::{Heap, JSObject};
 use crate::js::rust::HandleObject;
 use malloc_size_of_derive::MallocSizeOf;
 
+#[cfg(not(feature = "js-boa"))]
 use crate::interfaces::GlobalScopeHelpers;
+#[cfg(not(feature = "js-boa"))]
 use crate::iterable::{Iterable, IterableIterator};
 use crate::realms::InRealm;
 use crate::root::{Dom, DomRoot, Root};
@@ -100,6 +102,29 @@ impl MutDomObject for Reflector {
     }
 }
 
+// For js-boa, provide minimal stubs for these traits
+#[cfg(feature = "js-boa")]
+pub trait DomGlobalGeneric<D: DomTypes>: DomObject {
+    fn global_(&self, realm: InRealm) -> DomRoot<D::GlobalScope>
+    where
+        Self: Sized,
+    {
+        let _ = realm;
+        unimplemented!("DomGlobalGeneric::global_ is not implemented for js-boa yet")
+    }
+}
+
+#[cfg(feature = "js-boa")]
+impl<D: DomTypes, T: DomObject> DomGlobalGeneric<D> for T {}
+
+#[cfg(feature = "js-boa")]
+pub trait DomObjectWrap<D: DomTypes>: Sized + DomObject {}
+
+#[cfg(feature = "js-boa")]
+pub trait DomObjectIteratorWrap<D: DomTypes>: DomObject {}
+
+// Full implementations for SpiderMonkey
+#[cfg(not(feature = "js-boa"))]
 pub trait DomGlobalGeneric<D: DomTypes>: DomObject {
     /// Returns the [`GlobalScope`] of the realm that the [`DomObject`] was created in.  If this
     /// object is a `Node`, this will be different from it's owning `Document` if adopted by. For
@@ -112,9 +137,11 @@ pub trait DomGlobalGeneric<D: DomTypes>: DomObject {
     }
 }
 
+#[cfg(not(feature = "js-boa"))]
 impl<D: DomTypes, T: DomObject> DomGlobalGeneric<D> for T {}
 
 /// A trait to provide a function pointer to wrap function for DOM objects.
+#[cfg(not(feature = "js-boa"))]
 pub trait DomObjectWrap<D: DomTypes>: Sized + DomObject + DomGlobalGeneric<D> {
     /// Function pointer to the general wrap function type
     #[allow(clippy::type_complexity)]
@@ -129,6 +156,7 @@ pub trait DomObjectWrap<D: DomTypes>: Sized + DomObject + DomGlobalGeneric<D> {
 
 /// A trait to provide a function pointer to wrap function for
 /// DOM iterator interfaces.
+#[cfg(not(feature = "js-boa"))]
 pub trait DomObjectIteratorWrap<D: DomTypes>: DomObjectWrap<D> + JSTraceable + Iterable {
     /// Function pointer to the wrap function for `IterableIterator<T>`
     #[allow(clippy::type_complexity)]

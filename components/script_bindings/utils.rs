@@ -42,6 +42,7 @@ use crate::codegen::InheritTypes::TopTypeId;
 use crate::codegen::PrototypeList::{self, MAX_PROTO_CHAIN_LENGTH, PROTO_OR_IFACE_LENGTH};
 use crate::conversions::{PrototypeCheck, private_from_proto_check};
 use crate::error::throw_invalid_this;
+#[cfg(not(feature = "js-boa"))]
 use crate::interfaces::DomHelpers;
 use crate::script_runtime::{CanGc, JSContext as SafeJSContext};
 use crate::str::DOMString;
@@ -595,6 +596,7 @@ pub(crate) unsafe extern "C" fn enumerate_global(
 
 /// Enumerate lazy properties of a global object that is a Window.
 /// <https://github.com/mozilla/gecko-dev/blob/3fd619f47/dom/base/nsGlobalWindowInner.cpp#3297>
+#[cfg(not(feature = "js-boa"))]
 pub(crate) unsafe extern "C" fn enumerate_window<D: DomTypes>(
     cx: *mut JSContext,
     obj: RawHandleObject,
@@ -626,6 +628,17 @@ pub(crate) unsafe extern "C" fn enumerate_window<D: DomTypes>(
     true
 }
 
+/// Stub for Boa - Enumerate lazy properties of a global object that is a Window.
+#[cfg(feature = "js-boa")]
+pub(crate) unsafe extern "C" fn enumerate_window<D: DomTypes>(
+    cx: *mut JSContext,
+    obj: RawHandleObject,
+    props: RawMutableHandleIdVector,
+    enumerable_only: bool,
+) -> bool {
+    enumerate_global(cx, obj, props, enumerable_only)
+}
+
 /// Returns true if the resolve hook for this global may resolve the provided id.
 /// <https://searchfox.org/mozilla-central/rev/f3c8c63a097b61bb1f01e13629b9514e09395947/dom/bindings/BindingUtils.cpp#2809>
 /// <https://searchfox.org/mozilla-central/rev/f3c8c63a097b61bb1f01e13629b9514e09395947/js/public/Class.h#283-291>
@@ -642,6 +655,7 @@ pub(crate) unsafe extern "C" fn may_resolve_global(
 /// Returns true if the resolve hook for this window may resolve the provided id.
 /// <https://searchfox.org/mozilla-central/rev/f3c8c63a097b61bb1f01e13629b9514e09395947/dom/base/nsGlobalWindowInner.cpp#3275>
 /// <https://searchfox.org/mozilla-central/rev/f3c8c63a097b61bb1f01e13629b9514e09395947/js/public/Class.h#283-291>
+#[cfg(not(feature = "js-boa"))]
 pub(crate) unsafe extern "C" fn may_resolve_window<D: DomTypes>(
     names: *const JSAtomState,
     id: PropertyKey,
@@ -661,6 +675,16 @@ pub(crate) unsafe extern "C" fn may_resolve_window<D: DomTypes>(
     <D as DomHelpers<D>>::interface_map().contains_key(bytes)
 }
 
+/// Stub for Boa - Returns true if the resolve hook for this window may resolve the provided id.
+#[cfg(feature = "js-boa")]
+pub(crate) unsafe extern "C" fn may_resolve_window<D: DomTypes>(
+    names: *const JSAtomState,
+    id: PropertyKey,
+    maybe_obj: *mut JSObject,
+) -> bool {
+    may_resolve_global(names, id, maybe_obj)
+}
+
 /// Resolve a lazy global property, for interface objects and named constructors.
 pub(crate) unsafe extern "C" fn resolve_global(
     cx: *mut JSContext,
@@ -673,6 +697,7 @@ pub(crate) unsafe extern "C" fn resolve_global(
 }
 
 /// Resolve a lazy global property for a Window global.
+#[cfg(not(feature = "js-boa"))]
 pub(crate) unsafe extern "C" fn resolve_window<D: DomTypes>(
     cx: *mut JSContext,
     obj: RawHandleObject,
@@ -698,6 +723,17 @@ pub(crate) unsafe extern "C" fn resolve_window<D: DomTypes>(
         *rval = false;
     }
     true
+}
+
+/// Stub for Boa - Resolve a lazy global property for a Window global.
+#[cfg(feature = "js-boa")]
+pub(crate) unsafe extern "C" fn resolve_window<D: DomTypes>(
+    cx: *mut JSContext,
+    obj: RawHandleObject,
+    id: RawHandleId,
+    rval: *mut bool,
+) -> bool {
+    resolve_global(cx, obj, id, rval)
 }
 
 /// Returns a slice of bytes corresponding to the bytes in the provided string id.

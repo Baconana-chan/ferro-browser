@@ -29,4 +29,28 @@ pub(crate) mod stylesheet;
 pub(crate) mod stylesheetcontentscache;
 pub(crate) mod stylesheetlist;
 
+// Re-export types for use in dom::types
 pub(crate) use self::css::CSS;
+pub(crate) use cssconditionrule::CSSConditionRule;
+pub(crate) use cssfontfacerule::CSSFontFaceRule;
+pub(crate) use cssgroupingrule::CSSGroupingRule;
+pub(crate) use cssimportrule::CSSImportRule;
+pub(crate) use csskeyframerule::CSSKeyframeRule;
+pub(crate) use csskeyframesrule::CSSKeyframesRule;
+pub(crate) use csslayerblockrule::CSSLayerBlockRule;
+pub(crate) use csslayerstatementrule::CSSLayerStatementRule;
+pub(crate) use cssmediarule::CSSMediaRule;
+pub(crate) use cssnamespacerule::CSSNamespaceRule;
+pub(crate) use cssnesteddeclarations::CSSNestedDeclarations;
+pub(crate) use cssrule::CSSRule;
+pub(crate) use cssrulelist::CSSRuleList;
+pub(crate) use cssstyledeclaration::CSSStyleDeclaration;
+pub(crate) use cssstylerule::CSSStyleRule;
+pub(crate) use cssstylesheet::CSSStyleSheet;
+pub(crate) use cssstylevalue::CSSStyleValue;
+pub(crate) use csssupportsrule::CSSSupportsRule;
+pub(crate) use fontface::FontFace;
+pub(crate) use fontfaceset::FontFaceSet;
+pub(crate) use stylepropertymapreadonly::StylePropertyMapReadOnly;
+pub(crate) use stylesheet::StyleSheet;
+pub(crate) use stylesheetlist::StyleSheetList;

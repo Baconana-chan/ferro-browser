@@ -5,6 +5,9 @@
 // This module provides types and functions with the same interface as mozjs
 // to allow components/script to compile with Boa instead of SpiderMonkey.
 
+#![allow(nonstandard_style)]
+#![allow(ambiguous_glob_reexports)]
+
 pub mod jsapi;
 pub mod jsval;
 pub mod rust;
@@ -16,6 +19,7 @@ pub mod context;
 pub mod realm;
 pub mod error;
 pub mod panic;
+pub mod jsid_types;
 
 // Re-export common types at the root level
 pub use jsapi::*;
@@ -114,6 +118,9 @@ pub mod jsid {
     //! jsid types - for accessing SymbolId, StringId, jsid type, etc.
     pub use super::glue::{jsid, PropertyKey, HandleId, MutableHandleId, JSID_VOID};
     pub use super::jsapi::{SymbolId, StringId};
+    // Re-export from jsid_types for SymbolCode and other related types
+    pub use super::jsid_types::{SymbolCode, GetWellKnownSymbolKey};
+    pub use super::jsid_types::SymbolId as WellKnownSymbolId;
 }
 
 // ===================

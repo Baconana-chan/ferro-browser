@@ -3,12 +3,13 @@
 //
 // SpiderMonkey typedarray module compatibility layer for Boa
 
+use std::cell::UnsafeCell;
 use std::ptr;
 use std::slice;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
-use super::jsapi::{JSContext, RawJSContext, JSObject, Value};
+use super::jsapi::{Heap, JSContext, RawJSContext, JSObject, Value};
 use super::rust::{Handle, HandleObject, HandleValue, MutableHandle, MutableHandleObject};
 
 /// ArrayBufferViewContents - type for typed array contents
@@ -87,8 +88,15 @@ impl ArrayBuffer {
         true
     }
     
-    pub unsafe fn from(_obj: HandleObject<'_>) -> Option<Self> {
-        None
+    pub unsafe fn from(obj: *mut JSObject) -> Result<Self, ()> {
+        if obj.is_null() {
+            Err(())
+        } else {
+            Ok(Self {
+                obj,
+                data: Vec::new(),
+            })
+        }
     }
     
     pub fn len(&self) -> usize {
@@ -130,9 +138,141 @@ impl ArrayBuffer {
 /// ArrayBufferU8 - ArrayBuffer with u8 element type
 pub type ArrayBufferU8 = ArrayBuffer;
 
-/// ArrayBufferView - base trait for typed array views
-pub trait ArrayBufferView {
+fn heap_object(obj: *mut JSObject) -> Heap<*mut JSObject> {
+    Heap {
+        ptr: UnsafeCell::new(obj),
+    }
+}
+
+/// HeapArrayBuffer - GC-aware wrapper around an ArrayBuffer object reference.
+pub struct HeapArrayBuffer {
+    object: Heap<*mut JSObject>,
+}
+
+impl HeapArrayBuffer {
+    pub fn from(obj: *mut JSObject) -> Result<Self, ()> {
+        if obj.is_null() {
+            Err(())
+        } else {
+            Ok(Self {
+                object: heap_object(obj),
+            })
+        }
+    }
+    
+    pub fn underlying_object(&self) -> &Heap<*mut JSObject> {
+        &self.object
+    }
+}
+
+impl From<*mut JSObject> for HeapArrayBuffer {
+    fn from(obj: *mut JSObject) -> Self {
+        Self {
+            object: heap_object(obj),
+        }
+    }
+}
+
+impl From<Heap<*mut JSObject>> for HeapArrayBuffer {
+    fn from(object: Heap<*mut JSObject>) -> Self {
+        Self { object }
+    }
+}
+
+unsafe impl super::gc::Traceable for HeapArrayBuffer {
+    unsafe fn trace(&self, tracer: *mut super::jsapi::JSTracer) {
+        unsafe { self.object.trace(tracer) }
+    }
+}
+
+/// HeapArrayBufferView - GC-aware wrapper around an ArrayBufferView object reference.
+pub struct HeapArrayBufferView {
+    object: Heap<*mut JSObject>,
+}
+
+impl HeapArrayBufferView {
+    pub fn from(obj: *mut JSObject) -> Result<Self, ()> {
+        if obj.is_null() {
+            Err(())
+        } else {
+            Ok(Self {
+                object: heap_object(obj),
+            })
+        }
+    }
+    
+    pub fn underlying_object(&self) -> &Heap<*mut JSObject> {
+        &self.object
+    }
+}
+
+impl From<*mut JSObject> for HeapArrayBufferView {
+    fn from(obj: *mut JSObject) -> Self {
+        Self {
+            object: heap_object(obj),
+        }
+    }
+}
+
+impl From<Heap<*mut JSObject>> for HeapArrayBufferView {
+    fn from(object: Heap<*mut JSObject>) -> Self {
+        Self { object }
+    }
+}
+
+unsafe impl super::gc::Traceable for HeapArrayBufferView {
+    unsafe fn trace(&self, tracer: *mut super::jsapi::JSTracer) {
+        unsafe { self.object.trace(tracer) }
+    }
+}
+
+pub type HeapFloat32Array = HeapArrayBufferView;
+pub type HeapInt32Array = HeapArrayBufferView;
+pub type HeapUint32Array = HeapArrayBufferView;
+
+/// ArrayBufferView - JavaScript ArrayBufferView wrapper expected by generated bindings.
+pub struct ArrayBufferView {
+    obj: *mut JSObject,
+}
+
+impl ArrayBufferView {
+    pub unsafe fn from(obj: *mut JSObject) -> Result<Self, ()> {
+        if obj.is_null() {
+            Err(())
+        } else {
+            Ok(Self { obj })
+        }
+    }
+    
+    pub fn underlying_object(&self) -> *mut JSObject {
+        self.obj
+    }
+    
+    pub fn len(&self) -> usize {
+        0
+    }
+    
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+    
+    pub fn byte_offset(&self) -> usize {
+        0
+    }
+    
+    pub fn byte_length(&self) -> usize {
+        0
+    }
+    
+    pub fn is_shared_memory(&self) -> bool {
+        false
+    }
+}
+
+/// Internal trait for concrete typed array view implementations.
+pub trait ArrayBufferViewTrait {
     fn underlying_object(&self) -> *mut JSObject;
+    
     fn len(&self) -> usize;
     fn is_empty(&self) -> bool { self.len() == 0 }
     fn byte_offset(&self) -> usize { 0 }
@@ -151,8 +291,12 @@ impl Uint8Array {
         Self { obj: ptr::null_mut(), data: Vec::new() }
     }
     
-    pub unsafe fn from(_obj: HandleObject<'_>) -> Option<Self> {
-        None
+    pub unsafe fn from(obj: *mut JSObject) -> Result<Self, ()> {
+        if obj.is_null() {
+            Err(())
+        } else {
+            Ok(Self { obj, data: Vec::new() })
+        }
     }
 }
 
@@ -182,7 +326,7 @@ impl TypedArray for Uint8Array {
     }
 }
 
-impl ArrayBufferView for Uint8Array {
+impl ArrayBufferViewTrait for Uint8Array {
     fn underlying_object(&self) -> *mut JSObject {
         self.obj
     }
@@ -207,8 +351,12 @@ impl Uint8ClampedArray {
         Self { obj: ptr::null_mut(), data: Vec::new() }
     }
     
-    pub unsafe fn from(_obj: HandleObject<'_>) -> Option<Self> {
-        None
+    pub unsafe fn from(obj: *mut JSObject) -> Result<Self, ()> {
+        if obj.is_null() {
+            Err(())
+        } else {
+            Ok(Self { obj, data: Vec::new() })
+        }
     }
 }
 
@@ -238,7 +386,7 @@ impl TypedArray for Uint8ClampedArray {
     }
 }
 
-impl ArrayBufferView for Uint8ClampedArray {
+impl ArrayBufferViewTrait for Uint8ClampedArray {
     fn underlying_object(&self) -> *mut JSObject {
         self.obj
     }
@@ -263,8 +411,12 @@ impl Int8Array {
         Self { obj: ptr::null_mut(), data: Vec::new() }
     }
     
-    pub unsafe fn from(_obj: HandleObject<'_>) -> Option<Self> {
-        None
+    pub unsafe fn from(obj: *mut JSObject) -> Result<Self, ()> {
+        if obj.is_null() {
+            Err(())
+        } else {
+            Ok(Self { obj, data: Vec::new() })
+        }
     }
 }
 
@@ -305,8 +457,12 @@ impl Uint16Array {
         Self { obj: ptr::null_mut(), data: Vec::new() }
     }
     
-    pub unsafe fn from(_obj: HandleObject<'_>) -> Option<Self> {
-        None
+    pub unsafe fn from(obj: *mut JSObject) -> Result<Self, ()> {
+        if obj.is_null() {
+            Err(())
+        } else {
+            Ok(Self { obj, data: Vec::new() })
+        }
     }
 }
 
@@ -347,8 +503,12 @@ impl Int16Array {
         Self { obj: ptr::null_mut(), data: Vec::new() }
     }
     
-    pub unsafe fn from(_obj: HandleObject<'_>) -> Option<Self> {
-        None
+    pub unsafe fn from(obj: *mut JSObject) -> Result<Self, ()> {
+        if obj.is_null() {
+            Err(())
+        } else {
+            Ok(Self { obj, data: Vec::new() })
+        }
     }
 }
 
@@ -389,8 +549,12 @@ impl Uint32Array {
         Self { obj: ptr::null_mut(), data: Vec::new() }
     }
     
-    pub unsafe fn from(_obj: HandleObject<'_>) -> Option<Self> {
-        None
+    pub unsafe fn from(obj: *mut JSObject) -> Result<Self, ()> {
+        if obj.is_null() {
+            Err(())
+        } else {
+            Ok(Self { obj, data: Vec::new() })
+        }
     }
 }
 
@@ -431,8 +595,12 @@ impl Int32Array {
         Self { obj: ptr::null_mut(), data: Vec::new() }
     }
     
-    pub unsafe fn from(_obj: HandleObject<'_>) -> Option<Self> {
-        None
+    pub unsafe fn from(obj: *mut JSObject) -> Result<Self, ()> {
+        if obj.is_null() {
+            Err(())
+        } else {
+            Ok(Self { obj, data: Vec::new() })
+        }
     }
 }
 
@@ -473,8 +641,12 @@ impl Float32Array {
         Self { obj: ptr::null_mut(), data: Vec::new() }
     }
     
-    pub unsafe fn from(_obj: HandleObject<'_>) -> Option<Self> {
-        None
+    pub unsafe fn from(obj: *mut JSObject) -> Result<Self, ()> {
+        if obj.is_null() {
+            Err(())
+        } else {
+            Ok(Self { obj, data: Vec::new() })
+        }
     }
 }
 
@@ -504,7 +676,7 @@ impl TypedArray for Float32Array {
     }
 }
 
-impl ArrayBufferView for Float32Array {
+impl ArrayBufferViewTrait for Float32Array {
     fn underlying_object(&self) -> *mut JSObject {
         self.obj
     }
@@ -529,8 +701,12 @@ impl Float64Array {
         Self { obj: ptr::null_mut(), data: Vec::new() }
     }
     
-    pub unsafe fn from(_obj: HandleObject<'_>) -> Option<Self> {
-        None
+    pub unsafe fn from(obj: *mut JSObject) -> Result<Self, ()> {
+        if obj.is_null() {
+            Err(())
+        } else {
+            Ok(Self { obj, data: Vec::new() })
+        }
     }
 }
 
@@ -560,7 +736,7 @@ impl TypedArray for Float64Array {
     }
 }
 
-impl ArrayBufferView for Float64Array {
+impl ArrayBufferViewTrait for Float64Array {
     fn underlying_object(&self) -> *mut JSObject {
         self.obj
     }
@@ -585,8 +761,12 @@ impl BigInt64Array {
         Self { obj: ptr::null_mut(), data: Vec::new() }
     }
     
-    pub unsafe fn from(_obj: HandleObject<'_>) -> Option<Self> {
-        None
+    pub unsafe fn from(obj: *mut JSObject) -> Result<Self, ()> {
+        if obj.is_null() {
+            Err(())
+        } else {
+            Ok(Self { obj, data: Vec::new() })
+        }
     }
 }
 
@@ -627,8 +807,12 @@ impl BigUint64Array {
         Self { obj: ptr::null_mut(), data: Vec::new() }
     }
     
-    pub unsafe fn from(_obj: HandleObject<'_>) -> Option<Self> {
-        None
+    pub unsafe fn from(obj: *mut JSObject) -> Result<Self, ()> {
+        if obj.is_null() {
+            Err(())
+        } else {
+            Ok(Self { obj, data: Vec::new() })
+        }
     }
 }
 
@@ -669,8 +853,12 @@ impl DataView {
         Self { obj: ptr::null_mut(), data: Vec::new() }
     }
     
-    pub unsafe fn from(_obj: HandleObject<'_>) -> Option<Self> {
-        None
+    pub unsafe fn from(obj: *mut JSObject) -> Result<Self, ()> {
+        if obj.is_null() {
+            Err(())
+        } else {
+            Ok(Self { obj, data: Vec::new() })
+        }
     }
 }
 
@@ -680,7 +868,7 @@ impl Default for DataView {
     }
 }
 
-impl ArrayBufferView for DataView {
+impl ArrayBufferViewTrait for DataView {
     fn underlying_object(&self) -> *mut JSObject {
         self.obj
     }
@@ -735,9 +923,6 @@ impl From<f64> for ClampedU8 {
         }
     }
 }
-// ============================================================================
-// Additional type aliases and traits for SpiderMonkey compatibility
-// ============================================================================
 
 /// Type alias for Uint8 typed array (SpiderMonkey compatibility)
 pub type Uint8 = Uint8Array;
@@ -770,7 +955,7 @@ pub type BigInt64 = BigInt64Array;
 pub type BigUint64 = BigUint64Array;
 
 /// ArrayBufferViewU8 - trait for views that expose u8 data
-pub trait ArrayBufferViewU8: ArrayBufferView {
+pub trait ArrayBufferViewU8: ArrayBufferViewTrait {
     fn to_vec(&self) -> Vec<u8>;
 }
 

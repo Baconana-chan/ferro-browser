@@ -91,7 +91,12 @@ impl jsid {
     }
     
     pub fn is_string(&self) -> bool {
-        !self.is_int() && !self.is_void()
+        !self.is_int() && !self.is_void() && !self.is_symbol()
+    }
+    
+    pub fn is_symbol(&self) -> bool {
+        // Symbol IDs are encoded with bits & 3 == 2
+        (self.bits & 3) == 2
     }
     
     /// Convert to integer (for integer property keys)
@@ -103,6 +108,12 @@ impl jsid {
     pub fn to_string(&self) -> *mut super::jsapi::JSString {
         // Return the bits as a pointer - in our stub, this is just a placeholder
         self.bits as *mut super::jsapi::JSString
+    }
+    
+    /// Create from a well-known symbol code
+    pub fn from_well_known_symbol(code: u32) -> Self {
+        // Encode as symbol: (code << 3) | 2
+        Self { bits: ((code as usize) << 3) | 2 }
     }
     
     /// asBits_ getter for SpiderMonkey compatibility
@@ -340,7 +351,7 @@ pub unsafe fn JS_GetStringLength(_str: *mut JSString) -> usize {
 
 /// AppendToIdVector
 pub unsafe fn AppendToIdVector(
-    _ids: *mut c_void,
+    _ids: super::rust::wrappers::MutableHandleIdVector<'_>,
     _id: super::rust::Handle<'_, super::jsapi::StringId>,
 ) -> bool {
     true
@@ -555,29 +566,37 @@ pub unsafe fn WriteBytesToJSStructuredCloneData(
 // Proxy APIs
 // ==========================
 
+use super::rust::wrappers::MutableHandleIdVector;
+
 /// Proxy traps structure
 #[repr(C)]
 pub struct ProxyTraps {
-    pub enter: Option<unsafe extern "C" fn() -> bool>,
-    pub getOwnPropertyDescriptor: Option<unsafe extern "C" fn() -> bool>,
-    pub defineProperty: Option<unsafe extern "C" fn() -> bool>,
-    pub ownPropertyKeys: Option<unsafe extern "C" fn() -> bool>,
-    pub delete_: Option<unsafe extern "C" fn() -> bool>,
-    pub enumerate: Option<unsafe extern "C" fn() -> bool>,
-    pub getPrototypeIfOrdinary: Option<unsafe extern "C" fn() -> bool>,
-    pub getPrototype: Option<unsafe extern "C" fn() -> bool>,
-    pub setPrototype: Option<unsafe extern "C" fn() -> bool>,
-    pub setImmutablePrototype: Option<unsafe extern "C" fn() -> bool>,
-    pub preventExtensions: Option<unsafe extern "C" fn() -> bool>,
-    pub isExtensible: Option<unsafe extern "C" fn() -> bool>,
-    pub has: Option<unsafe extern "C" fn() -> bool>,
-    pub get: Option<unsafe extern "C" fn() -> bool>,
-    pub set: Option<unsafe extern "C" fn() -> bool>,
-    pub call: Option<unsafe extern "C" fn() -> bool>,
-    pub construct: Option<unsafe extern "C" fn() -> bool>,
-    pub hasOwn: Option<unsafe extern "C" fn() -> bool>,
-    pub getOwnEnumerablePropertyKeys: Option<unsafe extern "C" fn() -> bool>,
-    pub nativeCall: Option<unsafe extern "C" fn() -> bool>,
+    pub enter: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>) -> bool>,
+    pub getOwnPropertyDescriptor: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleId<'_>, *mut PropertyDescriptor) -> bool>,
+    pub defineProperty: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleId<'_>, HandleValue<'_>, *mut c_void) -> bool>,
+    pub ownPropertyKeys: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, MutableHandleIdVector<'_>) -> bool>,
+    pub delete_: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleId<'_>, *mut c_void) -> bool>,
+    pub get: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleValue<'_>, HandleValue<'_>) -> bool>,
+    pub getIfAbsent: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleValue<'_>, HandleValue<'_>) -> bool>,
+    pub set: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleValue<'_>, HandleValue<'_>, HandleValue<'_>) -> bool>,
+    pub has: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleId<'_>, *mut bool) -> bool>,
+    pub keys: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, MutableHandleIdVector<'_>) -> bool>,
+    pub iterate: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, MutableHandleIdVector<'_>) -> bool>,
+    pub isExtensible: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, *mut bool) -> bool>,
+    pub preventExtensions: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, *mut c_void) -> bool>,
+    pub getPrototypeIfOrdinary: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, *mut bool, MutableHandleObject<'_>) -> bool>,
+    pub setPrototype: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleObject<'_>, HandleObject<'_>, *mut bool) -> bool>,
+    pub call: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleValue<'_>, *const super::jsapi::Value, u32, MutableHandleValue<'_>) -> bool>,
+    pub construct: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, *const super::jsapi::Value, u32, HandleObject<'_>, MutableHandleValue<'_>) -> bool>,
+    pub isCallable: Option<unsafe extern "C" fn(*mut JSObject) -> bool>,
+    pub isConstructor: Option<unsafe extern "C" fn(*mut JSObject) -> bool>,
+    pub hasInstance: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleValue<'_>, *mut bool) -> bool>,
+    pub enumerate: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, MutableHandleIdVector<'_>) -> bool>,
+    pub getPrototype: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, MutableHandleObject<'_>) -> bool>,
+    pub setImmutablePrototype: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleObject<'_>, *mut bool) -> bool>,
+    pub hasOwn: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleId<'_>, *mut bool) -> bool>,
+    pub getOwnEnumerablePropertyKeys: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, MutableHandleIdVector<'_>) -> bool>,
+    pub nativeCall: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, *const super::jsapi::Value, u32, MutableHandleValue<'_>) -> bool>,
     pub objectClassIs: Option<unsafe extern "C" fn() -> bool>,
     pub className: Option<unsafe extern "C" fn() -> *const i8>,
     pub fun_toString: Option<unsafe extern "C" fn() -> bool>,
@@ -586,8 +605,6 @@ pub struct ProxyTraps {
     pub trace: Option<unsafe extern "C" fn()>,
     pub finalize: Option<unsafe extern "C" fn()>,
     pub objectMoved: Option<unsafe extern "C" fn() -> usize>,
-    pub isCallable: Option<unsafe extern "C" fn() -> bool>,
-    pub isConstructor: Option<unsafe extern "C" fn() -> bool>,
 }
 
 impl Default for ProxyTraps {
@@ -598,18 +615,24 @@ impl Default for ProxyTraps {
             defineProperty: None,
             ownPropertyKeys: None,
             delete_: None,
-            enumerate: None,
-            getPrototypeIfOrdinary: None,
-            getPrototype: None,
-            setPrototype: None,
-            setImmutablePrototype: None,
-            preventExtensions: None,
-            isExtensible: None,
-            has: None,
             get: None,
+            getIfAbsent: None,
             set: None,
+            has: None,
+            keys: None,
+            iterate: None,
+            isExtensible: None,
+            preventExtensions: None,
+            getPrototypeIfOrdinary: None,
+            setPrototype: None,
             call: None,
             construct: None,
+            isCallable: None,
+            isConstructor: None,
+            hasInstance: None,
+            enumerate: None,
+            getPrototype: None,
+            setImmutablePrototype: None,
             hasOwn: None,
             getOwnEnumerablePropertyKeys: None,
             nativeCall: None,
@@ -621,8 +644,6 @@ impl Default for ProxyTraps {
             trace: None,
             finalize: None,
             objectMoved: None,
-            isCallable: None,
-            isConstructor: None,
         }
     }
 }
@@ -826,14 +847,15 @@ pub unsafe fn GetProxyHandlerFamily() -> *const c_void {
 }
 
 /// InvokeGetOwnPropertyDescriptor - invoke the getOwnPropertyDescriptor trap
-pub unsafe fn InvokeGetOwnPropertyDescriptor(
+pub unsafe fn InvokeGetOwnPropertyDescriptor<T: super::rust::IntoPropDescPtr>(
     _cx: *mut RawJSContext,
     _handler: *const c_void,
     _proxy: HandleObject<'_>,
     _id: HandleId<'_>,
-    _desc: *mut PropertyDescriptor,
+    _desc: T,
     _is_none: *mut bool,
 ) -> bool {
+    let _ = _desc.into_prop_desc_ptr();
     true
 }
 

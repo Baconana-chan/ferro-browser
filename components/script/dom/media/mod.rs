@@ -13,3 +13,15 @@ pub(crate) mod mediaquerylistevent;
 pub(crate) mod mediasession;
 pub(crate) mod mediastream;
 pub(crate) mod mediastreamtrack;
+
+pub(crate) use mediadeviceinfo::MediaDeviceInfo;
+pub(crate) use mediadevices::MediaDevices;
+pub(crate) use mediaerror::MediaError;
+pub(crate) use mediafragmentparser::MediaFragmentParser;
+pub(crate) use medialist::MediaList;
+pub(crate) use mediametadata::MediaMetadata;
+pub(crate) use mediaquerylist::MediaQueryList;
+pub(crate) use mediaquerylistevent::MediaQueryListEvent;
+pub(crate) use mediasession::MediaSession;
+pub(crate) use mediastream::MediaStream;
+pub(crate) use mediastreamtrack::MediaStreamTrack;

@@ -8,17 +8,13 @@
 // Register the linter `crown`, which is the Servo-specific linter for the script crate.
 #![cfg_attr(crown, register_tool(crown))]
 
-// JavaScript engine integration:
-// When using js-spidermonkey feature: use mozjs extern crate
-#[cfg(feature = "js-spidermonkey")]
-#[macro_use]
-extern crate js;
-
-// When using js-boa feature: create a `js` module that re-exports boa_bindings::js_compat
-// This module provides SpiderMonkey-compatible API backed by Boa
-#[cfg(feature = "js-boa")]
+// JavaScript engine integration via Boa compatibility layer.
 #[path = "js_boa_shim.rs"]
 pub mod js;
+
+// Import macros from boa_bindings (includes rooted!, etc.)
+#[macro_use]
+extern crate boa_bindings;
 
 // Script bindings - now supports both engines via feature flags
 extern crate script_bindings;

@@ -199,306 +199,249 @@ pub(crate) mod codegen {
 pub(crate) mod codegen {
     pub(crate) mod DomTypeHolder {
         //! Stub DomTypeHolder for Boa
-        use ::boa_bindings::reflector::DomTypes;
+        use script_bindings::DomTypes;
+        use script_bindings::DomObjectPlaceholder;
+        
+        // Placeholder types for Boa - these will be replaced with real DOM types when implemented
+        macro_rules! define_placeholder {
+            ($name:ident) => {
+                pub struct $name;
+                impl DomObjectPlaceholder for $name {}
+            };
+        }
+        
+        define_placeholder!(GlobalScopePlaceholder);
+        define_placeholder!(WindowPlaceholder);
+        define_placeholder!(WindowProxyPlaceholder);
+        define_placeholder!(DocumentPlaceholder);
+        define_placeholder!(DocumentFragmentPlaceholder);
+        define_placeholder!(DocumentTypePlaceholder);
+        define_placeholder!(ElementPlaceholder);
+        define_placeholder!(NodePlaceholder);
+        define_placeholder!(CommentPlaceholder);
+        define_placeholder!(TextPlaceholder);
+        define_placeholder!(CharacterDataPlaceholder);
+        define_placeholder!(AttrPlaceholder);
+        define_placeholder!(EventPlaceholder);
+        define_placeholder!(EventTargetPlaceholder);
+        define_placeholder!(ShadowRootPlaceholder);
+        define_placeholder!(NodeListPlaceholder);
+        define_placeholder!(HTMLCollectionPlaceholder);
+        define_placeholder!(HTMLOptionsCollectionPlaceholder);
+        define_placeholder!(HTMLFormControlsCollectionPlaceholder);
+        define_placeholder!(DOMTokenListPlaceholder);
+        define_placeholder!(NamedNodeMapPlaceholder);
+        define_placeholder!(FileListPlaceholder);
+        define_placeholder!(FilePlaceholder);
+        define_placeholder!(BlobPlaceholder);
+        define_placeholder!(CanvasRenderingContext2DPlaceholder);
+        define_placeholder!(WebGLRenderingContextPlaceholder);
+        define_placeholder!(WebGL2RenderingContextPlaceholder);
+        define_placeholder!(ImageDataPlaceholder);
+        define_placeholder!(URLPlaceholder);
+        define_placeholder!(LocationPlaceholder);
+        define_placeholder!(HistoryPlaceholder);
+        define_placeholder!(NavigatorPlaceholder);
+        define_placeholder!(StoragePlaceholder);
+        define_placeholder!(XMLHttpRequestPlaceholder);
+        define_placeholder!(RequestPlaceholder);
+        define_placeholder!(ResponsePlaceholder);
+        define_placeholder!(HeadersPlaceholder);
+        define_placeholder!(KeyboardEventPlaceholder);
+        define_placeholder!(MouseEventPlaceholder);
+        define_placeholder!(UIEventPlaceholder);
+        define_placeholder!(FocusEventPlaceholder);
+        define_placeholder!(WheelEventPlaceholder);
+        define_placeholder!(InputEventPlaceholder);
+        define_placeholder!(TouchEventPlaceholder);
+        define_placeholder!(PointerEventPlaceholder);
+        define_placeholder!(CompositionEventPlaceholder);
+        define_placeholder!(ClipboardEventPlaceholder);
+        define_placeholder!(DragEventPlaceholder);
+        define_placeholder!(AnimationEventPlaceholder);
+        define_placeholder!(TransitionEventPlaceholder);
+        define_placeholder!(MessageEventPlaceholder);
+        define_placeholder!(ErrorEventPlaceholder);
+        define_placeholder!(ProgressEventPlaceholder);
+        define_placeholder!(CustomEventPlaceholder);
+        define_placeholder!(HTMLElementPlaceholder);
+        define_placeholder!(HTMLFormElementPlaceholder);
+        define_placeholder!(HTMLInputElementPlaceholder);
+        define_placeholder!(HTMLButtonElementPlaceholder);
+        define_placeholder!(HTMLSelectElementPlaceholder);
+        define_placeholder!(HTMLTextAreaElementPlaceholder);
+        define_placeholder!(HTMLAnchorElementPlaceholder);
+        define_placeholder!(HTMLImageElementPlaceholder);
+        define_placeholder!(HTMLScriptElementPlaceholder);
+        define_placeholder!(HTMLStyleElementPlaceholder);
+        define_placeholder!(HTMLLinkElementPlaceholder);
+        define_placeholder!(HTMLDivElementPlaceholder);
+        define_placeholder!(HTMLSpanElementPlaceholder);
+        define_placeholder!(HTMLParagraphElementPlaceholder);
+        define_placeholder!(HTMLHeadingElementPlaceholder);
+        define_placeholder!(HTMLBodyElementPlaceholder);
+        define_placeholder!(HTMLHtmlElementPlaceholder);
+        define_placeholder!(HTMLHeadElementPlaceholder);
+        define_placeholder!(HTMLTableElementPlaceholder);
+        define_placeholder!(HTMLTableRowElementPlaceholder);
+        define_placeholder!(HTMLTableCellElementPlaceholder);
+        define_placeholder!(HTMLCanvasElementPlaceholder);
+        define_placeholder!(HTMLVideoElementPlaceholder);
+        define_placeholder!(HTMLAudioElementPlaceholder);
+        define_placeholder!(HTMLMediaElementPlaceholder);
+        define_placeholder!(HTMLIFrameElementPlaceholder);
+        define_placeholder!(HTMLTemplateElementPlaceholder);
+        define_placeholder!(HTMLSlotElementPlaceholder);
+        define_placeholder!(CSSStyleDeclarationPlaceholder);
+        define_placeholder!(StyleSheetPlaceholder);
+        define_placeholder!(CSSStyleSheetPlaceholder);
+        define_placeholder!(CSSRulePlaceholder);
+        define_placeholder!(CSSStyleRulePlaceholder);
+        define_placeholder!(RangePlaceholder);
+        define_placeholder!(SelectionPlaceholder);
+        define_placeholder!(WorkerPlaceholder);
+        define_placeholder!(WorkerGlobalScopePlaceholder);
+        define_placeholder!(DedicatedWorkerGlobalScopePlaceholder);
+        define_placeholder!(ServiceWorkerGlobalScopePlaceholder);
+        define_placeholder!(DOMParserPlaceholder);
+        define_placeholder!(XMLSerializerPlaceholder);
+        define_placeholder!(TreeWalkerPlaceholder);
+        define_placeholder!(NodeIteratorPlaceholder);
+        define_placeholder!(MutationObserverPlaceholder);
+        define_placeholder!(IntersectionObserverPlaceholder);
+        define_placeholder!(ResizeObserverPlaceholder);
+        define_placeholder!(PerformancePlaceholder);
+        define_placeholder!(PerformanceEntryPlaceholder);
+        define_placeholder!(CustomElementRegistryPlaceholder);
+        define_placeholder!(AnimationPlaceholder);
+        define_placeholder!(DOMExceptionPlaceholder);
+        define_placeholder!(MessageChannelPlaceholder);
+        define_placeholder!(MessagePortPlaceholder);
+        define_placeholder!(AbortControllerPlaceholder);
+        define_placeholder!(AbortSignalPlaceholder);
+        define_placeholder!(PromisePlaceholder);
         
         /// The type holder for DOM types
         pub struct DomTypeHolder;
         
         impl DomTypes for DomTypeHolder {
-            // Stub implementation - real types defined in boa_bindings
+            type GlobalScope = GlobalScopePlaceholder;
+            type Window = WindowPlaceholder;
+            type WindowProxy = WindowProxyPlaceholder;
+            type Document = DocumentPlaceholder;
+            type DocumentFragment = DocumentFragmentPlaceholder;
+            type DocumentType = DocumentTypePlaceholder;
+            type Element = ElementPlaceholder;
+            type Node = NodePlaceholder;
+            type Comment = CommentPlaceholder;
+            type Text = TextPlaceholder;
+            type CharacterData = CharacterDataPlaceholder;
+            type Attr = AttrPlaceholder;
+            type Event = EventPlaceholder;
+            type EventTarget = EventTargetPlaceholder;
+            type ShadowRoot = ShadowRootPlaceholder;
+            type NodeList = NodeListPlaceholder;
+            type HTMLCollection = HTMLCollectionPlaceholder;
+            type HTMLOptionsCollection = HTMLOptionsCollectionPlaceholder;
+            type HTMLFormControlsCollection = HTMLFormControlsCollectionPlaceholder;
+            type DOMTokenList = DOMTokenListPlaceholder;
+            type NamedNodeMap = NamedNodeMapPlaceholder;
+            type FileList = FileListPlaceholder;
+            type File = FilePlaceholder;
+            type Blob = BlobPlaceholder;
+            type CanvasRenderingContext2D = CanvasRenderingContext2DPlaceholder;
+            type WebGLRenderingContext = WebGLRenderingContextPlaceholder;
+            type WebGL2RenderingContext = WebGL2RenderingContextPlaceholder;
+            type ImageData = ImageDataPlaceholder;
+            type URL = URLPlaceholder;
+            type Location = LocationPlaceholder;
+            type History = HistoryPlaceholder;
+            type Navigator = NavigatorPlaceholder;
+            type Storage = StoragePlaceholder;
+            type XMLHttpRequest = XMLHttpRequestPlaceholder;
+            type Request = RequestPlaceholder;
+            type Response = ResponsePlaceholder;
+            type Headers = HeadersPlaceholder;
+            type KeyboardEvent = KeyboardEventPlaceholder;
+            type MouseEvent = MouseEventPlaceholder;
+            type UIEvent = UIEventPlaceholder;
+            type FocusEvent = FocusEventPlaceholder;
+            type WheelEvent = WheelEventPlaceholder;
+            type InputEvent = InputEventPlaceholder;
+            type TouchEvent = TouchEventPlaceholder;
+            type PointerEvent = PointerEventPlaceholder;
+            type CompositionEvent = CompositionEventPlaceholder;
+            type ClipboardEvent = ClipboardEventPlaceholder;
+            type DragEvent = DragEventPlaceholder;
+            type AnimationEvent = AnimationEventPlaceholder;
+            type TransitionEvent = TransitionEventPlaceholder;
+            type MessageEvent = MessageEventPlaceholder;
+            type ErrorEvent = ErrorEventPlaceholder;
+            type ProgressEvent = ProgressEventPlaceholder;
+            type CustomEvent = CustomEventPlaceholder;
+            type HTMLElement = HTMLElementPlaceholder;
+            type HTMLFormElement = HTMLFormElementPlaceholder;
+            type HTMLInputElement = HTMLInputElementPlaceholder;
+            type HTMLButtonElement = HTMLButtonElementPlaceholder;
+            type HTMLSelectElement = HTMLSelectElementPlaceholder;
+            type HTMLTextAreaElement = HTMLTextAreaElementPlaceholder;
+            type HTMLAnchorElement = HTMLAnchorElementPlaceholder;
+            type HTMLImageElement = HTMLImageElementPlaceholder;
+            type HTMLScriptElement = HTMLScriptElementPlaceholder;
+            type HTMLStyleElement = HTMLStyleElementPlaceholder;
+            type HTMLLinkElement = HTMLLinkElementPlaceholder;
+            type HTMLDivElement = HTMLDivElementPlaceholder;
+            type HTMLSpanElement = HTMLSpanElementPlaceholder;
+            type HTMLParagraphElement = HTMLParagraphElementPlaceholder;
+            type HTMLHeadingElement = HTMLHeadingElementPlaceholder;
+            type HTMLBodyElement = HTMLBodyElementPlaceholder;
+            type HTMLHtmlElement = HTMLHtmlElementPlaceholder;
+            type HTMLHeadElement = HTMLHeadElementPlaceholder;
+            type HTMLTableElement = HTMLTableElementPlaceholder;
+            type HTMLTableRowElement = HTMLTableRowElementPlaceholder;
+            type HTMLTableCellElement = HTMLTableCellElementPlaceholder;
+            type HTMLCanvasElement = HTMLCanvasElementPlaceholder;
+            type HTMLVideoElement = HTMLVideoElementPlaceholder;
+            type HTMLAudioElement = HTMLAudioElementPlaceholder;
+            type HTMLMediaElement = HTMLMediaElementPlaceholder;
+            type HTMLIFrameElement = HTMLIFrameElementPlaceholder;
+            type HTMLTemplateElement = HTMLTemplateElementPlaceholder;
+            type HTMLSlotElement = HTMLSlotElementPlaceholder;
+            type CSSStyleDeclaration = CSSStyleDeclarationPlaceholder;
+            type StyleSheet = StyleSheetPlaceholder;
+            type CSSStyleSheet = CSSStyleSheetPlaceholder;
+            type CSSRule = CSSRulePlaceholder;
+            type CSSStyleRule = CSSStyleRulePlaceholder;
+            type Range = RangePlaceholder;
+            type Selection = SelectionPlaceholder;
+            type Worker = WorkerPlaceholder;
+            type WorkerGlobalScope = WorkerGlobalScopePlaceholder;
+            type DedicatedWorkerGlobalScope = DedicatedWorkerGlobalScopePlaceholder;
+            type ServiceWorkerGlobalScope = ServiceWorkerGlobalScopePlaceholder;
+            type DOMParser = DOMParserPlaceholder;
+            type XMLSerializer = XMLSerializerPlaceholder;
+            type TreeWalker = TreeWalkerPlaceholder;
+            type NodeIterator = NodeIteratorPlaceholder;
+            type MutationObserver = MutationObserverPlaceholder;
+            type IntersectionObserver = IntersectionObserverPlaceholder;
+            type ResizeObserver = ResizeObserverPlaceholder;
+            type Performance = PerformancePlaceholder;
+            type PerformanceEntry = PerformanceEntryPlaceholder;
+            type CustomElementRegistry = CustomElementRegistryPlaceholder;
+            type Animation = AnimationPlaceholder;
+            type DOMException = DOMExceptionPlaceholder;
+            type MessageChannel = MessageChannelPlaceholder;
+            type MessagePort = MessagePortPlaceholder;
+            type AbortController = AbortControllerPlaceholder;
+            type AbortSignal = AbortSignalPlaceholder;
+            type Promise = PromisePlaceholder;
         }
     }
     
     pub(crate) use crate::script_bindings::codegen::GenericBindings;
     
-    /// Stub bindings module - contains empty binding modules for Boa
-    /// When using Boa, actual bindings are handled differently
-    #[allow(non_snake_case)]
-    pub(crate) mod Bindings {
-        // Generate stub binding modules for all DOM interfaces
-        // These are empty stubs - actual implementation is in boa_bindings::dom
-        macro_rules! stub_binding {
-            ($name:ident) => {
-                pub mod $name {
-                    #![allow(dead_code, non_upper_case_globals)]
-                }
-            };
-        }
-        
-        // Core DOM bindings
-        stub_binding!(EventBinding);
-        stub_binding!(EventTargetBinding);
-        stub_binding!(NodeBinding);
-        stub_binding!(ElementBinding);
-        stub_binding!(DocumentBinding);
-        stub_binding!(WindowBinding);
-        stub_binding!(HTMLElementBinding);
-        
-        // Events
-        stub_binding!(AnimationEventBinding);
-        stub_binding!(TransitionEventBinding);
-        stub_binding!(EventListenerBinding);
-        stub_binding!(CustomEventBinding);
-        stub_binding!(MouseEventBinding);
-        stub_binding!(KeyboardEventBinding);
-        stub_binding!(UIEventBinding);
-        stub_binding!(FocusEventBinding);
-        stub_binding!(InputEventBinding);
-        stub_binding!(WheelEventBinding);
-        stub_binding!(PointerEventBinding);
-        stub_binding!(TouchEventBinding);
-        stub_binding!(ClipboardEventBinding);
-        stub_binding!(DragEventBinding);
-        stub_binding!(ProgressEventBinding);
-        stub_binding!(ErrorEventBinding);
-        stub_binding!(MessageEventBinding);
-        stub_binding!(PageTransitionEventBinding);
-        stub_binding!(HashChangeEventBinding);
-        stub_binding!(PopStateEventBinding);
-        stub_binding!(StorageEventBinding);
-        stub_binding!(BeforeUnloadEventBinding);
-        stub_binding!(SecurityPolicyViolationEventBinding);
-        stub_binding!(CompositionEventBinding);
-        stub_binding!(TextEventBinding);
-        
-        // AbortController
-        stub_binding!(AbortControllerBinding);
-        stub_binding!(AbortSignalBinding);
-        
-        // Ranges
-        stub_binding!(AbstractRangeBinding);
-        stub_binding!(RangeBinding);
-        stub_binding!(StaticRangeBinding);
-        
-        // Collections
-        stub_binding!(NodeListBinding);
-        stub_binding!(HTMLCollectionBinding);
-        stub_binding!(DOMTokenListBinding);
-        stub_binding!(NamedNodeMapBinding);
-        
-        // DOM traversal
-        stub_binding!(TreeWalkerBinding);
-        stub_binding!(NodeIteratorBinding);
-        stub_binding!(NodeFilterBinding);
-        
-        // Geometry
-        stub_binding!(DOMRectBinding);
-        stub_binding!(DOMRectReadOnlyBinding);
-        stub_binding!(DOMRectListBinding);
-        stub_binding!(DOMPointBinding);
-        stub_binding!(DOMPointReadOnlyBinding);
-        stub_binding!(DOMQuadBinding);
-        stub_binding!(DOMMatrixBinding);
-        stub_binding!(DOMMatrixReadOnlyBinding);
-        
-        // CSS
-        stub_binding!(CSSStyleDeclarationBinding);
-        stub_binding!(CSSRuleBinding);
-        stub_binding!(CSSRuleListBinding);
-        stub_binding!(CSSStyleRuleBinding);
-        stub_binding!(CSSStyleSheetBinding);
-        stub_binding!(StyleSheetBinding);
-        stub_binding!(StyleSheetListBinding);
-        stub_binding!(MediaListBinding);
-        stub_binding!(MediaQueryListBinding);
-        
-        // HTML Elements
-        stub_binding!(HTMLAnchorElementBinding);
-        stub_binding!(HTMLAreaElementBinding);
-        stub_binding!(HTMLAudioElementBinding);
-        stub_binding!(HTMLBaseElementBinding);
-        stub_binding!(HTMLBodyElementBinding);
-        stub_binding!(HTMLBRElementBinding);
-        stub_binding!(HTMLButtonElementBinding);
-        stub_binding!(HTMLCanvasElementBinding);
-        stub_binding!(HTMLDataElementBinding);
-        stub_binding!(HTMLDataListElementBinding);
-        stub_binding!(HTMLDetailsElementBinding);
-        stub_binding!(HTMLDialogElementBinding);
-        stub_binding!(HTMLDirectoryElementBinding);
-        stub_binding!(HTMLDivElementBinding);
-        stub_binding!(HTMLDListElementBinding);
-        stub_binding!(HTMLEmbedElementBinding);
-        stub_binding!(HTMLFieldSetElementBinding);
-        stub_binding!(HTMLFontElementBinding);
-        stub_binding!(HTMLFormElementBinding);
-        stub_binding!(HTMLFrameElementBinding);
-        stub_binding!(HTMLFrameSetElementBinding);
-        stub_binding!(HTMLHeadElementBinding);
-        stub_binding!(HTMLHeadingElementBinding);
-        stub_binding!(HTMLHRElementBinding);
-        stub_binding!(HTMLHtmlElementBinding);
-        stub_binding!(HTMLIFrameElementBinding);
-        stub_binding!(HTMLImageElementBinding);
-        stub_binding!(HTMLInputElementBinding);
-        stub_binding!(HTMLLabelElementBinding);
-        stub_binding!(HTMLLegendElementBinding);
-        stub_binding!(HTMLLIElementBinding);
-        stub_binding!(HTMLLinkElementBinding);
-        stub_binding!(HTMLMapElementBinding);
-        stub_binding!(HTMLMediaElementBinding);
-        stub_binding!(HTMLMenuElementBinding);
-        stub_binding!(HTMLMetaElementBinding);
-        stub_binding!(HTMLMeterElementBinding);
-        stub_binding!(HTMLModElementBinding);
-        stub_binding!(HTMLObjectElementBinding);
-        stub_binding!(HTMLOListElementBinding);
-        stub_binding!(HTMLOptGroupElementBinding);
-        stub_binding!(HTMLOptionElementBinding);
-        stub_binding!(HTMLOutputElementBinding);
-        stub_binding!(HTMLParagraphElementBinding);
-        stub_binding!(HTMLParamElementBinding);
-        stub_binding!(HTMLPictureElementBinding);
-        stub_binding!(HTMLPreElementBinding);
-        stub_binding!(HTMLProgressElementBinding);
-        stub_binding!(HTMLQuoteElementBinding);
-        stub_binding!(HTMLScriptElementBinding);
-        stub_binding!(HTMLSelectElementBinding);
-        stub_binding!(HTMLSlotElementBinding);
-        stub_binding!(HTMLSourceElementBinding);
-        stub_binding!(HTMLSpanElementBinding);
-        stub_binding!(HTMLStyleElementBinding);
-        stub_binding!(HTMLTableCaptionElementBinding);
-        stub_binding!(HTMLTableCellElementBinding);
-        stub_binding!(HTMLTableColElementBinding);
-        stub_binding!(HTMLTableElementBinding);
-        stub_binding!(HTMLTableRowElementBinding);
-        stub_binding!(HTMLTableSectionElementBinding);
-        stub_binding!(HTMLTemplateElementBinding);
-        stub_binding!(HTMLTextAreaElementBinding);
-        stub_binding!(HTMLTimeElementBinding);
-        stub_binding!(HTMLTitleElementBinding);
-        stub_binding!(HTMLTrackElementBinding);
-        stub_binding!(HTMLUListElementBinding);
-        stub_binding!(HTMLUnknownElementBinding);
-        stub_binding!(HTMLVideoElementBinding);
-        
-        // Form elements
-        stub_binding!(FormDataBinding);
-        stub_binding!(HTMLFormControlsCollectionBinding);
-        stub_binding!(RadioNodeListBinding);
-        stub_binding!(ValidityStateBinding);
-        
-        // XHR/Fetch
-        stub_binding!(XMLHttpRequestBinding);
-        stub_binding!(XMLHttpRequestEventTargetBinding);
-        stub_binding!(XMLHttpRequestUploadBinding);
-        stub_binding!(RequestBinding);
-        stub_binding!(ResponseBinding);
-        stub_binding!(HeadersBinding);
-        stub_binding!(BodyBinding);
-        
-        // Blob/File
-        stub_binding!(BlobBinding);
-        stub_binding!(FileBinding);
-        stub_binding!(FileListBinding);
-        stub_binding!(FileReaderBinding);
-        
-        // URL
-        stub_binding!(URLBinding);
-        stub_binding!(URLSearchParamsBinding);
-        
-        // Promises
-        stub_binding!(PromiseBinding);
-        
-        // Text
-        stub_binding!(TextBinding);
-        stub_binding!(CharacterDataBinding);
-        stub_binding!(CommentBinding);
-        stub_binding!(CDATASectionBinding);
-        stub_binding!(ProcessingInstructionBinding);
-        stub_binding!(DocumentTypeBinding);
-        stub_binding!(DocumentFragmentBinding);
-        
-        // Selection
-        stub_binding!(SelectionBinding);
-        
-        // Shadow DOM
-        stub_binding!(ShadowRootBinding);
-        
-        // History
-        stub_binding!(HistoryBinding);
-        stub_binding!(LocationBinding);
-        
-        // Navigator
-        stub_binding!(NavigatorBinding);
-        stub_binding!(ScreenBinding);
-        
-        // Performance
-        stub_binding!(PerformanceBinding);
-        stub_binding!(PerformanceEntryBinding);
-        stub_binding!(PerformanceMarkBinding);
-        stub_binding!(PerformanceMeasureBinding);
-        stub_binding!(PerformanceNavigationBinding);
-        stub_binding!(PerformanceTimingBinding);
-        
-        // Console
-        stub_binding!(ConsoleBinding);
-        
-        // Crypto
-        stub_binding!(CryptoBinding);
-        stub_binding!(SubtleCryptoBinding);
-        stub_binding!(CryptoKeyBinding);
-        
-        // Storage
-        stub_binding!(StorageBinding);
-        
-        // WebSocket
-        stub_binding!(WebSocketBinding);
-        stub_binding!(CloseEventBinding);
-        
-        // Workers
-        stub_binding!(WorkerBinding);
-        stub_binding!(DedicatedWorkerGlobalScopeBinding);
-        stub_binding!(SharedWorkerBinding);
-        stub_binding!(SharedWorkerGlobalScopeBinding);
-        stub_binding!(ServiceWorkerBinding);
-        stub_binding!(ServiceWorkerContainerBinding);
-        stub_binding!(ServiceWorkerRegistrationBinding);
-        stub_binding!(ServiceWorkerGlobalScopeBinding);
-        
-        // Canvas
-        stub_binding!(CanvasRenderingContext2DBinding);
-        stub_binding!(WebGLRenderingContextBinding);
-        stub_binding!(WebGL2RenderingContextBinding);
-        stub_binding!(ImageDataBinding);
-        stub_binding!(Path2DBinding);
-        stub_binding!(CanvasGradientBinding);
-        stub_binding!(CanvasPatternBinding);
-        stub_binding!(TextMetricsBinding);
-        stub_binding!(ImageBitmapBinding);
-        stub_binding!(OffscreenCanvasBinding);
-        
-        // Media
-        stub_binding!(AudioContextBinding);
-        stub_binding!(AudioNodeBinding);
-        stub_binding!(MediaStreamBinding);
-        stub_binding!(MediaRecorderBinding);
-        stub_binding!(MediaSourceBinding);
-        stub_binding!(SourceBufferBinding);
-        stub_binding!(SourceBufferListBinding);
-        
-        // Mutation Observer
-        stub_binding!(MutationObserverBinding);
-        stub_binding!(MutationRecordBinding);
-        
-        // Intersection/Resize Observer
-        stub_binding!(IntersectionObserverBinding);
-        stub_binding!(IntersectionObserverEntryBinding);
-        stub_binding!(ResizeObserverBinding);
-        stub_binding!(ResizeObserverEntryBinding);
-        
-        // Custom Elements
-        stub_binding!(CustomElementRegistryBinding);
-        
-        // Misc
-        stub_binding!(DOMExceptionBinding);
-        stub_binding!(DOMParserBinding);
-        stub_binding!(XMLSerializerBinding);
-        stub_binding!(XPathEvaluatorBinding);
-        stub_binding!(XPathResultBinding);
-        stub_binding!(AttrBinding);
-    }
+    // Re-export GenericBindings as Bindings so existing code continues to work
+    pub(crate) use crate::script_bindings::codegen::GenericBindings as Bindings;
     
     pub(crate) mod InterfaceObjectMap {
         //! Interface object map stubs
@@ -517,4 +460,5 @@ pub(crate) mod codegen {
     pub(crate) use crate::script_bindings::codegen::{PrototypeList, RegisterBindings};
     
     // Re-export UnionTypes from script_bindings shim
-    pub(crate) use crate::script_bindings::codegen::UnionTypes;}
+    pub(crate) use crate::script_bindings::codegen::UnionTypes;
+}

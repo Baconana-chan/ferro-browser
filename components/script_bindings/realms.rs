@@ -6,6 +6,7 @@ use crate::js::jsapi::{GetCurrentRealmOrNull, JSAutoRealm};
 use crate::js::realm::CurrentRealm;
 
 use crate::DomTypes;
+#[cfg(not(feature = "js-boa"))]
 use crate::interfaces::GlobalScopeHelpers;
 use crate::reflector::DomObject;
 use crate::script_runtime::JSContext;
@@ -14,10 +15,16 @@ pub struct AlreadyInRealm(());
 
 impl AlreadyInRealm {
     #![expect(unsafe_code)]
+    #[cfg(not(feature = "js-boa"))]
     pub fn assert<D: DomTypes>() -> AlreadyInRealm {
         unsafe {
             assert!(!GetCurrentRealmOrNull(*D::GlobalScope::get_cx()).is_null());
         }
+        AlreadyInRealm(())
+    }
+
+    #[cfg(feature = "js-boa")]
+    pub fn assert<D: DomTypes>() -> AlreadyInRealm {
         AlreadyInRealm(())
     }
 
@@ -63,9 +70,15 @@ impl InRealm<'_> {
     }
 }
 
+#[cfg(not(feature = "js-boa"))]
 pub fn enter_realm<D: DomTypes>(object: &impl DomObject) -> JSAutoRealm {
     JSAutoRealm::new(
         *D::GlobalScope::get_cx(),
         object.reflector().get_jsobject().get(),
     )
+}
+
+#[cfg(feature = "js-boa")]
+pub fn enter_realm<D: DomTypes>(object: &impl DomObject) -> JSAutoRealm {
+    panic!("enter_realm not implemented for Boa")
 }

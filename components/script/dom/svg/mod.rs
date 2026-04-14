@@ -6,3 +6,9 @@ pub(crate) mod svgelement;
 pub(crate) mod svggraphicselement;
 pub(crate) mod svgimageelement;
 pub(crate) mod svgsvgelement;
+
+// Re-export types for use in dom::types
+pub(crate) use svgelement::SVGElement;
+pub(crate) use svggraphicselement::SVGGraphicsElement;
+pub(crate) use svgimageelement::SVGImageElement;
+pub(crate) use svgsvgelement::SVGSVGElement;

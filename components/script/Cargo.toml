@@ -15,21 +15,18 @@ path = "lib.rs"
 [features]
 # Ferro Browser: JavaScript Engine Selection
 # 
-# js-spidermonkey (default): Mozilla SpiderMonkey - full DOM compatibility 
 # js-boa: Pure Rust Boa engine - no C++ dependencies, faster builds
 #
-default = ["js-spidermonkey"]
+default = ["js-boa"]
 js-boa = ["dep:boa_bindings", "dep:boa_engine", "dep:boa_gc", "dep:script_bindings", "script_bindings/js-boa"]
-js-spidermonkey = ["dep:js", "dep:script_bindings", "dep:mozangle", "script_bindings/js-spidermonkey"]
-
 bluetooth = ['bluetooth_traits', 'script_bindings?/bluetooth']
-# SpiderMonkey-specific features (only work with js-spidermonkey)
-crown = ['js?/crown']
-debugmozjs = ['js?/debugmozjs']
-jitspew = ['js?/jitspew']
+# Legacy JS-engine-tuning flags retained as no-ops for compatibility.
+crown = []
+debugmozjs = []
+jitspew = []
 js_backtrace = []
-js_jit = ["js?/jit"]
-profilemozjs = ['js?/profilemozjs']
+js_jit = []
+profilemozjs = []
 refcell_backtrace = ["accountable-refcell"]
 testbinding = ["script_bindings?/testbinding"]
 tracing = ["dep:tracing", "script_bindings?/tracing"]
@@ -95,11 +92,7 @@ image = { workspace = true }
 indexmap = { workspace = true }
 ipc-channel = { workspace = true }
 itertools = { workspace = true }
-# SpiderMonkey JS engine (optional - use js-spidermonkey feature)
-js = { workspace = true, optional = true }
-# Boa JS engine bindings (optional - use js-boa feature)
 boa_bindings = { workspace = true, optional = true }
-# Boa engine core (needed for js_boa_shim and script_bindings_boa_shim)
 boa_engine = { workspace = true, optional = true }
 boa_gc = { workspace = true, optional = true }
 jstraceable_derive = { path = "../jstraceable_derive" }
@@ -133,7 +126,6 @@ rand = { workspace = true }
 range = { path = "../range" }
 regex = { workspace = true }
 rustc-hash = { workspace = true }
-# SpiderMonkey bindings (optional - use js-spidermonkey feature)
 script_bindings = { path = "../script_bindings", optional = true, default-features = false }
 script_traits = { workspace = true }
 sec1 = { workspace = true }
@@ -178,8 +170,3 @@ wgpu-types = { workspace = true }
 x25519-dalek = { workspace = true }
 xml5ever = { workspace = true }
 xpath = { workspace = true }
-
-# mozangle is only needed for WebGL on Windows
-# It's pulled in by js-spidermonkey feature through webgl support
-[target.'cfg(not(target_os = "ios"))'.dependencies]
-mozangle = { workspace = true, optional = true }

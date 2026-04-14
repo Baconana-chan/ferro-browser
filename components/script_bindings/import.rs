@@ -63,7 +63,7 @@ pub(crate) mod module {
         HandleObject as RawHandleObject, JS_AtomizeAndPinString, JS_ForwardGetPropertyTo,
         JS_GetPropertyDescriptorById, JS_HasPropertyById, JS_NewPlainObject, JS_SetReservedSlot,
         JSAutoRealm, JSCLASS_FOREGROUND_FINALIZE, JSCLASS_RESERVED_SLOTS_SHIFT, JSClass,
-        JSClassOps, JSFunctionSpec, JSITER_HIDDEN, JSITER_OWNONLY, JSITER_SYMBOLS,
+        JSClassOps, JSFunctionSpec, JSFunctionSpec_Name, JSITER_HIDDEN, JSITER_OWNONLY, JSITER_SYMBOLS,
         JSJitGetterCallArgs, JSJitInfo, JSJitInfo__bindgen_ty_1, JSJitInfo__bindgen_ty_2,
         JSJitInfo__bindgen_ty_3, JSJitInfo_AliasSet, JSJitInfo_ArgType, JSJitInfo_OpType,
         JSJitMethodCallArgs, JSJitSetterCallArgs, JSNativeWrapper, JSPROP_ENUMERATE,

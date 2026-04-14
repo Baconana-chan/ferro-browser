@@ -30,33 +30,30 @@ winresource = "0.1"
 
 [package.metadata.winresource]
 FileDescription = "Ferro Browser"
-LegalCopyright = "© Ferro Browser Contributors"
+LegalCopyright = " Ferro Browser Contributors"
 OriginalFilename = "ferro.exe"
 ProductName = "Ferro Browser"
 
 [features]
 # Ferro Browser: Use Boa JS engine by default (pure Rust, fast builds)
-# To use SpiderMonkey instead: cargo build --features js-spidermonkey --no-default-features
 default = ["libservo/clipboard", "max_log_level", "webgpu", "webxr", "media-ferro", "js-boa"]
 
-# JavaScript Engine Selection (mutually exclusive)
+# JavaScript Engine Selection
 # js-boa: Pure Rust Boa engine - no C++ dependencies, faster builds, 94% ES conformance
-# js-spidermonkey: Mozilla SpiderMonkey - full compatibility, slower builds, requires C++ toolchain
 js-boa = ["libservo/js-boa"]
-js-spidermonkey = ["libservo/js-spidermonkey", "js_jit"]
 
-# SpiderMonkey-specific features (only work with js-spidermonkey)
-crown = ["libservo/crown"]
-debugmozjs = ["libservo/debugmozjs"]
-jitspew = ["libservo/jitspew"]
+# Legacy JS-engine-tuning flags retained as no-ops for compatibility.
+crown = []
+debugmozjs = []
+jitspew = []
 js_backtrace = ["libservo/js_backtrace"]
-js_jit = ["libservo/js_jit"]
+js_jit = []
+profilemozjs = []
 
 max_log_level = ["log/release_max_level_info"]
 # GStreamer removed - using FFmpeg via ferro_media
 media-ferro = ["libservo/media-ferro"]
 native-bluetooth = ["libservo/native-bluetooth"]
-profilemozjs = ["libservo/profilemozjs"]
 refcell_backtrace = ["libservo/refcell_backtrace"]
 tracing = ["dep:tracing", "dep:tracing-subscriber", "libservo/tracing"]
 tracing-hitrace = ["tracing", "dep:hitrace"]

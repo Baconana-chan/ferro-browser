@@ -4,9 +4,15 @@
 
 #[expect(clippy::module_inception, reason = "The interface name is Gamepad")]
 pub(crate) mod gamepad;
-pub(crate) use gamepad::Gamepad;
 pub(crate) mod gamepadbutton;
 pub(crate) mod gamepadbuttonlist;
 pub(crate) mod gamepadevent;
 pub(crate) mod gamepadhapticactuator;
 pub(crate) mod gamepadpose;
+
+pub(crate) use gamepad::Gamepad;
+pub(crate) use gamepadbutton::GamepadButton;
+pub(crate) use gamepadbuttonlist::GamepadButtonList;
+pub(crate) use gamepadevent::GamepadEvent;
+pub(crate) use gamepadhapticactuator::GamepadHapticActuator;
+pub(crate) use gamepadpose::GamepadPose;

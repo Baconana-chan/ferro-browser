@@ -10,3 +10,9 @@ pub(crate) mod imagebitmap;
 pub(crate) mod imagebitmaprenderingcontext;
 pub(crate) mod imagedata;
 pub(crate) mod offscreencanvas;
+
+// Re-export types for use in dom::types
+pub(crate) use imagebitmap::ImageBitmap;
+pub(crate) use imagebitmaprenderingcontext::ImageBitmapRenderingContext;
+pub(crate) use imagedata::ImageData;
+pub(crate) use offscreencanvas::OffscreenCanvas;

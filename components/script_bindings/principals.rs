@@ -13,6 +13,7 @@ use crate::js::rust::Runtime;
 use servo_url::MutableOrigin;
 
 use crate::DomTypes;
+#[cfg(not(feature = "js-boa"))]
 use crate::interfaces::DomHelpers;
 
 /// An owned reference to Servo's `JSPrincipals` instance.
@@ -20,6 +21,7 @@ use crate::interfaces::DomHelpers;
 pub struct ServoJSPrincipals(NonNull<JSPrincipals>);
 
 impl ServoJSPrincipals {
+    #[cfg(not(feature = "js-boa"))]
     pub fn new<D: DomTypes>(origin: &MutableOrigin) -> Self {
         unsafe {
             let private: Box<MutableOrigin> = Box::new(origin.clone());
@@ -31,6 +33,11 @@ impl ServoJSPrincipals {
             // count of zero, so the following code will set it to one
             Self::from_raw_nonnull(NonNull::new_unchecked(raw))
         }
+    }
+
+    #[cfg(feature = "js-boa")]
+    pub fn new<D: DomTypes>(_origin: &MutableOrigin) -> Self {
+        panic!("ServoJSPrincipals::new not implemented for Boa")
     }
 
     /// Construct `Self` from a raw `*mut JSPrincipals`, incrementing its

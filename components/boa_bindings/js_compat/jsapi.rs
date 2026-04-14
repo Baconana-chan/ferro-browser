@@ -5,8 +5,10 @@
 
 use std::ptr;
 use std::ffi::c_void;
-use std::marker::PhantomData;
 // Note: We don't use Boa's Context directly here, we define our own opaque types
+
+// Import IdVector from rust module
+use super::rust::IdVector;
 
 // ===================
 // Bitfield Unit Support
@@ -85,6 +87,34 @@ pub struct JSContext {
     inner: *mut c_void,
 }
 
+pub trait IntoJSContextPtr {
+    fn into_js_context_ptr(self) -> *mut c_void;
+}
+
+impl<T> IntoJSContextPtr for *mut T {
+    fn into_js_context_ptr(self) -> *mut c_void {
+        self.cast()
+    }
+}
+
+impl<T> IntoJSContextPtr for std::ptr::NonNull<T> {
+    fn into_js_context_ptr(self) -> *mut c_void {
+        self.as_ptr().cast()
+    }
+}
+
+impl IntoJSContextPtr for JSContext {
+    fn into_js_context_ptr(self) -> *mut c_void {
+        self.inner
+    }
+}
+
+impl<'a> IntoJSContextPtr for &'a JSContext {
+    fn into_js_context_ptr(self) -> *mut c_void {
+        self.inner
+    }
+}
+
 impl JSContext {
     pub fn new() -> Self {
         Self { inner: ptr::null_mut() }
@@ -94,9 +124,13 @@ impl JSContext {
         self.inner as *mut RawJSContext
     }
     
+    pub fn raw_cx(&self) -> *mut RawJSContext {
+        self.as_ptr()
+    }
+    
     /// Create JSContext from raw pointer
-    pub unsafe fn from_ptr(ptr: *mut c_void) -> Self {
-        Self { inner: ptr }
+    pub unsafe fn from_ptr<P: IntoJSContextPtr>(ptr: P) -> Self {
+        Self { inner: ptr.into_js_context_ptr() }
     }
 }
 
@@ -114,6 +148,8 @@ impl JSObject {
         (self as *const Self).is_null()
     }
 }
+
+pub unsafe extern "C" fn JS_GlobalObjectTraceHook(_trc: *mut JSTracer, _obj: *mut JSObject) {}
 
 /// JSString - represents a JavaScript string
 #[repr(C)]
@@ -198,7 +234,7 @@ pub type JSResolveOp = unsafe extern "C" fn(cx: *mut JSContext, obj: HandleObjec
 pub type JSMayResolveOp = unsafe extern "C" fn(names: *const c_void, id: *mut c_void, maybeObj: *mut JSObject) -> bool;
 
 /// JSFinalizeOp signature
-pub type JSFinalizeOp = unsafe extern "C" fn(gcx: *mut c_void, obj: *mut JSObject);
+pub type JSFinalizeOp = unsafe extern "C" fn(gcx: *mut GCContext, obj: *mut JSObject);
 
 /// JSHasInstanceOp signature
 pub type JSHasInstanceOp = unsafe extern "C" fn(cx: *mut JSContext, obj: HandleObject<'_>, val: *mut c_void, bp: *mut bool) -> bool;
@@ -264,6 +300,10 @@ impl Value {
     
     pub fn is_double(&self) -> bool {
         (self.data & 0xFFFF_0000_0000_0000) == 0x0003_0000_0000_0000
+    }
+    
+    pub fn is_number(&self) -> bool {
+        self.is_int32() || self.is_double()
     }
     
     pub fn is_string(&self) -> bool {
@@ -333,7 +373,6 @@ impl Value {
         self.data as *const std::ffi::c_void
     }
     
-    /// Get object or null (returns null for non-object values)
     pub fn to_object_or_null(&self) -> *mut JSObject {
         if self.is_null() || self.is_undefined() {
             ptr::null_mut()
@@ -550,6 +589,9 @@ pub struct JobQueue {
 pub struct BuildIdCharVector {
     _private: [u8; 0],
 }
+
+/// BuildIdOp callback type
+pub type BuildIdOp = unsafe extern "C" fn(build_id: *mut BuildIdCharVector) -> bool;
 
 /// AsmJS options
 pub type AsmJSOption = u32;
@@ -1935,7 +1977,7 @@ impl JSFunctionSpec {
 #[derive(Copy, Clone)]
 pub union JSFunctionSpec_Name {
     pub string_: *const i8,
-    pub symbol_: *const c_void,
+    pub symbol_: usize,
 }
 
 /// JSNativeWrapper - wraps a native function with JIT info
@@ -1950,18 +1992,20 @@ pub struct JSNativeWrapper {
 #[repr(C)]
 pub struct JSPropertySpec {
     pub name: JSPropertySpec_Name,
-    pub attributes_: u8,
-    pub kind_: u8,
+    pub attributes_: u32,
+    pub kind_: JSPropertySpec_Kind,
     pub u: JSPropertySpec_AccessorsOrValue,
 }
 
 unsafe impl Sync for JSPropertySpec {}
 
 impl JSPropertySpec {
+    pub const ZERO: Self = Self::TERMINATOR;
+
     pub const TERMINATOR: Self = Self {
         name: JSPropertySpec_Name { string_: ptr::null() },
         attributes_: 0,
-        kind_: 0,
+        kind_: JSPropertySpec_Kind::NativeAccessor,
         u: JSPropertySpec_AccessorsOrValue { 
             accessors: JSPropertySpec_AccessorsOrValue_Accessors { 
                 getter: JSPropertySpec_Accessor { native: JSNativeWrapper { op: None, info: ptr::null() } },
@@ -1981,7 +2025,7 @@ impl JSPropertySpec {
 #[derive(Copy, Clone)]
 pub union JSPropertySpec_Name {
     pub string_: *const i8,
-    pub symbol_: *const c_void,
+    pub symbol_: usize,
 }
 
 /// JSPropertySpec accessor
@@ -2012,7 +2056,7 @@ pub struct JSPropertySpec_AccessorsOrValue_Accessors {
 #[derive(Copy, Clone)]
 pub struct JSPropertySpec_ValueWrapper {
     pub type_: JSPropertySpec_ValueWrapper_Type,
-    pub u: JSPropertySpec_ValueWrapper_Value,
+    pub __bindgen_anon_1: JSPropertySpec_ValueWrapper__bindgen_ty_1,
 }
 
 /// JSPropertySpec value type
@@ -2027,10 +2071,16 @@ pub enum JSPropertySpec_ValueWrapper_Type {
 /// JSPropertySpec value union
 #[repr(C)]
 #[derive(Copy, Clone)]
-pub union JSPropertySpec_ValueWrapper_Value {
+pub union JSPropertySpec_ValueWrapper__bindgen_ty_1 {
     pub double_: f64,
-    pub string_: *const i8,
+    pub string: *const i8,
     pub int32_: i32,
+}
+
+impl JSPropertySpec_ValueWrapper__bindgen_ty_1 {
+    pub fn is_string_null(&self) -> bool {
+        unsafe { self.string.is_null() }
+    }
 }
 
 // ===================
@@ -2164,7 +2214,7 @@ pub unsafe fn GetStaticPrototype(_obj: *mut JSObject) -> *mut JSObject {
 // ===================
 
 /// MutableHandleIdVector - mutable handle to a vector of property IDs
-pub type MutableHandleIdVector<'a> = MutableHandle<'a, *mut c_void>;
+pub type MutableHandleIdVector<'a> = MutableHandle<'a, IdVector>;
 
 // ===================
 // DOM Proxy Functions
@@ -2235,17 +2285,46 @@ impl Default for ObjectOps {
 // ===================
 
 /// JSJitInfo - JIT optimization info for native functions
+/// Note: This is a private version - the public version is in glue.rs with named fields
 #[repr(C)]
-pub struct JSJitInfo {
-    pub call: JSJitInfo__bindgen_ty_1,
-    pub proto_id_: u16,
-    pub depth_: u16,
+struct JSJitInfo {
+    pub __bindgen_anon_1: JSJitInfo__bindgen_ty_1,
+    pub __bindgen_anon_2: JSJitInfo__bindgen_ty_2,
+    pub __bindgen_anon_3: JSJitInfo__bindgen_ty_3,
+    pub _bitfield_align_1: [u8; 0],
     pub _bitfield_1: __BindgenBitfieldUnit<[u8; 4]>,
+}
+
+#[macro_export]
+macro_rules! new_jsjitinfo_bitfield_1 {
+    (
+        $op_type:expr,
+        $alias_set:expr,
+        $return_type:expr,
+        $is_infallible:expr,
+        $is_movement_free:expr,
+        $is_effect_free:expr,
+        $is_always_in_slot:expr,
+        $is_lazily_cached_in_slot:expr,
+        $is_typed_method:expr,
+        $slot_index:expr $(,)?
+    ) => {{
+        (($op_type as u32) & 0xF)
+            | ((($alias_set as u32) & 0xF) << 4)
+            | ((($return_type as u32) & 0xF) << 8)
+            | ((($is_infallible as u32) & 0x1) << 12)
+            | ((($is_movement_free as u32) & 0x1) << 13)
+            | ((($is_effect_free as u32) & 0x1) << 14)
+            | ((($is_always_in_slot as u32) & 0x1) << 15)
+            | ((($is_lazily_cached_in_slot as u32) & 0x1) << 16)
+            | ((($is_typed_method as u32) & 0x1) << 17)
+            | ((($slot_index as u32) & 0xFF) << 24)
+    }};
 }
 
 impl JSJitInfo {
     pub const fn new(
-        getter: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, *mut c_void, JSJitGetterCallArgs) -> bool>,
+        getter: JSJitGetterOp,
         proto_id: u16,
         depth: u16,
         ty: u8,
@@ -2259,26 +2338,37 @@ impl JSJitInfo {
         is_typed_method: bool,
         slot_index: u8,
     ) -> Self {
-        let mut info = Self {
-            call: JSJitInfo__bindgen_ty_1 { getter },
-            proto_id_: proto_id,
-            depth_: depth,
-            _bitfield_1: __BindgenBitfieldUnit::new([0u8; 4]),
-        };
-        // Set bitfield values (simplified - actual layout depends on SpiderMonkey)
-        let _ = (ty, alias_set, return_type, is_infallible, is_movement_free, 
-                 is_effect_free, is_always_in_slot, is_lazily_cached_in_slot,
-                 is_typed_method, slot_index);
-        info
+        Self {
+            __bindgen_anon_1: JSJitInfo__bindgen_ty_1 { getter },
+            __bindgen_anon_2: JSJitInfo__bindgen_ty_2 { protoID: proto_id },
+            __bindgen_anon_3: JSJitInfo__bindgen_ty_3 { depth },
+            _bitfield_align_1: [],
+            _bitfield_1: __BindgenBitfieldUnit::new(
+                new_jsjitinfo_bitfield_1!(
+                    ty,
+                    alias_set,
+                    return_type,
+                    is_infallible,
+                    is_movement_free,
+                    is_effect_free,
+                    is_always_in_slot,
+                    is_lazily_cached_in_slot,
+                    is_typed_method,
+                    slot_index,
+                )
+                .to_ne_bytes(),
+            ),
+        }
     }
 }
 
 impl Default for JSJitInfo {
     fn default() -> Self {
         Self {
-            call: JSJitInfo__bindgen_ty_1 { getter: None },
-            proto_id_: 0,
-            depth_: 0,
+            __bindgen_anon_1: JSJitInfo__bindgen_ty_1 { getter: None },
+            __bindgen_anon_2: JSJitInfo__bindgen_ty_2 { protoID: 0 },
+            __bindgen_anon_3: JSJitInfo__bindgen_ty_3 { depth: 0 },
+            _bitfield_align_1: [],
             _bitfield_1: __BindgenBitfieldUnit::new([0u8; 4]),
         }
     }
@@ -2291,42 +2381,43 @@ pub union JSJitInfo__bindgen_ty_1 {
     pub getter: JSJitGetterOp,
     pub setter: JSJitSetterOp,
     pub method: JSJitMethodOp,
-    pub static_method: JSNative,
+    pub staticMethod: Option<JSNative>,
 }
 
-/// JSJitInfo operation types
-#[repr(u32)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum JSJitInfo__bindgen_ty_2 {
-    Getter = 0,
-    Setter = 1,
-    Method = 2,
-    StaticMethod = 3,
+/// JSJitInfo anonymous union 2 - protoID.
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union JSJitInfo__bindgen_ty_2 {
+    pub protoID: u16,
 }
 
-/// JSJitInfo return type
-#[repr(u32)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum JSJitInfo__bindgen_ty_3 {
-    JSVAL_TYPE_DOUBLE = 0,
-    JSVAL_TYPE_INT32 = 1,
-    JSVAL_TYPE_BOOLEAN = 2,
-    JSVAL_TYPE_UNDEFINED = 3,
-    JSVAL_TYPE_NULL = 4,
-    JSVAL_TYPE_STRING = 5,
-    JSVAL_TYPE_SYMBOL = 6,
-    JSVAL_TYPE_OBJECT = 7,
-    JSVAL_TYPE_UNKNOWN = 8,
+impl Default for JSJitInfo__bindgen_ty_2 {
+    fn default() -> Self {
+        Self { protoID: 0 }
+    }
+}
+
+/// JSJitInfo anonymous union 3 - depth.
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union JSJitInfo__bindgen_ty_3 {
+    pub depth: u16,
+}
+
+impl Default for JSJitInfo__bindgen_ty_3 {
+    fn default() -> Self {
+        Self { depth: 0 }
+    }
 }
 
 /// JSJitGetterOp - JIT getter operation
-pub type JSJitGetterOp = Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, *mut c_void, JSJitGetterCallArgs) -> bool>;
+pub type JSJitGetterOp = Option<for<'a> unsafe extern "C" fn(*mut RawJSContext, HandleObject<'a>, *mut c_void, JSJitGetterCallArgs) -> bool>;
 
 /// JSJitSetterOp - JIT setter operation
-pub type JSJitSetterOp = Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, *mut c_void, JSJitSetterCallArgs) -> bool>;
+pub type JSJitSetterOp = Option<for<'a> unsafe extern "C" fn(*mut RawJSContext, HandleObject<'a>, *mut c_void, JSJitSetterCallArgs) -> bool>;
 
 /// JSJitMethodOp - JIT method operation
-pub type JSJitMethodOp = Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, *mut c_void, *const CallArgs) -> bool>;
+pub type JSJitMethodOp = Option<for<'a> unsafe extern "C" fn(*mut RawJSContext, HandleObject<'a>, *mut c_void, *const JSJitMethodCallArgs) -> bool>;
 
 /// JSJitGetterCallArgs - arguments for JIT getter
 #[repr(transparent)]
@@ -2356,7 +2447,7 @@ impl JSJitSetterCallArgs {
 #[repr(C)]
 pub struct JSTypedMethodJitInfo {
     pub base: JSJitInfo,
-    pub args: *const JSJitInfo_ArgType,
+    pub argTypes: *const JSJitInfo_ArgType,
 }
 
 /// JSJitInfo argument type
@@ -2370,6 +2461,7 @@ pub enum JSJitInfo_ArgType {
     Object = 4,
     Null = 5,
     Undefined = 6,
+    ArgTypeListEnd = 7,
 }
 
 /// JSJitInfo operation type
@@ -2512,7 +2604,7 @@ impl StringId {
 /// JSJitMethodCallArgs - arguments for JIT method calls
 #[repr(C)]
 pub struct JSJitMethodCallArgs {
-    pub argc: u32,
+    pub argc_: u32,
     pub vp: *mut Value,
 }
 
@@ -2522,7 +2614,7 @@ impl JSJitMethodCallArgs {
     }
     
     pub fn length(&self) -> u32 {
-        self.argc
+        self.argc_
     }
     
     pub fn rval(&self) -> MutableHandleValue<'_> {
@@ -2541,21 +2633,6 @@ pub enum JSPropertySpec_Kind {
     NativeAccessor = 0,
     SelfHostedAccessor = 1,
     Value = 2,
-}
-
-/// JSPropertySpec_ValueWrapper__bindgen_ty_1 - value wrapper inner union
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub union JSPropertySpec_ValueWrapper__bindgen_ty_1 {
-    pub int32_: i32,
-    pub double_: f64,
-    pub string_: *const i8,
-}
-
-impl JSPropertySpec_ValueWrapper__bindgen_ty_1 {
-    pub fn is_string_null(&self) -> bool {
-        unsafe { self.string_.is_null() }
-    }
 }
 
 // ===================
@@ -2863,6 +2940,74 @@ pub unsafe fn Call(
     _rval: MutableHandleValue<'_>,
 ) -> bool {
     true
+}
+
+// ===================
+// Missing jsapi Functions
+// ===================
+
+/// Set process build ID op
+pub unsafe fn SetProcessBuildIdOp(_build_id_op: BuildIdOp) {
+    // Stub - not needed for Boa
+}
+
+/// Stream consumer for WASM streaming
+#[repr(C)]
+pub struct StreamConsumer {
+    _opaque: [u8; 0],
+}
+
+/// Get property keys from object
+pub unsafe fn GetPropertyKeys(
+    _cx: *mut RawJSContext,
+    _obj: HandleObject<'_>,
+    _flags: u32,
+    _props: *mut IdVector,
+) -> bool {
+    true
+}
+
+/// Get property by ID
+pub unsafe fn JS_GetPropertyById(
+    _cx: *mut RawJSContext,
+    _obj: HandleObject<'_>,
+    _id: super::glue::HandleId<'_>,
+    _vp: MutableHandleValue<'_>,
+) -> bool {
+    true
+}
+
+/// Set immutable prototype
+pub unsafe fn JS_SetImmutablePrototype(
+    _cx: *mut RawJSContext,
+    _obj: HandleObject<'_>,
+    _succeeded: *mut bool,
+) -> bool {
+    if !_succeeded.is_null() {
+        *_succeeded = true;
+    }
+    true
+}
+
+/// Proxy class extension
+#[repr(C)]
+#[derive(Debug, Default)]
+pub struct ProxyClassExtension {
+    _placeholder: u8,
+}
+
+/// Proxy class ops
+#[repr(C)]
+#[derive(Debug, Default)]
+pub struct ProxyClassOps {
+    _placeholder: u8,
+}
+
+/// Proxy object ops
+#[repr(C)]
+#[derive(Debug, Default)]
+pub struct ProxyObjectOps {
+    _placeholder: u8,
 }
 
 // ===================
