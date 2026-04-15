@@ -42,13 +42,25 @@ pub struct Root<T: StableTraceObject> {
 
 impl<T: StableTraceObject + 'static> Root<T> {
     /// Create a new rooted value
-    /// 
+    ///
     /// # Safety
     /// The value must be properly traceable
     #[allow(unused_unsafe)]
     pub unsafe fn new(value: T) -> Self {
         assert_in_script();
         Root { value }
+    }
+}
+
+/// Specific impl for Root<Dom<T>> to handle raw pointer conversions without 'static bound
+impl<T: DomObject> Root<Dom<T>> {
+    /// Create a Root<Dom<T>> from a raw pointer (SpiderMonkey compatibility)
+    ///
+    /// # Safety
+    /// The pointer must point to a valid, properly allocated Dom<T>
+    pub unsafe fn from_ptr(ptr: *mut T) -> Self {
+        assert_in_script();
+        Root { value: Dom::from_ptr(ptr) }
     }
 }
 
@@ -126,6 +138,17 @@ impl<T: DomObject> Dom<T> {
         }
         Dom {
             ptr: ptr::NonNull::from(obj),
+        }
+    }
+
+    /// Create a `Dom<T>` from a raw pointer (SpiderMonkey compatibility)
+    ///
+    /// # Safety
+    /// The pointer must point to a valid, properly allocated T
+    pub unsafe fn from_ptr(ptr: *mut T) -> Dom<T> {
+        assert_in_script();
+        Dom {
+            ptr: ptr::NonNull::new_unchecked(ptr),
         }
     }
 

@@ -123,7 +123,7 @@ mod boa_impl {
         /// or an error otherwise (stub for Boa)
         pub fn get_callable_property(&self, _cx: JSContext, _name: &str) -> crate::error::Fallible<JSVal> {
             // Stub: return undefined for now
-            Ok(JSVal::Undefined)
+            Ok(crate::js::jsval::UndefinedValue())
         }
     }
 

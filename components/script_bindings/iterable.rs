@@ -237,12 +237,12 @@ mod boa_impl {
     use super::IteratorType;
     
     /// Stub IterableIterator for Boa
-    pub struct IterableIterator<D: DomTypes, T> {
+    pub struct IterableIterator<D: DomTypes, T: 'static> {
         reflector: Reflector,
         _marker: PhantomData<(D, T)>,
     }
-    
-    impl<D: DomTypes, T> IterableIterator<D, T> {
+
+    impl<D: DomTypes, T: 'static> IterableIterator<D, T> {
         /// Create a new iterator instance (stub)
         pub fn new(_iterable: &T, _type_: IteratorType, _realm: InRealm) -> DomRoot<Self> {
             // Stub: return a dummy root
@@ -281,18 +281,20 @@ mod boa_impl {
         }
     }
     
-    impl<D: DomTypes, T> DomObject for IterableIterator<D, T> {
-        // Stub: minimal DomObject implementation
+    impl<D: DomTypes, T: 'static> DomObject for IterableIterator<D, T> {
+        fn reflector(&self) -> &Reflector {
+            &self.reflector
+        }
     }
-    
-    impl<D: DomTypes, T> IDLInterface for IterableIterator<D, T> {
+
+    impl<D: DomTypes, T: 'static> IDLInterface for IterableIterator<D, T> {
         fn derives(_class: &'static crate::utils::DOMClass) -> bool {
             // Stub: always false for now
             false
         }
     }
-    
-    unsafe impl<D: DomTypes, T> MallocSizeOf for IterableIterator<D, T> {
+
+    impl<D: DomTypes, T: 'static> MallocSizeOf for IterableIterator<D, T> {
         fn size_of(&self, _ops: &mut malloc_size_of::MallocSizeOfOps) -> usize {
             // Stub: return 0 for now
             0

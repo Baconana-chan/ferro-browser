@@ -269,7 +269,12 @@ impl Value {
     pub const fn undefined() -> Self {
         Self { data: 0 }
     }
-    
+
+    /// Static method for compatibility with generated code expecting JSVal::Undefined
+    pub const fn Undefined() -> Self {
+        Self { data: 0 }
+    }
+
     pub const fn null() -> Self {
         Self { data: 1 }
     }
@@ -2287,7 +2292,7 @@ impl Default for ObjectOps {
 /// JSJitInfo - JIT optimization info for native functions
 /// Note: This is a private version - the public version is in glue.rs with named fields
 #[repr(C)]
-struct JSJitInfo {
+pub struct JSJitInfo {
     pub __bindgen_anon_1: JSJitInfo__bindgen_ty_1,
     pub __bindgen_anon_2: JSJitInfo__bindgen_ty_2,
     pub __bindgen_anon_3: JSJitInfo__bindgen_ty_3,

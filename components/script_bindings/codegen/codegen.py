@@ -4014,38 +4014,37 @@ class CGDefineProxyHandler(CGAbstractMethod):
         return CGGeneric(f"""
 init_proxy_handler_dom_class::<D>();
 
-let traps = ProxyTraps {{
-    enter: None,
-    getOwnPropertyDescriptor: Some(getOwnPropertyDescriptor::<D>),
-    defineProperty: Some({customDefineProperty}),
-    ownPropertyKeys: Some(own_property_keys::<D>),
-    delete_: Some({customDelete}),
-    enumerate: None,
-    getPrototypeIfOrdinary: {customGetPrototypeIfOrdinary},
-    getPrototype: {customGetPrototype},
-    setPrototype: {customSetPrototype},
-    setImmutablePrototype: None,
-    preventExtensions: Some(proxyhandler::prevent_extensions),
-    isExtensible: Some(proxyhandler::is_extensible),
-    has: None,
-    get: Some(get::<D>),
-    set: {customSet},
-    call: None,
-    construct: None,
-    hasOwn: Some(hasOwn::<D>),
-    getOwnEnumerablePropertyKeys: Some({getOwnEnumerablePropertyKeys}),
-    nativeCall: None,
-    objectClassIs: None,
-    className: Some(className),
-    fun_toString: None,
-    boxedValue_unbox: None,
-    defaultValue: None,
-    trace: Some({TRACE_HOOK_NAME}::<D>),
-    finalize: Some({FINALIZE_HOOK_NAME}::<D>),
-    objectMoved: None,
-    isCallable: None,
-    isConstructor: None,
-}};
+let mut traps = ProxyTraps::default();
+traps.enter = None;
+traps.getOwnPropertyDescriptor = Some(getOwnPropertyDescriptor::<D>);
+traps.defineProperty = Some({customDefineProperty});
+traps.ownPropertyKeys = Some(own_property_keys::<D>);
+traps.delete_ = Some({customDelete});
+traps.enumerate = None;
+traps.getPrototypeIfOrdinary = {customGetPrototypeIfOrdinary};
+traps.getPrototype = {customGetPrototype};
+traps.setPrototype = {customSetPrototype};
+traps.setImmutablePrototype = None;
+traps.preventExtensions = Some(proxyhandler::prevent_extensions);
+traps.isExtensible = Some(proxyhandler::is_extensible);
+traps.has = None;
+traps.get = Some(get::<D>);
+traps.set = {customSet};
+traps.call = None;
+traps.construct = None;
+traps.hasOwn = Some(hasOwn::<D>);
+traps.getOwnEnumerablePropertyKeys = Some({getOwnEnumerablePropertyKeys});
+traps.nativeCall = None;
+traps.objectClassIs = None;
+traps.className = Some(className);
+traps.fun_toString = None;
+traps.boxedValue_unbox = None;
+traps.defaultValue = None;
+traps.trace = Some({TRACE_HOOK_NAME}::<D>);
+traps.finalize = Some({FINALIZE_HOOK_NAME}::<D>);
+traps.objectMoved = None;
+traps.isCallable = None;
+traps.isConstructor = None;
 
 CreateProxyHandler(&traps, unsafe {{ Class.get() }}.as_void_ptr())\
 """)

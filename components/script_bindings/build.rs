@@ -226,6 +226,12 @@ fn apply_boa_overrides(out_dir: &PathBuf) {
                     "JSFunctionSpec {\n        name: JSPropertySpec_Name {",
                     "JSFunctionSpec {\n        name: JSFunctionSpec_Name {",
                 );
+                // Patch JSContext to *mut JSContext for Boa compatibility
+                patched = patched.replace("cx: JSContext,", "cx: *mut JSContext,");
+                // Patch macro patterns like &in(cx) where cx is JSContext
+                patched = patched.replace("&in(cx)", "&in(cx.raw_cx())");
+                // Patch WindowHelpers to add generic parameter Self
+                patched = patched.replace("crate::interfaces::WindowHelpers +", "crate::interfaces::WindowHelpers<Self> +");
                 if patched != contents {
                     fs::write(&path, patched).unwrap();
                 }

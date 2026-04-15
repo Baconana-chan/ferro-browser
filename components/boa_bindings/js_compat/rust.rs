@@ -29,6 +29,12 @@ impl IntoPropDescPtr for *mut super::glue::PropertyDescriptor {
     }
 }
 
+impl<'a> IntoPropDescPtr for super::MutableHandle<'a, super::glue::PropertyDescriptor> {
+    fn into_prop_desc_ptr(self) -> *mut super::glue::PropertyDescriptor {
+        self.ptr
+    }
+}
+
 /// Trait for types that can be converted to Handle<*mut JSObject>
 pub trait IntoHandleObject<'a> {
     fn into_handle_object(self) -> HandleObject<'a>;
@@ -297,13 +303,6 @@ pub type MutableHandleValue<'a> = MutableHandle<'a, Value>;
 
 /// MutableHandleObject
 pub type MutableHandleObject<'a> = MutableHandle<'a, *mut JSObject>;
-
-// IntoPropDescPtr impl for MutableHandle<PropertyDescriptor>
-impl<'a> IntoPropDescPtr for MutableHandle<'a, super::glue::PropertyDescriptor> {
-    fn into_prop_desc_ptr(self) -> *mut super::glue::PropertyDescriptor {
-        self.ptr
-    }
-}
 
 // From impl for converting MutableHandle<PropertyDescriptor> to *mut PropertyDescriptor
 impl<'a> From<MutableHandle<'a, super::glue::PropertyDescriptor>> for *mut super::glue::PropertyDescriptor {

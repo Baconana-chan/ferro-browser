@@ -32,6 +32,11 @@ impl JSContext {
     pub fn raw_cx_no_gc(&self) -> *mut RawJSContext {
         self.0
     }
+
+    /// Convert to *mut JSContext for compatibility with generated code
+    pub fn as_ptr(&self) -> *mut Self {
+        self as *const JSContext as *mut JSContext
+    }
 }
 
 impl Deref for JSContext {

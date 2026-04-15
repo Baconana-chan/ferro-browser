@@ -192,7 +192,21 @@ impl<T> Clone for Dom<T> {
     #[cfg_attr(crown, allow(crown::unrooted_must_root))]
     fn clone(&self) -> Self {
         assert_in_script();
-        Dom { ptr: self.ptr }
+        Self {
+            ptr: self.ptr,
+        }
+    }
+}
+
+impl<T> Dom<T> {
+    /// Create a Dom from a raw pointer (for Boa compatibility)
+    ///
+    /// # Safety
+    /// ptr must point to a valid T
+    pub unsafe fn from_ptr(ptr: *mut T) -> Self {
+        Self {
+            ptr: ptr::NonNull::new_unchecked(ptr),
+        }
     }
 }
 
@@ -318,6 +332,24 @@ impl<T: DomObject> DomRoot<T> {
     /// Generate a new root from a reference
     pub fn from_ref(unrooted: &T) -> DomRoot<T> {
         unsafe { DomRoot::new(Dom::from_ref(unrooted)) }
+    }
+
+    /// Create a new root from a raw pointer (for Boa compatibility)
+    ///
+    /// # Safety
+    /// ptr must point to a valid T or be null
+    pub unsafe fn from_ptr(ptr: *mut T) -> DomRoot<T> {
+        if ptr.is_null() {
+            // For null pointers, create a dummy root
+            // This is a stub for Boa compatibility
+            // In a real implementation, this would be an error
+            // For now, we'll create a dummy value that will be leaked
+            // SAFETY: This is a temporary stub for Boa compatibility
+            let dummy = Box::leak(Box::new(mem::zeroed())) as *mut T;
+            DomRoot::new(Dom::from_ptr(dummy))
+        } else {
+            DomRoot::new(Dom::from_ptr(ptr))
+        }
     }
 
     /// Create a traced version of this rooted object.

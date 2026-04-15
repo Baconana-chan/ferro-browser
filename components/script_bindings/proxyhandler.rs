@@ -685,7 +685,7 @@ pub(crate) fn cross_origin_get<D: DomTypes>(
     rooted!(in(*cx) let mut descriptor = PropertyDescriptor::default());
     let mut is_none = false;
     if !unsafe {
-        InvokeGetOwnPropertyDescriptor(
+        InvokeGetOwnPropertyDescriptor::<MutableHandle<PropertyDescriptor>>(
             *cx,
             GetProxyHandler(*proxy) as *const _,
             proxy,
@@ -757,7 +757,7 @@ pub(crate) unsafe fn cross_origin_set<D: DomTypes>(
     // > 1. Let desc be ? O.[[GetOwnProperty]](P).
     rooted!(in(*cx) let mut descriptor = PropertyDescriptor::default());
     let mut is_none = false;
-    if !InvokeGetOwnPropertyDescriptor(
+    if !InvokeGetOwnPropertyDescriptor::<MutableHandle<PropertyDescriptor>>(
         *cx,
         GetProxyHandler(*proxy) as *const _,
         proxy,
