@@ -1009,7 +1009,12 @@ impl XRSessionMethods<crate::DomTypeHolder> for XRSession {
             let framerates = session.supported_frame_rates();
             rooted!(in (*cx) let mut array = ptr::null_mut::<JSObject>());
             Some(
-                create_buffer_source(cx, framerates, array.handle_mut(), can_gc)
+                create_buffer_source::<crate::js::typedarray::Float32>(
+                    cx,
+                    framerates,
+                    array.handle_mut(),
+                    can_gc,
+                )
                     .expect("Failed to construct supported frame rates array"),
             )
         }

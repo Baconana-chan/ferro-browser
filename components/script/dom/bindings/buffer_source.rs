@@ -119,11 +119,9 @@ where
         }
     }
 
-    pub(crate) fn from_view(
-        chunk: CustomAutoRooterGuard<TypedArray<T, *mut JSObject>>,
-    ) -> HeapBufferSource<T> {
+    pub(crate) fn from_view(chunk: CustomAutoRooterGuard<T::ArrayType>) -> HeapBufferSource<T> {
         HeapBufferSource::<T>::new(BufferSource::ArrayBufferView(RootedTraceableBox::from_box(
-            Heap::boxed(unsafe { *chunk.underlying_object() }),
+            Heap::boxed(unsafe { chunk.underlying_object() }),
         )))
     }
 
@@ -144,12 +142,14 @@ where
         }
     }
 
-    pub(crate) fn get_typed_array(&self) -> Result<TypedArray<T, *mut JSObject>, ()> {
-        TypedArray::from(match &self.buffer_source {
-            BufferSource::ArrayBufferView(buffer) | BufferSource::ArrayBuffer(buffer) => {
-                buffer.get()
-            },
-        })
+    pub(crate) fn get_typed_array(&self) -> Result<T::ArrayType, ()> {
+        unsafe {
+            T::from_object(match &self.buffer_source {
+                BufferSource::ArrayBufferView(buffer) | BufferSource::ArrayBuffer(buffer) => {
+                    buffer.get()
+                },
+            })
+        }
     }
 
     pub(crate) fn get_buffer_view_value(
@@ -206,12 +206,12 @@ where
                 }
             },
             BufferSource::ArrayBuffer(buffer) => unsafe {
-                DetachArrayBuffer(*cx, Handle::from_raw(buffer.handle().into()))
+                DetachArrayBuffer(*cx, buffer.handle())
             },
         }
     }
 
-    pub(crate) fn typed_array_to_option(&self) -> Option<TypedArray<T, *mut JSObject>> {
+    pub(crate) fn typed_array_to_option(&self) -> Option<T::ArrayType> {
         if self.is_initialized() {
             self.get_typed_array().ok()
         } else {
@@ -327,16 +327,13 @@ where
     pub(crate) fn acquire_data(&self, cx: JSContext) -> Result<Vec<T::Element>, ()> {
         assert!(self.is_initialized());
 
-        typedarray!(in(*cx) let array: TypedArray = match &self.buffer_source {
-            BufferSource::ArrayBufferView(buffer) | BufferSource::ArrayBuffer(buffer)
-            => {
+        let obj = match &self.buffer_source {
+            BufferSource::ArrayBufferView(buffer) | BufferSource::ArrayBuffer(buffer) => {
                 buffer.get()
             },
-        });
-        let data = if let Ok(array) =
-            array as Result<CustomAutoRooterGuard<'_, TypedArray<T, *mut JSObject>>, &mut ()>
-        {
-            let data = array.to_vec();
+        };
+        let data = if let Ok(array) = unsafe { T::from_object(obj) } {
+            let data = array.as_slice().to_vec();
             let _ = self.detach_buffer(cx);
             Ok(data)
         } else {
@@ -359,48 +356,38 @@ where
         length: usize,
     ) -> Result<(), ()> {
         assert!(self.is_initialized());
-        typedarray!(in(*cx) let array: TypedArray = match &self.buffer_source {
-            BufferSource::ArrayBufferView(buffer) |  BufferSource::ArrayBuffer(buffer)
-            => {
+        let obj = match &self.buffer_source {
+            BufferSource::ArrayBufferView(buffer) | BufferSource::ArrayBuffer(buffer) => {
                 buffer.get()
             },
-        });
-        let Ok(array) =
-            array as Result<CustomAutoRooterGuard<'_, TypedArray<T, *mut JSObject>>, &mut ()>
-        else {
+        };
+        let Ok(array) = (unsafe { T::from_object(obj) }) else {
             return Err(());
         };
-        unsafe {
-            let slice = (*array).as_slice();
-            dest.copy_from_slice(&slice[source_start..length]);
-        }
+        let slice = array.as_slice();
+        dest.copy_from_slice(&slice[source_start..length]);
         Ok(())
     }
 
     pub(crate) fn copy_data_from(
         &self,
         cx: JSContext,
-        source: CustomAutoRooterGuard<TypedArray<T, *mut JSObject>>,
+        source: CustomAutoRooterGuard<T::ArrayType>,
         dest_start: usize,
         length: usize,
     ) -> Result<(), ()> {
         assert!(self.is_initialized());
-        typedarray!(in(*cx) let mut array: TypedArray = match &self.buffer_source {
-            BufferSource::ArrayBufferView(buffer) | BufferSource::ArrayBuffer(buffer)
-            => {
+        let obj = match &self.buffer_source {
+            BufferSource::ArrayBufferView(buffer) | BufferSource::ArrayBuffer(buffer) => {
                 buffer.get()
             },
-        });
-        let Ok(mut array) =
-            array as Result<CustomAutoRooterGuard<'_, TypedArray<T, *mut JSObject>>, &mut ()>
-        else {
+        };
+        let Ok(mut array) = (unsafe { T::from_object(obj) }) else {
             return Err(());
         };
-        unsafe {
-            let slice = (*array).as_mut_slice();
-            let (_, dest) = slice.split_at_mut(dest_start);
-            dest[0..length].copy_from_slice(&source.as_slice()[0..length])
-        }
+        let slice = array.as_mut_slice();
+        let (_, dest) = slice.split_at_mut(dest_start);
+        dest[0..length].copy_from_slice(&source.as_slice()[0..length]);
         Ok(())
     }
 
@@ -411,8 +398,7 @@ where
         can_gc: CanGc,
     ) -> Result<(), ()> {
         rooted!(in (*cx) let mut array = ptr::null_mut::<JSObject>());
-        let _: TypedArray<T, *mut JSObject> =
-            create_buffer_source(cx, data, array.handle_mut(), can_gc)?;
+        let _: T::ArrayType = create_buffer_source::<T>(cx, data, array.handle_mut(), can_gc)?;
 
         match &self.buffer_source {
             BufferSource::ArrayBufferView(buffer) | BufferSource::ArrayBuffer(buffer) => {
@@ -601,7 +587,7 @@ where
 
 unsafe impl<T> crate::dom::bindings::trace::JSTraceable for HeapBufferSource<T> {
     #[inline]
-    unsafe fn trace(&self, tracer: *mut js::jsapi::JSTracer) {
+    unsafe fn trace(&self, tracer: *mut crate::js::jsapi::JSTracer) {
         match &self.buffer_source {
             BufferSource::ArrayBufferView(buffer) | BufferSource::ArrayBuffer(buffer) => {
                 unsafe { buffer.trace(tracer) };
@@ -616,18 +602,17 @@ pub(crate) fn create_buffer_source<T>(
     data: &[T::Element],
     mut dest: MutableHandleObject,
     _can_gc: CanGc,
-) -> Result<TypedArray<T, *mut JSObject>, ()>
+) -> Result<T::ArrayType, ()>
 where
     T: TypedArrayElement + TypedArrayElementCreator,
 {
-    let res = unsafe {
-        TypedArray::<T, *mut JSObject>::create(*cx, CreateWith::Slice(data), dest.reborrow())
-    };
+    let res =
+        unsafe { <T::ArrayType as TypedArray>::create(*cx, CreateWith::Slice(data), dest.reborrow()) };
 
     if res.is_err() {
         Err(())
     } else {
-        TypedArray::from(dest.get())
+        unsafe { T::from_object(dest.get()) }
     }
 }
 
@@ -636,18 +621,18 @@ fn create_buffer_source_with_length<T>(
     len: usize,
     mut dest: MutableHandleObject,
     _can_gc: CanGc,
-) -> Result<TypedArray<T, *mut JSObject>, ()>
+) -> Result<T::ArrayType, ()>
 where
     T: TypedArrayElement + TypedArrayElementCreator,
 {
     let res = unsafe {
-        TypedArray::<T, *mut JSObject>::create(*cx, CreateWith::Length(len), dest.reborrow())
+        <T::ArrayType as TypedArray>::create(*cx, CreateWith::Length(len), dest.reborrow())
     };
 
     if res.is_err() {
         Err(())
     } else {
-        TypedArray::from(dest.get())
+        unsafe { T::from_object(dest.get()) }
     }
 }
 
@@ -923,7 +908,7 @@ impl Drop for DataView {
     fn drop(&mut self) {
         let cx = GlobalScope::get_cx();
         assert!(unsafe {
-            js::jsapi::DetachArrayBuffer(*cx, self.buffer.underlying_object().handle())
+            DetachArrayBuffer(*cx, self.buffer.underlying_object().handle())
         })
     }
 }

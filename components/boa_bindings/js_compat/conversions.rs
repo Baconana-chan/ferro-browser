@@ -189,6 +189,12 @@ impl<T: ToJSValConvertible + ?Sized> ToJSValConvertible for Rc<T> {
     }
 }
 
+impl<T: ToJSValConvertible + ?Sized> ToJSValConvertible for &T {
+    unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
+        unsafe { (*self).to_jsval(cx, rval) };
+    }
+}
+
 impl<T: ToJSValConvertible> ToJSValConvertible for GcRoot<T> {
     unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
         unsafe { (**self).to_jsval(cx, rval) };
@@ -248,6 +254,26 @@ impl ToJSValConvertible for HeapArrayBufferView {
 }
 
 impl ToJSValConvertible for Float32Array {
+    unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
+        unsafe { self.underlying_object().to_jsval(cx, rval) };
+    }
+}
+
+use super::typedarray::{Uint8ClampedArray, Float64Array, Uint8Array};
+
+impl ToJSValConvertible for Uint8ClampedArray {
+    unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
+        unsafe { self.underlying_object().to_jsval(cx, rval) };
+    }
+}
+
+impl ToJSValConvertible for Float64Array {
+    unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
+        unsafe { self.underlying_object().to_jsval(cx, rval) };
+    }
+}
+
+impl ToJSValConvertible for Uint8Array {
     unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
         unsafe { self.underlying_object().to_jsval(cx, rval) };
     }
@@ -483,6 +509,18 @@ impl<T: FromJSValConvertible> FromJSValConvertible for Vec<T> {
     }
 }
 
+impl<T> FromJSValConvertible for Rc<T> {
+    type Config = ();
+
+    unsafe fn from_jsval(
+        _cx: *mut JSContext,
+        _val: HandleValue<'_>,
+        _config: Self::Config,
+    ) -> Result<ConversionResult<Self>, ()> {
+        Err(())
+    }
+}
+
 /// Convert a JSString to a Rust String
 /// Accepts both *mut JSString and NonNull<JSString>
 pub unsafe fn jsstr_to_string<T: IntoJSStringPtr>(_cx: *mut JSContext, s: T) -> String {
@@ -592,10 +630,10 @@ impl<T> std::ops::DerefMut for RootedTraceableBox<T> {
 /// FromJSValConvertibleRc - trait for converting from JS values to Rc types
 pub trait FromJSValConvertibleRc: Sized {
     /// Convert from a JS value to an Rc
-    unsafe fn from_jsval_rc(
+    unsafe fn from_jsval(
         cx: *mut JSContext,
         val: HandleValue<'_>,
-    ) -> ConversionResult<std::rc::Rc<Self>>;
+    ) -> Result<ConversionResult<std::rc::Rc<Self>>, ()>;
 }
 
 /// root_from_handlevalue - get root from handle value

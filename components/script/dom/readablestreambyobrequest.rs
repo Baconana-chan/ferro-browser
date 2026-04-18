@@ -58,7 +58,7 @@ impl ReadableStreamBYOBRequest {
 
 impl ReadableStreamBYOBRequestMethods<crate::DomTypeHolder> for ReadableStreamBYOBRequest {
     /// <https://streams.spec.whatwg.org/#rs-byob-request-view>
-    fn GetView(&self, _cx: SafeJSContext) -> Option<js::typedarray::ArrayBufferView> {
+    fn GetView(&self, _cx: SafeJSContext) -> Option<crate::js::typedarray::ArrayBufferView> {
         // Return this.[[view]].
         self.view.borrow().typed_array_to_option()
     }

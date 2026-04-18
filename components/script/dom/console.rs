@@ -536,7 +536,7 @@ fn get_js_stack(cx: *mut jsapi::JSContext) -> Vec<StackFrame> {
             );
         }
 
-        let mut column_number = jsapi::JS::TaggedColumnNumberOneOrigin { value_: 0 };
+        let mut column_number = crate::js::jsapi::JS::TaggedColumnNumberOneOrigin { value_: 0 };
         unsafe {
             jsapi::GetSavedFrameColumn(
                 cx,

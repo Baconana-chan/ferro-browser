@@ -32,7 +32,7 @@ use crate::fetch::{DeferredFetchRecord, FetchContext};
 use crate::realms::{InRealm, enter_realm};
 use crate::script_runtime::{CanGc, JSContext as SafeJSContext};
 
-impl js::gc::Rootable for AbortAlgorithm {}
+impl crate::js::gc::Rootable for AbortAlgorithm {}
 
 /// <https://dom.spec.whatwg.org/#abortcontroller-api-integration>
 /// TODO: implement algorithms at call point,

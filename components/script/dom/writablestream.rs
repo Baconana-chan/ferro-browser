@@ -46,7 +46,7 @@ use crate::dom::writablestreamdefaultwriter::WritableStreamDefaultWriter;
 use crate::realms::{InRealm, enter_realm};
 use crate::script_runtime::{CanGc, JSContext as SafeJSContext};
 
-impl js::gc::Rootable for AbortAlgorithmFulfillmentHandler {}
+impl crate::js::gc::Rootable for AbortAlgorithmFulfillmentHandler {}
 
 /// The fulfillment handler for the abort steps of
 /// <https://streams.spec.whatwg.org/#writable-stream-finish-erroring>
@@ -70,7 +70,7 @@ impl Callback for AbortAlgorithmFulfillmentHandler {
     }
 }
 
-impl js::gc::Rootable for AbortAlgorithmRejectionHandler {}
+impl crate::js::gc::Rootable for AbortAlgorithmRejectionHandler {}
 
 /// The rejection handler for the abort steps of
 /// <https://streams.spec.whatwg.org/#writable-stream-finish-erroring>
@@ -94,7 +94,7 @@ impl Callback for AbortAlgorithmRejectionHandler {
     }
 }
 
-impl js::gc::Rootable for PendingAbortRequest {}
+impl crate::js::gc::Rootable for PendingAbortRequest {}
 
 /// <https://streams.spec.whatwg.org/#pending-abort-request>
 #[derive(JSTraceable, MallocSizeOf)]
@@ -1136,7 +1136,7 @@ impl WritableStreamMethods<crate::DomTypeHolder> for WritableStream {
     }
 }
 
-impl js::gc::Rootable for CrossRealmTransformWritable {}
+impl crate::js::gc::Rootable for CrossRealmTransformWritable {}
 
 /// <https://streams.spec.whatwg.org/#abstract-opdef-setupcrossrealmtransformwritable>
 /// A wrapper to handle `message` and `messageerror` events

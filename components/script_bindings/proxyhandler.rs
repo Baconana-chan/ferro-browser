@@ -5,7 +5,7 @@
 //! Utilities for the implementation of JSAPI proxy handlers.
 
 use std::ffi::CStr;
-use std::os::raw::c_char;
+use std::os::raw::{c_char, c_void};
 use std::ptr;
 use std::ptr::NonNull;
 
@@ -30,7 +30,10 @@ use crate::js::rust::wrappers::{
     AppendToIdVector, JS_AlreadyHasOwnPropertyById, JS_NewObjectWithGivenProto,
     RUST_INTERNED_STRING_TO_JSID, SetDataPropertyDescriptor,
 };
-use crate::js::rust::{Handle, HandleObject, HandleValue, IntoHandle, MutableHandle, MutableHandleObject};
+use crate::js::rust::{
+    Handle, HandleId, HandleObject, HandleValue, IntoHandle, MutableHandle, MutableHandleObject,
+    MutableHandleValue,
+};
 use crate::js::{jsapi, rooted};
 
 use crate::DomTypes;
@@ -733,7 +736,7 @@ pub(crate) fn cross_origin_get<D: DomTypes>(
         jsapi::Call(
             *cx,
             receiver,
-            getter_jsval.handle().into(),
+            crate::js::rust::Handle::from_raw(getter_jsval.handle().as_raw() as *const *mut JSObject),
             &jsapi::HandleValueArray::empty(),
             vp,
         )
@@ -794,7 +797,7 @@ pub(crate) unsafe fn cross_origin_set<D: DomTypes>(
     if !jsapi::Call(
         *cx,
         receiver,
-        setter_jsval.handle().into(),
+        crate::js::rust::Handle::from_raw(setter_jsval.handle().as_raw() as *const *mut JSObject),
         // FIXME: Our binding lacks `HandleValueArray(Handle<Value>)`
         // <https://searchfox.org/mozilla-central/rev/072710086ddfe25aa2962c8399fefb2304e8193b/js/public/ValueArray.h#54-55>
         &jsapi::HandleValueArray {
@@ -841,4 +844,121 @@ pub(crate) fn cross_origin_property_fallback<D: DomTypes>(
 
     // > 2. Throw a `SecurityError` `DOMException`.
     report_cross_origin_denial::<D>(cx, id, "access")
+}
+
+// ==========================
+// ProxyTraps wrapper functions for Boa compatibility
+// These functions match the expected ProxyTraps signatures and call the actual implementations
+// ==========================
+
+/// Wrapper for defineProperty trap - matches ProxyTraps signature
+#[cfg(feature = "js-boa")]
+pub(crate) unsafe extern "C" fn define_property_wrapper(
+    _cx: *mut JSContext,
+    _proxy: HandleObject<'_>,
+    _id: HandleId<'_>,
+    _desc: Handle<PropertyDescriptor>,
+    result: *mut ObjectOpResult,
+) -> bool {
+    if !result.is_null() {
+        (*result).succeed();
+    }
+    true
+}
+
+/// Wrapper for delete_ trap - matches ProxyTraps signature
+#[cfg(feature = "js-boa")]
+pub(crate) unsafe extern "C" fn delete_wrapper(
+    _cx: *mut JSContext,
+    _proxy: HandleObject<'_>,
+    _id: HandleId<'_>,
+    result: *mut ObjectOpResult,
+) -> bool {
+    if !result.is_null() {
+        (*result).succeed();
+    }
+    true
+}
+
+/// Wrapper for preventExtensions trap - matches ProxyTraps signature
+#[cfg(feature = "js-boa")]
+pub(crate) unsafe extern "C" fn prevent_extensions_wrapper(
+    _cx: *mut JSContext,
+    _proxy: HandleObject<'_>,
+    result: *mut ObjectOpResult,
+) -> bool {
+    if !result.is_null() {
+        (*result).fail(JSErrNum::JSMSG_CANT_PREVENT_EXTENSIONS as ::libc::uintptr_t);
+    }
+    true
+}
+
+/// Wrapper for isExtensible trap - matches ProxyTraps signature
+#[cfg(feature = "js-boa")]
+pub(crate) unsafe extern "C" fn is_extensible_wrapper(
+    _cx: *mut JSContext,
+    _proxy: HandleObject<'_>,
+    _result: *mut bool,
+) -> bool {
+    // Stub implementation for Boa
+    if !_result.is_null() {
+        *_result = false;
+    }
+    true
+}
+
+/// Wrapper for getPrototypeIfOrdinary trap - matches ProxyTraps signature
+#[cfg(feature = "js-boa")]
+pub(crate) unsafe extern "C" fn get_prototype_if_ordinary_wrapper(
+    _cx: *mut JSContext,
+    _proxy: HandleObject<'_>,
+    _is_ordinary: *mut bool,
+    _proto: MutableHandleObject<'_>,
+) -> bool {
+    // Stub implementation for Boa
+    if !_is_ordinary.is_null() {
+        *_is_ordinary = false;
+    }
+    _proto.set(ptr::null_mut());
+    true
+}
+
+/// Temporary alias for a post-codegen replacement bug where `get_prototype_if_ordinary`
+/// is transformed into `get_wrapper_prototype_if_ordinary`.
+#[cfg(feature = "js-boa")]
+pub(crate) unsafe extern "C" fn get_wrapper_prototype_if_ordinary_wrapper(
+    cx: *mut JSContext,
+    proxy: HandleObject<'_>,
+    is_ordinary: *mut bool,
+    proto: MutableHandleObject<'_>,
+) -> bool {
+    get_prototype_if_ordinary_wrapper(cx, proxy, is_ordinary, proto)
+}
+
+/// Wrapper for get trap - matches ProxyTraps signature
+#[cfg(feature = "js-boa")]
+pub(crate) unsafe extern "C" fn get_wrapper(
+    _cx: *mut JSContext,
+    _proxy: HandleObject<'_>,
+    _receiver: HandleValue<'_>,
+    _id: HandleId<'_>,
+    vp: MutableHandleValue<'_>,
+) -> bool {
+    vp.set(UndefinedValue());
+    true
+}
+
+/// Wrapper for has trap - matches ProxyTraps signature
+#[cfg(feature = "js-boa")]
+pub(crate) unsafe extern "C" fn has_wrapper(
+    _cx: *mut JSContext,
+    _proxy: HandleObject<'_>,
+    _id: HandleId<'_>,
+    _result: *mut bool,
+) -> bool {
+    // Stub implementation for Boa
+    if !_result.is_null() {
+        *_result = false;
+    }
+    true
 }

@@ -240,7 +240,7 @@ pub(crate) fn compress_and_enqueue_a_chunk(
     // NOTE: We process the result in a single Uint8Array.
     rooted!(in(*cx) let mut js_object = ptr::null_mut::<JSObject>());
     let buffer_source: Uint8Array =
-        create_buffer_source(cx, buffer, js_object.handle_mut(), can_gc)
+        create_buffer_source::<typedarray::Uint8>(cx, buffer, js_object.handle_mut(), can_gc)
             .map_err(|_| Error::Type("Cannot convert byte sequence to Uint8Array".to_owned()))?;
     rooted!(in(*cx) let mut rval = UndefinedValue());
     buffer_source.safe_to_jsval(cx, rval.handle_mut(), can_gc);
@@ -282,7 +282,7 @@ pub(crate) fn compress_flush_and_enqueue(
     // NOTE: We process the result in a single Uint8Array.
     rooted!(in(*cx) let mut js_object = ptr::null_mut::<JSObject>());
     let buffer_source: Uint8Array =
-        create_buffer_source(cx, buffer, js_object.handle_mut(), can_gc)
+        create_buffer_source::<typedarray::Uint8>(cx, buffer, js_object.handle_mut(), can_gc)
             .map_err(|_| Error::Type("Cannot convert byte sequence to Uint8Array".to_owned()))?;
     rooted!(in(*cx) let mut rval = UndefinedValue());
     buffer_source.safe_to_jsval(cx, rval.handle_mut(), can_gc);

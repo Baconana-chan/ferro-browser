@@ -8,7 +8,6 @@ use malloc_size_of_derive::MallocSizeOf;
 
 #[cfg(not(feature = "js-boa"))]
 use crate::interfaces::GlobalScopeHelpers;
-#[cfg(not(feature = "js-boa"))]
 use crate::iterable::{Iterable, IterableIterator};
 use crate::realms::InRealm;
 use crate::root::{Dom, DomRoot, Root};
@@ -118,10 +117,85 @@ pub trait DomGlobalGeneric<D: DomTypes>: DomObject {
 impl<D: DomTypes, T: DomObject> DomGlobalGeneric<D> for T {}
 
 #[cfg(feature = "js-boa")]
-pub trait DomObjectWrap<D: DomTypes>: Sized + DomObject {}
+pub trait DomObjectWrap<D: DomTypes>: Sized + DomObject + DomGlobalGeneric<D> {
+    #[allow(clippy::type_complexity)]
+    const WRAP: unsafe fn(
+        JSContext,
+        &D::GlobalScope,
+        Option<HandleObject>,
+        Box<Self>,
+        CanGc,
+    ) -> Root<Dom<Self>>;
+}
 
 #[cfg(feature = "js-boa")]
-pub trait DomObjectIteratorWrap<D: DomTypes>: DomObject {}
+pub trait DomObjectIteratorWrap<D: DomTypes>: DomObjectWrap<D> + JSTraceable + Iterable {
+    #[allow(clippy::type_complexity)]
+    const ITER_WRAP: unsafe fn(
+        JSContext,
+        &D::GlobalScope,
+        Option<HandleObject>,
+        Box<IterableIterator<D, Self>>,
+        CanGc,
+    ) -> Root<Dom<IterableIterator<D, Self>>>;
+}
+
+#[cfg(feature = "js-boa")]
+unsafe fn unimplemented_wrap<D, T>(
+    _cx: JSContext,
+    _global: &D::GlobalScope,
+    _proto: Option<HandleObject>,
+    _obj: Box<T>,
+    _can_gc: CanGc,
+) -> Root<Dom<T>>
+where
+    D: DomTypes,
+    T: Sized + DomObject + DomGlobalGeneric<D>,
+{
+    unimplemented!("DomObjectWrap::WRAP is not implemented for js-boa yet")
+}
+
+#[cfg(feature = "js-boa")]
+unsafe fn unimplemented_iter_wrap<D, T>(
+    _cx: JSContext,
+    _global: &D::GlobalScope,
+    _proto: Option<HandleObject>,
+    _obj: Box<IterableIterator<D, T>>,
+    _can_gc: CanGc,
+) -> Root<Dom<IterableIterator<D, T>>>
+where
+    D: DomTypes,
+    T: Sized + DomObjectWrap<D> + JSTraceable + Iterable,
+{
+    unimplemented!("DomObjectIteratorWrap::ITER_WRAP is not implemented for js-boa yet")
+}
+
+#[cfg(feature = "js-boa")]
+impl<D: DomTypes, T> DomObjectWrap<D> for T
+where
+    T: Sized + DomObject + DomGlobalGeneric<D>,
+{
+    const WRAP: unsafe fn(
+        JSContext,
+        &D::GlobalScope,
+        Option<HandleObject>,
+        Box<Self>,
+        CanGc,
+    ) -> Root<Dom<Self>> = unimplemented_wrap::<D, T>;
+}
+
+#[cfg(feature = "js-boa")]
+impl<D: DomTypes, T> DomObjectIteratorWrap<D> for T where
+    T: DomObjectWrap<D> + JSTraceable + Iterable
+{
+    const ITER_WRAP: unsafe fn(
+        JSContext,
+        &D::GlobalScope,
+        Option<HandleObject>,
+        Box<IterableIterator<D, Self>>,
+        CanGc,
+    ) -> Root<Dom<IterableIterator<D, Self>>> = unimplemented_iter_wrap::<D, T>;
+}
 
 // Full implementations for SpiderMonkey
 #[cfg(not(feature = "js-boa"))]

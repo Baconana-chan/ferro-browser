@@ -1984,7 +1984,7 @@ impl ReadableByteStreamControllerMethods<crate::DomTypeHolder> for ReadableByteS
     /// <https://streams.spec.whatwg.org/#rbs-controller-enqueue>
     fn Enqueue(
         &self,
-        chunk: js::gc::CustomAutoRooterGuard<js::typedarray::ArrayBufferView>,
+        chunk: crate::js::gc::CustomAutoRooterGuard<crate::js::typedarray::ArrayBufferView>,
         can_gc: CanGc,
     ) -> Fallible<()> {
         let cx = GlobalScope::get_cx();

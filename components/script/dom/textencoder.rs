@@ -68,7 +68,7 @@ impl TextEncoderMethods<crate::DomTypeHolder> for TextEncoder {
         let encoded = input.0.as_bytes();
 
         rooted!(in(*cx) let mut js_object = ptr::null_mut::<JSObject>());
-        create_buffer_source(cx, encoded, js_object.handle_mut(), can_gc)
+        create_buffer_source::<typedarray::Uint8>(cx, encoded, js_object.handle_mut(), can_gc)
             .expect("Converting input to uint8 array should never fail")
     }
 

@@ -241,7 +241,8 @@ pub(crate) fn decompress_and_enqueue_a_chunk(
     // Step 5. For each Uint8Array array of arrays, enqueue array in ds’s transform.
     // NOTE: We process the result in a single Uint8Array.
     rooted!(in(*cx) let mut js_object = ptr::null_mut::<JSObject>());
-    let array: Uint8Array = create_buffer_source(cx, buffer, js_object.handle_mut(), can_gc)
+    let array: Uint8Array =
+        create_buffer_source::<typedarray::Uint8>(cx, buffer, js_object.handle_mut(), can_gc)
         .map_err(|_| Error::Type("Cannot convert byte sequence to Uint8Array".to_owned()))?;
     rooted!(in(*cx) let mut rval = UndefinedValue());
     array.safe_to_jsval(cx, rval.handle_mut(), can_gc);
@@ -291,8 +292,13 @@ pub(crate) fn decompress_flush_and_enqueue(
         // Step 2.2. For each Uint8Array array of arrays, enqueue array in ds’s transform.
         // NOTE: We process the result in a single Uint8Array.
         rooted!(in(*cx) let mut js_object = ptr::null_mut::<JSObject>());
-        let array: Uint8Array = create_buffer_source(cx, buffer, js_object.handle_mut(), can_gc)
-            .map_err(|_| Error::Type("Cannot convert byte sequence to Uint8Array".to_owned()))?;
+        let array: Uint8Array = create_buffer_source::<typedarray::Uint8>(
+            cx,
+            buffer,
+            js_object.handle_mut(),
+            can_gc,
+        )
+        .map_err(|_| Error::Type("Cannot convert byte sequence to Uint8Array".to_owned()))?;
         rooted!(in(*cx) let mut rval = UndefinedValue());
         array.safe_to_jsval(cx, rval.handle_mut(), can_gc);
         controller.enqueue(cx, global, rval.handle(), can_gc)?;

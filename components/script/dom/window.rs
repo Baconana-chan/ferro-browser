@@ -524,7 +524,7 @@ impl Window {
 
     #[expect(unsafe_code)]
     pub(crate) fn get_cx(&self) -> JSContext {
-        unsafe { JSContext::from_ptr(js::rust::Runtime::get().unwrap().as_ptr()) }
+        unsafe { JSContext::from_ptr(crate::js::rust::Runtime::get().unwrap().as_ptr()) }
     }
 
     pub(crate) fn get_js_runtime(&self) -> Ref<'_, Option<Rc<Runtime>>> {
@@ -3565,7 +3565,7 @@ pub(crate) struct LayoutValue<T: MallocSizeOf> {
 
 #[expect(unsafe_code)]
 unsafe impl<T: JSTraceable + MallocSizeOf> JSTraceable for LayoutValue<T> {
-    unsafe fn trace(&self, trc: *mut js::jsapi::JSTracer) {
+    unsafe fn trace(&self, trc: *mut crate::js::jsapi::JSTracer) {
         unsafe { self.value.trace(trc) };
     }
 }

@@ -44,7 +44,7 @@ use crate::dom::writablestreamdefaultcontroller::UnderlyingSinkType;
 use crate::realms::enter_realm;
 use crate::script_runtime::{CanGc, JSContext as SafeJSContext};
 
-impl js::gc::Rootable for TransformBackPressureChangePromiseFulfillment {}
+impl crate::js::gc::Rootable for TransformBackPressureChangePromiseFulfillment {}
 
 /// Reacting to backpressureChangePromise as part of
 /// <https://streams.spec.whatwg.org/#transform-stream-default-sink-write-algorithm>
@@ -159,7 +159,7 @@ impl Callback for BackpressureChangeRejection {
     }
 }
 
-impl js::gc::Rootable for CancelPromiseFulfillment {}
+impl crate::js::gc::Rootable for CancelPromiseFulfillment {}
 
 /// Reacting to fulfillment of the cancelpromise as part of
 /// <https://streams.spec.whatwg.org/#transform-stream-default-sink-abort-algorithm>
@@ -201,7 +201,7 @@ impl Callback for CancelPromiseFulfillment {
     }
 }
 
-impl js::gc::Rootable for CancelPromiseRejection {}
+impl crate::js::gc::Rootable for CancelPromiseRejection {}
 
 /// Reacting to rejection of cancelpromise as part of
 /// <https://streams.spec.whatwg.org/#transform-stream-default-sink-abort-algorithm>
@@ -226,7 +226,7 @@ impl Callback for CancelPromiseRejection {
     }
 }
 
-impl js::gc::Rootable for SourceCancelPromiseFulfillment {}
+impl crate::js::gc::Rootable for SourceCancelPromiseFulfillment {}
 
 /// Reacting to fulfillment of the cancelpromise as part of
 /// <https://streams.spec.whatwg.org/#transform-stream-default-source-cancel>
@@ -276,7 +276,7 @@ impl Callback for SourceCancelPromiseFulfillment {
     }
 }
 
-impl js::gc::Rootable for SourceCancelPromiseRejection {}
+impl crate::js::gc::Rootable for SourceCancelPromiseRejection {}
 
 /// Reacting to rejection of cancelpromise as part of
 /// <https://streams.spec.whatwg.org/#transform-stream-default-source-cancel>
@@ -309,7 +309,7 @@ impl Callback for SourceCancelPromiseRejection {
     }
 }
 
-impl js::gc::Rootable for FlushPromiseFulfillment {}
+impl crate::js::gc::Rootable for FlushPromiseFulfillment {}
 
 /// Reacting to fulfillment of the flushpromise as part of
 /// <https://streams.spec.whatwg.org/#transform-stream-default-sink-close-algorithm>
@@ -345,7 +345,7 @@ impl Callback for FlushPromiseFulfillment {
     }
 }
 
-impl js::gc::Rootable for FlushPromiseRejection {}
+impl crate::js::gc::Rootable for FlushPromiseRejection {}
 /// Reacting to rejection of flushpromise as part of
 /// <https://streams.spec.whatwg.org/#transform-stream-default-sink-close-algorithm>
 
@@ -371,7 +371,7 @@ impl Callback for FlushPromiseRejection {
     }
 }
 
-impl js::gc::Rootable for CrossRealmTransform {}
+impl crate::js::gc::Rootable for CrossRealmTransform {}
 
 /// A wrapper to handle `message` and `messageerror` events
 /// for the message port used by the transfered stream.

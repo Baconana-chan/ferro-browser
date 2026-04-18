@@ -225,13 +225,27 @@ impl Default for JSClassOps {
 }
 
 /// JSNewEnumerateOp signature
-pub type JSNewEnumerateOp = unsafe extern "C" fn(cx: *mut JSContext, obj: HandleObject<'_>, properties: *mut c_void, enumerableOnly: bool) -> bool;
+pub type JSNewEnumerateOp = unsafe extern "C" fn(
+    cx: *mut JSContext,
+    obj: HandleObject<'_>,
+    properties: super::rust::MutableHandle<'_, super::rust::IdVector>,
+    enumerableOnly: bool,
+) -> bool;
 
 /// JSResolveOp signature  
-pub type JSResolveOp = unsafe extern "C" fn(cx: *mut JSContext, obj: HandleObject<'_>, id: *mut c_void, resolved: *mut bool) -> bool;
+pub type JSResolveOp = unsafe extern "C" fn(
+    cx: *mut JSContext,
+    obj: HandleObject<'_>,
+    id: super::glue::HandleId<'_>,
+    resolved: *mut bool,
+) -> bool;
 
 /// JSMayResolveOp signature
-pub type JSMayResolveOp = unsafe extern "C" fn(names: *const c_void, id: *mut c_void, maybeObj: *mut JSObject) -> bool;
+pub type JSMayResolveOp = unsafe extern "C" fn(
+    names: *const JSAtomState,
+    id: super::glue::PropertyKey,
+    maybeObj: *mut JSObject,
+) -> bool;
 
 /// JSFinalizeOp signature
 pub type JSFinalizeOp = unsafe extern "C" fn(gcx: *mut GCContext, obj: *mut JSObject);
@@ -541,6 +555,18 @@ impl HandleValueArray {
     }
 }
 
+impl<const N: usize> From<&[Value; N]> for HandleValueArray {
+    fn from(values: &[Value; N]) -> Self {
+        Self::from_rooted_slice(values)
+    }
+}
+
+impl From<&Vec<Value>> for HandleValueArray {
+    fn from(values: &Vec<Value>) -> Self {
+        Self::from_rooted_slice(values)
+    }
+}
+
 // GC-related types - use proper enum from gc module
 pub use super::gc::GCReason;
 pub type GCOptions = u32;
@@ -575,6 +601,13 @@ pub type MimeType = u32;
 // Promise types
 pub type PromiseRejectionHandlingState = u32;
 pub type PromiseUserInputEventHandlingState = u32;
+
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SavedFrameSelfHosted {
+    Exclude = 0,
+    Include = 1,
+}
 
 // Security
 #[repr(C)]
@@ -706,7 +739,22 @@ pub enum Type {
     BigInt64 = 9,
     BigUint64 = 10,
     Float16 = 11,
-    MaxTypedArrayViewType = 12,
+    Int64 = 12,
+    Simd128 = 13,
+    MaxTypedArrayViewType = 14,
+}
+
+impl Type {
+    pub fn byte_size(self) -> Option<usize> {
+        match self {
+            Type::Int8 | Type::Uint8 | Type::Uint8Clamped => Some(1),
+            Type::Int16 | Type::Uint16 | Type::Float16 => Some(2),
+            Type::Int32 | Type::Uint32 | Type::Float32 => Some(4),
+            Type::Float64 | Type::BigInt64 | Type::BigUint64 | Type::Int64 => Some(8),
+            Type::Simd128 => Some(16),
+            Type::MaxTypedArrayViewType => None,
+        }
+    }
 }
 
 pub unsafe fn NewArrayBuffer(_cx: *mut RawJSContext, _nbytes: usize) -> *mut JSObject {
@@ -717,6 +765,16 @@ pub unsafe fn NewArrayBufferWithContents(
     _cx: *mut RawJSContext,
     _nbytes: usize,
     _contents: *mut c_void,
+) -> *mut JSObject {
+    ptr::null_mut()
+}
+
+pub unsafe fn NewExternalArrayBuffer(
+    _cx: *mut RawJSContext,
+    _nbytes: usize,
+    _contents: *mut c_void,
+    _free_func: Option<unsafe extern "C" fn(*mut c_void, *mut c_void)>,
+    _free_user_data: *mut c_void,
 ) -> *mut JSObject {
     ptr::null_mut()
 }
@@ -1128,6 +1186,12 @@ pub use super::glue::PropertyDescriptor;
 /// JS namespace containing core functions
 pub mod JS {
     use super::*;
+
+    #[repr(C)]
+    #[derive(Clone, Copy, Debug, Default)]
+    pub struct TaggedColumnNumberOneOrigin {
+        pub value_: u32,
+    }
     
     /// CompartmentIterResult re-export in JS namespace
     pub type CompartmentIterResult = super::CompartmentIterResult;
@@ -1863,16 +1927,23 @@ impl ObjectOpResult {
         Self { code_: 0 }
     }
     
-    pub fn succeed(&mut self) {
+    pub fn succeed(&mut self) -> bool {
         self.code_ = 0;
+        true
     }
     
-    pub fn fail(&mut self, reason: usize) {
+    pub fn fail(&mut self, reason: usize) -> bool {
         self.code_ = reason;
+        false
     }
     
     pub fn ok(&self) -> bool {
         self.code_ == 0
+    }
+
+    pub fn fail_no_named_setter(&mut self) -> bool {
+        self.code_ = 1;
+        false
     }
 }
 
@@ -2424,15 +2495,49 @@ pub type JSJitSetterOp = Option<for<'a> unsafe extern "C" fn(*mut RawJSContext, 
 /// JSJitMethodOp - JIT method operation
 pub type JSJitMethodOp = Option<for<'a> unsafe extern "C" fn(*mut RawJSContext, HandleObject<'a>, *mut c_void, *const JSJitMethodCallArgs) -> bool>;
 
+/// JSJitCallArgs - base call arguments for JIT operations
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct JSJitCallArgs {
+    pub argc_: u32,
+    pub _unused: [u8; 4], // Padding to match SpiderMonkey layout
+}
+
 /// JSJitGetterCallArgs - arguments for JIT getter
-#[repr(transparent)]
+#[repr(C)]
 pub struct JSJitGetterCallArgs {
+    pub _base: JSJitCallArgs,
     pub rval: MutableHandleValue<'static>,
 }
 
+impl Clone for JSJitGetterCallArgs {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl Copy for JSJitGetterCallArgs {}
+
 impl JSJitGetterCallArgs {
+    pub fn new(rval: MutableHandleValue<'_>) -> Self {
+        let raw = rval.as_raw();
+        Self {
+            _base: JSJitCallArgs::from(rval),
+            rval: unsafe { MutableHandleValue::from_raw(raw) },
+        }
+    }
+
     pub fn rval(&self) -> MutableHandleValue<'_> {
         unsafe { MutableHandleValue::from_raw(self.rval.as_raw()) }
+    }
+}
+
+impl From<MutableHandleValue<'_>> for JSJitCallArgs {
+    fn from(_rval: MutableHandleValue<'_>) -> Self {
+        Self {
+            argc_: 0,
+            _unused: [0; 4],
+        }
     }
 }
 
@@ -2645,14 +2750,15 @@ pub enum JSPropertySpec_Kind {
 // ===================
 
 /// Get property descriptor by ID
-pub unsafe fn JS_GetPropertyDescriptorById(
+pub unsafe fn JS_GetPropertyDescriptorById<T: super::rust::IntoPropDescPtr>(
     _cx: *mut RawJSContext,
     _obj: HandleObject<'_>,
     _id: super::glue::HandleId<'_>,
-    _desc: *mut super::glue::PropertyDescriptor,
+    _desc: T,
     _holder: MutableHandleObject<'_>,
     _is_none: *mut bool,
 ) -> bool {
+    let _ = _desc.into_prop_desc_ptr();
     true
 }
 
@@ -2665,6 +2771,52 @@ pub unsafe fn JS_WrapObject(
     _cx: *mut RawJSContext,
     _obj: MutableHandleObject<'_>,
 ) -> bool {
+    true
+}
+
+pub unsafe fn GetSavedFrameFunctionDisplayName(
+    _cx: *mut RawJSContext,
+    _principals: *mut c_void,
+    _frame: HandleObject<'_>,
+    _result: MutableHandleString<'_>,
+    _self_hosted: SavedFrameSelfHosted,
+) -> bool {
+    true
+}
+
+pub unsafe fn GetSavedFrameSource(
+    _cx: *mut RawJSContext,
+    _principals: *mut c_void,
+    _frame: HandleObject<'_>,
+    _result: MutableHandleString<'_>,
+    _self_hosted: SavedFrameSelfHosted,
+) -> bool {
+    true
+}
+
+pub unsafe fn GetSavedFrameLine(
+    _cx: *mut RawJSContext,
+    _principals: *mut c_void,
+    _frame: HandleObject<'_>,
+    line: *mut u32,
+    _self_hosted: SavedFrameSelfHosted,
+) -> bool {
+    if !line.is_null() {
+        *line = 0;
+    }
+    true
+}
+
+pub unsafe fn GetSavedFrameColumn(
+    _cx: *mut RawJSContext,
+    _principals: *mut c_void,
+    _frame: HandleObject<'_>,
+    column: *mut JS::TaggedColumnNumberOneOrigin,
+    _self_hosted: SavedFrameSelfHosted,
+) -> bool {
+    if !column.is_null() {
+        (*column).value_ = 0;
+    }
     true
 }
 
@@ -3001,6 +3153,8 @@ pub struct ProxyClassExtension {
     _placeholder: u8,
 }
 
+pub static ProxyClassExtension: ProxyClassExtension = ProxyClassExtension { _placeholder: 0 };
+
 /// Proxy class ops
 #[repr(C)]
 #[derive(Debug, Default)]
@@ -3008,12 +3162,18 @@ pub struct ProxyClassOps {
     _placeholder: u8,
 }
 
+pub static ProxyClassOps: ProxyClassOps = ProxyClassOps { _placeholder: 0 };
+
 /// Proxy object ops
 #[repr(C)]
 #[derive(Debug, Default)]
 pub struct ProxyObjectOps {
     _placeholder: u8,
 }
+
+pub static ProxyObjectOps: ProxyObjectOps = ProxyObjectOps { _placeholder: 0 };
+
+pub unsafe fn DisableJitBackend() {}
 
 // ===================
 // glue submodule (for crate::js::jsapi::glue)

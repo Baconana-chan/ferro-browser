@@ -4001,9 +4001,7 @@ fn compile_pattern(
     if check_js_regex_syntax(cx, pattern_str, can_gc) {
         // ...and if it does make pattern that matches only the entirety of string
         let pattern_str = format!("^(?:{})$", pattern_str);
-        let flags = RegExpFlags {
-            flags_: RegExpFlag_UnicodeSets,
-        };
+        let flags = RegExpFlags::UnicodeSets;
         new_js_regex(cx, &pattern_str, flags, out_regex, can_gc)
     } else {
         false
@@ -4022,10 +4020,7 @@ fn check_js_regex_syntax(cx: SafeJSContext, pattern: &str, _can_gc: CanGc) -> bo
             *cx,
             pattern.as_ptr(),
             pattern.len(),
-            RegExpFlags {
-                flags_: RegExpFlag_UnicodeSets,
-            },
-            exception.handle_mut(),
+            RegExpFlag_UnicodeSets as u32,
         );
 
         if !valid {
@@ -4053,7 +4048,7 @@ pub(crate) fn new_js_regex(
             *cx,
             pattern.as_ptr(),
             pattern.len(),
-            flags,
+            flags as u8,
         ));
         if out_regex.is_null() {
             JS_ClearPendingException(*cx);

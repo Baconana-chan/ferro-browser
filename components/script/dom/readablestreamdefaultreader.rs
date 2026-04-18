@@ -36,7 +36,7 @@ use crate::script_runtime::{CanGc, JSContext as SafeJSContext};
 type ReadAllBytesSuccessSteps = dyn Fn(&[u8]);
 type ReadAllBytesFailureSteps = dyn Fn(SafeJSContext, SafeHandleValue);
 
-impl js::gc::Rootable for ContinueReadMicrotask {}
+impl crate::js::gc::Rootable for ContinueReadMicrotask {}
 
 /// Microtask handler to continue the read loop without recursion.
 /// Spec note: "This recursion could potentially cause a stack overflow

@@ -821,14 +821,14 @@ impl DOMMatrixReadOnlyMethods<crate::DomTypeHolder> for DOMMatrixReadOnly {
             .map(|&x| x as f32)
             .collect();
         rooted!(in (*cx) let mut array = ptr::null_mut::<JSObject>());
-        create_buffer_source(cx, &vec, array.handle_mut(), can_gc)
+        create_buffer_source::<typedarray::Float32>(cx, &vec, array.handle_mut(), can_gc)
             .expect("Converting matrix to float32 array should never fail")
     }
 
     /// <https://drafts.fxtf.org/geometry-1/#dom-dommatrixreadonly-tofloat64array>
     fn ToFloat64Array(&self, cx: JSContext, can_gc: CanGc) -> Float64Array {
         rooted!(in (*cx) let mut array = ptr::null_mut::<JSObject>());
-        create_buffer_source(
+        create_buffer_source::<typedarray::Float64>(
             cx,
             &self.matrix.borrow().to_array(),
             array.handle_mut(),

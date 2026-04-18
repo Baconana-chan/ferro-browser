@@ -17,6 +17,14 @@ pub trait GCMethods: Sized {
     unsafe fn write_barriers(_v: *mut Self, _next: Self) {}
 }
 
+/// SpiderMonkey compatibility marker for types that can live in rooted slots.
+pub trait Rootable {}
+
+/// SpiderMonkey compatibility trait for types that provide an initial rooted value.
+pub trait Initialize: Sized {
+    unsafe fn initial() -> Option<Self>;
+}
+
 impl GCMethods for Value {
     unsafe fn initial() -> Self {
         Value::undefined()

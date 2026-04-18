@@ -507,8 +507,9 @@ unsafe extern "C" fn code_for_eval_gets(
     let cx = unsafe { JSContext::from_ptr(cx) };
     if let Ok(trusted_script) = unsafe { root_from_object::<TrustedScript>(code.get(), *cx) } {
         let script_str = trusted_script.data().str();
-        let s = js::conversions::Utf8Chars::from(&*script_str);
-        let new_string = unsafe { JS_NewStringCopyUTF8N(*cx, &*s as *const _) };
+        let new_string = unsafe {
+            JS_NewStringCopyUTF8N(*cx, script_str.as_ptr() as *const i8, script_str.len())
+        };
         code_for_eval.set(new_string);
     }
     true

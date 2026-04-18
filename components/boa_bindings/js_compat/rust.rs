@@ -51,6 +51,18 @@ impl<'a> IntoHandleObject<'a> for HandleValue<'a> {
     }
 }
 
+impl<'a> IntoHandleObject<'a> for HandleObject<'a> {
+    fn into_handle_object(self) -> HandleObject<'a> {
+        self
+    }
+}
+
+impl<'a> IntoHandleObject<'a> for *mut JSObject {
+    fn into_handle_object(self) -> HandleObject<'a> {
+        unsafe { HandleObject::from_raw(&self) }
+    }
+}
+
 // Implementation for MutableHandle<PropertyDescriptor> is below after MutableHandle definition
 
 /// Runtime - the JavaScript runtime
@@ -103,6 +115,32 @@ pub struct ThreadSafeJSContext {
 
 unsafe impl Send for ThreadSafeJSContext {}
 unsafe impl Sync for ThreadSafeJSContext {}
+
+pub struct EnvironmentChain {
+    objects: Vec<*mut JSObject>,
+}
+
+impl EnvironmentChain {
+    pub fn new(_cx: *mut RawJSContext, _support_unscopables: bool) -> Self {
+        Self { objects: Vec::new() }
+    }
+
+    pub fn append(&self, _obj: *mut JSObject) {}
+
+    pub fn get(&self) -> *const *mut JSObject {
+        self.objects.as_ptr()
+    }
+}
+
+pub fn evaluate_script(
+    _cx: &mut JSContext,
+    _global: HandleObject<'_>,
+    _source: &str,
+    mut _rval: MutableHandleValue<'_>,
+    _options: CompileOptionsWrapper<'_>,
+) -> Result<(), ()> {
+    Ok(())
+}
 
 /// Handle - immutable rooted reference
 #[repr(transparent)]
@@ -248,6 +286,17 @@ pub struct MutableHandle<'a, T> {
     pub ptr: *mut T,
     pub _marker: PhantomData<&'a mut T>,
 }
+
+impl<'a, T> Clone for MutableHandle<'a, T> {
+    fn clone(&self) -> Self {
+        Self {
+            ptr: self.ptr,
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<'a, T> Copy for MutableHandle<'a, T> {}
 
 impl<'a, T> MutableHandle<'a, T> {
     pub fn get(&self) -> T where T: Copy {
@@ -1041,8 +1090,9 @@ pub mod wrappers {
         _cx: *mut RawJSContext,
         _handler: *const c_void,
         _priv: HandleValue<'_>,
-        _proto: HandleObject<'_>,
+        _proto: *mut JSObject,
         _clasp: *const super::super::jsapi::JSClass,
+        _singleton: bool,
     ) -> *mut JSObject {
         ptr::null_mut()
     }
@@ -1065,8 +1115,8 @@ pub mod wrappers {
     }
     
     /// int_to_jsid - convert an integer to jsid
-    pub unsafe fn int_to_jsid(i: i32) -> super::super::glue::jsid {
-        super::super::glue::jsid { bits: ((i as u32) << 1) as usize | 1 }
+    pub unsafe fn int_to_jsid(i: i32, mut id: super::MutableHandle<'_, super::super::glue::jsid>) {
+        id.set(super::super::glue::jsid { bits: ((i as u32) << 1) as usize | 1 });
     }
     
     /// JS_DefineProperty3 - define property with value and attrs

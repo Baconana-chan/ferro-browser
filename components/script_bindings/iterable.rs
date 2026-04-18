@@ -226,7 +226,7 @@ mod boa_impl {
     use std::ptr::NonNull;
     use malloc_size_of::MallocSizeOf;
     use crate::DomTypes;
-    use crate::reflector::{DomObject, Reflector};
+    use crate::reflector::{DomObject, MutDomObject, Reflector};
     use crate::realms::InRealm;
     use crate::root::DomRoot;
     use crate::conversions::IDLInterface;
@@ -254,7 +254,6 @@ mod boa_impl {
                 });
                 // For Boa, we can't properly root this yet, so we leak it
                 // This is a temporary stub implementation
-                std::mem::forget(iterator);
                 DomRoot::from_ptr(Box::leak(iterator) as *mut _)
             }
         }
@@ -284,6 +283,12 @@ mod boa_impl {
     impl<D: DomTypes, T: 'static> DomObject for IterableIterator<D, T> {
         fn reflector(&self) -> &Reflector {
             &self.reflector
+        }
+    }
+
+    impl<D: DomTypes, T: 'static> MutDomObject for IterableIterator<D, T> {
+        unsafe fn init_reflector(&self, obj: *mut JSObject) {
+            self.reflector.set_jsobject(obj)
         }
     }
 

@@ -1226,7 +1226,7 @@ impl WindowProxyHandler {
     pub(crate) fn new_window_proxy(
         &self,
         cx: &crate::script_runtime::JSContext,
-        window_jsobject: js::gc::HandleObject,
+        window_jsobject: crate::js::gc::HandleObject,
     ) -> *mut JSObject {
         let obj = unsafe { NewWindowProxy(**cx, window_jsobject, self.0) };
         assert!(!obj.is_null());

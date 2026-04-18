@@ -84,7 +84,7 @@ impl<T> From<T> for NoTrace<T> {
 #[expect(unsafe_code)]
 unsafe impl<T> JSTraceable for NoTrace<T> {
     #[inline]
-    unsafe fn trace(&self, _: *mut ::js::jsapi::JSTracer) {}
+    unsafe fn trace(&self, _: *mut crate::js::jsapi::JSTracer) {}
 }
 
 impl<T: MallocSizeOf> MallocSizeOf for NoTrace<T> {
@@ -217,7 +217,7 @@ where
 #[expect(unsafe_code)]
 unsafe impl<K, V: JSTraceable, S> JSTraceable for HashMapTracedValues<K, V, S> {
     #[inline]
-    unsafe fn trace(&self, trc: *mut ::js::jsapi::JSTracer) {
+    unsafe fn trace(&self, trc: *mut crate::js::jsapi::JSTracer) {
         for v in self.0.values() {
             unsafe { v.trace(trc) };
         }

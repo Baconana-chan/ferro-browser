@@ -2099,7 +2099,7 @@ pub(crate) fn capture_webgl_backtrace() -> WebGLCommandBacktrace {
         capture_stack!(in(*GlobalScope::get_cx()) let stack);
         WebGLCommandBacktrace {
             backtrace: format!("{:?}", bt),
-            js_backtrace: stack.and_then(|s| s.as_string(None, js::jsapi::StackFormat::Default)),
+            js_backtrace: stack.and_then(|s| s.as_string(None, crate::js::jsapi::StackFormat::Default)),
         }
     }
 }

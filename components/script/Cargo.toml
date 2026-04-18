@@ -108,6 +108,7 @@ media = { path = "../media" }
 metrics = { path = "../metrics" }
 mime = { workspace = true }
 mime_guess = { workspace = true }
+mozangle = { workspace = true }
 net_traits = { workspace = true }
 nom = { workspace = true }
 nom-rfc8288 = { workspace = true }

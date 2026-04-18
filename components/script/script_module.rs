@@ -1491,9 +1491,9 @@ impl ScriptFetchOptions {
 }
 
 #[expect(unsafe_code)]
-unsafe fn module_script_from_reference_private(
-    reference_private: &RawHandle<JSVal>,
-) -> Option<&ModuleScript> {
+unsafe fn module_script_from_reference_private<'a>(
+    reference_private: &'a RawHandle<JSVal>,
+) -> Option<&'a ModuleScript> {
     if reference_private.get().is_undefined() {
         return None;
     }

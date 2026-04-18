@@ -40,8 +40,8 @@ impl PerformanceMark {
 
 impl PerformanceMarkMethods<crate::DomTypeHolder> for PerformanceMark {
     /// https://w3c.github.io/user-timing/#dom-performancemark-detail
-    fn Detail(&self, _cx: JSContext, mut retval: js::rust::MutableHandleValue) {
+    fn Detail(&self, _cx: JSContext, mut retval: crate::js::rust::MutableHandleValue) {
         // Return null for now - full implementation would store the detail from options
-        retval.set(js::jsval::NullValue());
+        retval.set(crate::js::jsval::NullValue());
     }
 }

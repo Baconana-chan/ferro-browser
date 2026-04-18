@@ -764,7 +764,7 @@ impl EventTarget {
         };
 
         // Step 3.9, subsection Scope steps 1-6
-        let scopechain = js::rust::EnvironmentChain::new(*cx, SupportUnscopables::Yes);
+        let scopechain = crate::js::rust::EnvironmentChain::new(*cx, SupportUnscopables::Yes);
 
         if let Some(element) = element {
             scopechain.append(document.reflector().get_jsobject().get());

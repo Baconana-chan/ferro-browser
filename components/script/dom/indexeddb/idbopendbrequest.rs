@@ -95,7 +95,7 @@ impl OpenRequestListener {
                 #[expect(unsafe_code)]
                 unsafe {
                     open_request
-                        .set_result(js::gc::Handle::from_raw(js::jsapi::UndefinedHandleValue));
+                        .set_result(crate::js::gc::Handle::from_raw(crate::js::jsapi::UndefinedHandleValue));
                 }
 
                 let event = Event::new(

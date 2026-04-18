@@ -437,7 +437,7 @@ impl WorkerGlobalScope {
 
     #[expect(unsafe_code)]
     pub(crate) fn get_cx(&self) -> JSContext {
-        unsafe { JSContext::from_ptr(js::rust::Runtime::get().unwrap().as_ptr()) }
+        unsafe { JSContext::from_ptr(crate::js::rust::Runtime::get().unwrap().as_ptr()) }
     }
 
     pub(crate) fn is_closing(&self) -> bool {
@@ -728,9 +728,9 @@ impl WorkerGlobalScopeMethods<crate::DomTypeHolder> for WorkerGlobalScope {
 
             #[expect(unsafe_code)]
             let mut cx =
-                unsafe { js::context::JSContext::from_ptr(js::rust::Runtime::get().unwrap()) };
+                unsafe { crate::js::context::JSContext::from_ptr(crate::js::rust::Runtime::get().unwrap()) };
             let options = CompileOptionsWrapper::new(&cx, url.as_str(), 1);
-            let result = js::rust::evaluate_script(
+            let result = crate::js::rust::evaluate_script(
                 &mut cx,
                 self.reflector().get_jsobject(),
                 &source,

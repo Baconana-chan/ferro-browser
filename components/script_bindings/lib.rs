@@ -123,5 +123,6 @@ pub use crate::trace::JSTraceable;
 
 pub use crate::codegen::DomTypes::DomTypes;
 pub trait DomObjectPlaceholder {}
+impl<T> DomObjectPlaceholder for T {}
 pub(crate) use crate::reflector::{DomObject, MutDomObject, Reflector};
 pub(crate) use crate::trace::CustomTraceable;

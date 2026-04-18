@@ -32,7 +32,7 @@ use crate::dom::writablestream::WritableStream;
 use crate::realms::{InRealm, enter_realm};
 use crate::script_runtime::{CanGc, JSContext as SafeJSContext};
 
-impl js::gc::Rootable for CloseAlgorithmFulfillmentHandler {}
+impl crate::js::gc::Rootable for CloseAlgorithmFulfillmentHandler {}
 
 /// The fulfillment handler for
 /// <https://streams.spec.whatwg.org/#writable-stream-default-controller-process-close>
@@ -51,7 +51,7 @@ impl Callback for CloseAlgorithmFulfillmentHandler {
     }
 }
 
-impl js::gc::Rootable for CloseAlgorithmRejectionHandler {}
+impl crate::js::gc::Rootable for CloseAlgorithmRejectionHandler {}
 
 /// The rejection handler for
 /// <https://streams.spec.whatwg.org/#writable-stream-default-controller-process-close>
@@ -72,7 +72,7 @@ impl Callback for CloseAlgorithmRejectionHandler {
     }
 }
 
-impl js::gc::Rootable for StartAlgorithmFulfillmentHandler {}
+impl crate::js::gc::Rootable for StartAlgorithmFulfillmentHandler {}
 
 /// The fulfillment handler for
 /// <https://streams.spec.whatwg.org/#set-up-writable-stream-default-controller>
@@ -105,7 +105,7 @@ impl Callback for StartAlgorithmFulfillmentHandler {
     }
 }
 
-impl js::gc::Rootable for StartAlgorithmRejectionHandler {}
+impl crate::js::gc::Rootable for StartAlgorithmRejectionHandler {}
 
 /// The rejection handler for
 /// <https://streams.spec.whatwg.org/#set-up-writable-stream-default-controller>
@@ -138,7 +138,7 @@ impl Callback for StartAlgorithmRejectionHandler {
     }
 }
 
-impl js::gc::Rootable for TransferBackPressurePromiseReaction {}
+impl crate::js::gc::Rootable for TransferBackPressurePromiseReaction {}
 
 /// Reacting to backpressurePromise as part of the `writeAlgorithm` of
 /// <https://streams.spec.whatwg.org/#abstract-opdef-setupcrossrealmtransformwritable>
@@ -190,7 +190,7 @@ impl Callback for TransferBackPressurePromiseReaction {
     }
 }
 
-impl js::gc::Rootable for WriteAlgorithmFulfillmentHandler {}
+impl crate::js::gc::Rootable for WriteAlgorithmFulfillmentHandler {}
 
 /// The fulfillment handler for
 /// <https://streams.spec.whatwg.org/#writable-stream-default-controller-process-write>
@@ -237,7 +237,7 @@ impl Callback for WriteAlgorithmFulfillmentHandler {
     }
 }
 
-impl js::gc::Rootable for WriteAlgorithmRejectionHandler {}
+impl crate::js::gc::Rootable for WriteAlgorithmRejectionHandler {}
 
 /// The rejection handler for
 /// <https://streams.spec.whatwg.org/#writable-stream-default-controller-process-write>

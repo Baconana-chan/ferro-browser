@@ -19,6 +19,7 @@ use crate::script_runtime::CanGc;
 
 /// Create the reflector for a new DOM object and yield ownership to the
 /// reflector.
+#[cfg(feature = "js-spidermonkey")]
 pub(crate) fn reflect_dom_object<D, T, U>(obj: Box<T>, global: &U, can_gc: CanGc) -> DomRoot<T>
 where
     D: DomTypes,
@@ -29,6 +30,25 @@ where
     unsafe { T::WRAP(D::GlobalScope::get_cx(), global_scope, None, obj, can_gc) }
 }
 
+#[cfg(feature = "js-boa")]
+pub(crate) fn reflect_dom_object<T, U>(obj: Box<T>, global: &U, can_gc: CanGc) -> DomRoot<T>
+where
+    T: DomObject + DomObjectWrap<crate::DomTypeHolder>,
+    U: DerivedFrom<<crate::DomTypeHolder as DomTypes>::GlobalScope>,
+{
+    let global_scope = global.upcast();
+    unsafe {
+        T::WRAP(
+            <crate::DomTypeHolder as DomTypes>::GlobalScope::get_cx(),
+            global_scope,
+            None,
+            obj,
+            can_gc,
+        )
+    }
+}
+
+#[cfg(feature = "js-spidermonkey")]
 pub(crate) fn reflect_dom_object_with_proto<D, T, U>(
     obj: Box<T>,
     global: &U,
@@ -42,6 +62,29 @@ where
 {
     let global_scope = global.upcast();
     unsafe { T::WRAP(D::GlobalScope::get_cx(), global_scope, proto, obj, can_gc) }
+}
+
+#[cfg(feature = "js-boa")]
+pub(crate) fn reflect_dom_object_with_proto<T, U>(
+    obj: Box<T>,
+    global: &U,
+    proto: Option<HandleObject>,
+    can_gc: CanGc,
+) -> DomRoot<T>
+where
+    T: DomObject + DomObjectWrap<crate::DomTypeHolder>,
+    U: DerivedFrom<<crate::DomTypeHolder as DomTypes>::GlobalScope>,
+{
+    let global_scope = global.upcast();
+    unsafe {
+        T::WRAP(
+            <crate::DomTypeHolder as DomTypes>::GlobalScope::get_cx(),
+            global_scope,
+            proto,
+            obj,
+            can_gc,
+        )
+    }
 }
 
 pub(crate) trait DomGlobal {

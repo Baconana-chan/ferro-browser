@@ -17,6 +17,7 @@ fn main() {
 
     let out_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
     println!("cargo:out_dir={}", out_dir.display());
+    println!("cargo:CRATE_OUT_DIR={}", out_dir.display());
 
     // Check if we're building for Boa (skip SpiderMonkey codegen)
     let is_boa = env::var("CARGO_FEATURE_JS_BOA").is_ok();
@@ -178,6 +179,36 @@ fn apply_boa_overrides(out_dir: &PathBuf) {
     use std::path::Path;
 
     fn patch_generated_js_paths(dir: &Path) {
+        fn strip_impl_blocks(mut contents: String, marker: &str) -> String {
+            while let Some(start) = contents.find(marker) {
+                let mut depth = 0usize;
+                let mut end = None;
+                for (offset, ch) in contents[start..].char_indices() {
+                    match ch {
+                        '{' => depth += 1,
+                        '}' => {
+                            depth = depth.saturating_sub(1);
+                            if depth == 0 {
+                                end = Some(start + offset + ch.len_utf8());
+                                break;
+                            }
+                        },
+                        _ => {},
+                    }
+                }
+
+                let Some(mut end) = end else {
+                    break;
+                };
+
+                while contents[end..].starts_with('\n') {
+                    end += 1;
+                }
+                contents.replace_range(start..end, "");
+            }
+            contents
+        }
+
         if let Ok(entries) = fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
@@ -232,6 +263,60 @@ fn apply_boa_overrides(out_dir: &PathBuf) {
                 patched = patched.replace("&in(cx)", "&in(cx.raw_cx())");
                 // Patch WindowHelpers to add generic parameter Self
                 patched = patched.replace("crate::interfaces::WindowHelpers +", "crate::interfaces::WindowHelpers<Self> +");
+                // Patch ProxyTraps function references to use wrapper functions for Boa compatibility
+                patched = patched.replace("proxyhandler::get_prototype_if_ordinary", "proxyhandler::get_prototype_if_ordinary_wrapper");
+                patched = patched.replace("proxyhandler::define_property", "proxyhandler::define_property_wrapper");
+                patched = patched.replace("proxyhandler::delete", "proxyhandler::delete_wrapper");
+                patched = patched.replace("proxyhandler::prevent_extensions", "proxyhandler::prevent_extensions_wrapper");
+                patched = patched.replace("proxyhandler::is_extensible", "proxyhandler::is_extensible_wrapper");
+                patched = patched.replace("proxyhandler::has", "proxyhandler::has_wrapper");
+                patched = patched.replace("proxyhandler::get", "proxyhandler::get_wrapper");
+                // Patch PropertyDescriptor type mismatches - convert MutableHandle to raw pointer
+                // using IntoPropDescPtr trait
+                patched = patched.replace(
+                    ", desc.handle_mut()",
+                    ", crate::js::rust::IntoPropDescPtr::into_prop_desc_ptr(desc.handle_mut())"
+                );
+                patched = patched.replace(
+                    ", descriptor.handle_mut()",
+                    ", crate::js::rust::IntoPropDescPtr::into_prop_desc_ptr(descriptor.handle_mut())"
+                );
+                // Patch Handle<Value> to Handle<*mut JSObject> for Call function
+                patched = patched.replace(
+                    "Call(\n            cx.raw_cx(), rootedThis.handle(), callable.handle(),",
+                    "Call(\n            cx.raw_cx(), rootedThis.handle(), crate::js::rust::Handle::from_raw(callable.handle().as_raw() as *mut _),"
+                );
+                patched = patched.replace(
+                    ", arg0.handle(), &call_args_handle,",
+                    ", arg0.handle().into(), &call_args_handle,"
+                );
+                patched = patched.replace(
+                    ", arg0.handle(),\n                   ignoredReturnVal.handle_mut())",
+                    ", arg0.handle().into(),\n                   ignoredReturnVal.handle_mut())"
+                );
+                // Patch IterableIterator type annotation errors - add explicit type parameters
+                patched = patched.replace(
+                    "IterableIterator::new",
+                    "IterableIterator::<D, _>::new"
+                );
+                // Patch HandleValueArray vs &Vec<Value> type mismatches
+                patched = patched.replace(
+                    "&HandleValueArray {",
+                    "&crate::js::jsapi::HandleValueArray {"
+                );
+                patched = patched.replace(
+                    "JSJitGetterCallArgs { _base: temp.handle_mut().into() }",
+                    "JSJitGetterCallArgs::new(temp.handle_mut())"
+                );
+                patched = patched.replace(
+                    "let result: DomRoot<D::Document> = this.Document();",
+                    "let result: DomRoot<D::Document> = <D::Window as crate::codegen::GenericBindings::WindowBinding::Window_Binding::WindowMethods<D>>::Document(this);"
+                );
+                patched = patched.replace("wrap_panic(&mut ||", "wrap_panic(||");
+                if path.parent().and_then(|p| p.file_name()).and_then(|n| n.to_str()) == Some("ConcreteBindings") {
+                    patched = strip_impl_blocks(patched, "impl DomObjectWrap<");
+                    patched = strip_impl_blocks(patched, "impl DomObjectIteratorWrap<");
+                }
                 if patched != contents {
                     fs::write(&path, patched).unwrap();
                 }
@@ -245,20 +330,30 @@ fn apply_boa_overrides(out_dir: &PathBuf) {
     // NOTE: We keep the codegen-generated GenericUnionTypes.rs as it already
     // has proper type definitions. We only extend it if needed.
 
-    // Override ConcreteBindings to be empty stubs (SpiderMonkey-specific)
+    // Regenerate ConcreteBindings/mod.rs to expose the concrete alias wrappers
+    // produced by codegen. The per-binding files are still useful for Boa
+    // because they erase the generic `D` parameter expected by script.
     let concrete_dir = out_dir.join("ConcreteBindings");
     fs::create_dir_all(&concrete_dir).unwrap();
-    // ConcreteBindings/mod.rs - stub it since it's SpiderMonkey-specific
-    fs::write(concrete_dir.join("mod.rs"), r#"
-// Auto-generated stub for Boa engine
-// Concrete bindings are SpiderMonkey-specific and not needed for Boa
-"#).unwrap();
-
-    // Override ConcreteInheritTypes.rs - stub it
-    fs::write(out_dir.join("ConcreteInheritTypes.rs"), r#"
-// Auto-generated stub for Boa engine  
-// Concrete inherit types are SpiderMonkey-specific
-"#).unwrap();
+    let mut concrete_modules: Vec<String> = fs::read_dir(&concrete_dir)
+        .unwrap()
+        .filter_map(|res| res.ok().map(|e| e.path()))
+        .filter(|path| path.is_file())
+        .filter_map(|path| {
+            let stem = path.file_stem()?.to_str()?;
+            if stem == "mod" {
+                None
+            } else {
+                Some(stem.to_string())
+            }
+        })
+        .collect();
+    concrete_modules.sort();
+    let concrete_mod = concrete_modules
+        .into_iter()
+        .map(|module| format!("#[allow(clippy::derivable_impls)]\npub mod {module};\n"))
+        .collect::<String>();
+    fs::write(concrete_dir.join("mod.rs"), concrete_mod).unwrap();
 
     // Override DomTypeHolder.rs with Boa-specific placeholder version
     // The codegen generates one that references SpiderMonkey-bound types
@@ -6230,10 +6325,24 @@ pub mod unions {
     let concrete_bindings_dir = out_dir.join("ConcreteBindings");
     fs::create_dir_all(&concrete_bindings_dir).unwrap();
     
-    // Create a placeholder file in ConcreteBindings
-    let placeholder = concrete_bindings_dir.join("mod.rs");
-    fs::write(&placeholder, r#"
-// Auto-generated stub for Boa engine
-// Concrete bindings module
-"#).unwrap();
+    // Populate ConcreteBindings/mod.rs with the generated concrete wrapper modules.
+    let mut concrete_modules: Vec<String> = fs::read_dir(&concrete_bindings_dir)
+        .unwrap()
+        .filter_map(|res| res.ok().map(|e| e.path()))
+        .filter(|path| path.is_file())
+        .filter_map(|path| {
+            let stem = path.file_stem()?.to_str()?;
+            if stem == "mod" {
+                None
+            } else {
+                Some(stem.to_string())
+            }
+        })
+        .collect();
+    concrete_modules.sort();
+    let concrete_mod = concrete_modules
+        .into_iter()
+        .map(|module| format!("#[allow(clippy::derivable_impls)]\npub mod {module};\n"))
+        .collect::<String>();
+    fs::write(concrete_bindings_dir.join("mod.rs"), concrete_mod).unwrap();
 }

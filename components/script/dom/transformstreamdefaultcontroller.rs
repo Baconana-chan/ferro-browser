@@ -39,7 +39,7 @@ use crate::dom::types::DecompressionStream;
 use crate::realms::{InRealm, enter_realm};
 use crate::script_runtime::{CanGc, JSContext as SafeJSContext};
 
-impl js::gc::Rootable for TransformTransformPromiseRejection {}
+impl crate::js::gc::Rootable for TransformTransformPromiseRejection {}
 
 /// Reacting to transformPromise as part of
 /// <https://streams.spec.whatwg.org/#transform-stream-default-controller-perform-transform>

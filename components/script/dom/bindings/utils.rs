@@ -117,7 +117,7 @@ fn is_platform_object(
 }
 
 unsafe extern "C" fn instance_class_has_proto_at_depth(
-    clasp: *const js::jsapi::JSClass,
+    clasp: *const crate::js::jsapi::JSClass,
     proto_id: u32,
     depth: u32,
 ) -> bool {
@@ -127,7 +127,7 @@ unsafe extern "C" fn instance_class_has_proto_at_depth(
 }
 
 /// <https://searchfox.org/mozilla-central/rev/c18faaae88b30182e487fa3341bc7d923e22f23a/xpcom/base/CycleCollectedJSRuntime.cpp#792>
-unsafe extern "C" fn instance_class_is_error(clasp: *const js::jsapi::JSClass) -> bool {
+unsafe extern "C" fn instance_class_is_error(clasp: *const crate::js::jsapi::JSClass) -> bool {
     if !is_dom_class(unsafe { &*clasp }) {
         return false;
     }

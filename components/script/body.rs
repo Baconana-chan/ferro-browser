@@ -279,7 +279,7 @@ struct TransmitBodyPromiseHandler {
     control_sender: IpcSender<BodyChunkRequest>,
 }
 
-impl js::gc::Rootable for TransmitBodyPromiseHandler {}
+impl crate::js::gc::Rootable for TransmitBodyPromiseHandler {}
 
 impl Callback for TransmitBodyPromiseHandler {
     /// Step 5 of <https://fetch.spec.whatwg.org/#concept-request-transmit-body>
@@ -335,7 +335,7 @@ struct TransmitBodyPromiseRejectionHandler {
     control_sender: IpcSender<BodyChunkRequest>,
 }
 
-impl js::gc::Rootable for TransmitBodyPromiseRejectionHandler {}
+impl crate::js::gc::Rootable for TransmitBodyPromiseRejectionHandler {}
 
 impl Callback for TransmitBodyPromiseRejectionHandler {
     /// <https://fetch.spec.whatwg.org/#concept-request-transmit-body>

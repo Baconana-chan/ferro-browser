@@ -227,7 +227,7 @@ impl TestBindingMethods<crate::DomTypeHolder> for TestBinding {
         let data: [u8; 16] = [0; 16];
 
         rooted!(in (*cx) let mut array = ptr::null_mut::<JSObject>());
-        create_buffer_source(cx, &data, array.handle_mut(), CanGc::note())
+        create_buffer_source::<typedarray::ClampedU8>(cx, &data, array.handle_mut(), CanGc::note())
             .expect("Creating ClampedU8 array should never fail")
     }
     fn AnyAttribute(&self, _: SafeJSContext, _: MutableHandleValue) {}

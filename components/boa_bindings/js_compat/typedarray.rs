@@ -9,7 +9,7 @@ use std::slice;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
-use super::jsapi::{Heap, JSContext, RawJSContext, JSObject, Value};
+use super::jsapi::{Heap, JSContext, RawJSContext, JSObject, Type, Value, JS_GetArrayBufferViewType};
 use super::rust::{Handle, HandleObject, HandleValue, MutableHandle, MutableHandleObject};
 
 /// ArrayBufferViewContents - type for typed array contents
@@ -41,6 +41,19 @@ impl<T> ArrayBufferViewContents<T> {
 pub enum CreateWith<'a, T> {
     Length(usize),
     Slice(&'a [T]),
+}
+
+fn create_with_len<T>(with: CreateWith<'_, T>) -> usize {
+    match with {
+        CreateWith::Length(len) => len,
+        CreateWith::Slice(slice) => slice.len(),
+    }
+}
+
+fn create_stub<T>(with: CreateWith<'_, T>, res: MutableHandleObject<'_>) -> Result<(), ()> {
+    let _ = create_with_len(with);
+    res.set(ptr::null_mut());
+    Ok(())
 }
 
 /// TypedArray trait
@@ -76,6 +89,7 @@ pub trait TypedArray: Sized {
     }
 }
 
+
 /// ArrayBuffer - JavaScript ArrayBuffer
 pub struct ArrayBuffer {
     obj: *mut JSObject,
@@ -83,9 +97,12 @@ pub struct ArrayBuffer {
 }
 
 impl ArrayBuffer {
-    pub fn create(_cx: *mut RawJSContext, len: usize, _res: MutableHandleObject<'_>) -> bool {
-        let _ = len;
-        true
+    pub fn create(
+        _cx: *mut RawJSContext,
+        with: CreateWith<'_, u8>,
+        res: MutableHandleObject<'_>,
+    ) -> Result<(), ()> {
+        create_stub(with, res)
     }
     
     pub unsafe fn from(obj: *mut JSObject) -> Result<Self, ()> {
@@ -118,6 +135,14 @@ impl ArrayBuffer {
     pub fn underlying_object(&self) -> *mut JSObject {
         self.obj
     }
+
+    pub fn to_vec(&self) -> Vec<u8> {
+        self.data.clone()
+    }
+
+    pub fn get_array_type(&self) -> Type {
+        Type::Uint8
+    }
     
     pub unsafe fn create_external(
         _cx: *mut RawJSContext,
@@ -132,6 +157,43 @@ impl ArrayBuffer {
     
     pub unsafe fn is_detached(&self) -> bool {
         false
+    }
+}
+
+impl Default for ArrayBuffer {
+    fn default() -> Self {
+        Self {
+            obj: ptr::null_mut(),
+            data: Vec::new(),
+        }
+    }
+}
+
+impl TypedArray for ArrayBuffer {
+    type Element = u8;
+
+    fn create(
+        _cx: *mut RawJSContext,
+        with: CreateWith<Self::Element>,
+        res: MutableHandleObject<'_>,
+    ) -> Result<(), ()> {
+        create_stub(with, res)
+    }
+
+    fn as_slice(&self) -> &[Self::Element] {
+        self.as_slice()
+    }
+
+    fn as_mut_slice(&mut self) -> &mut [Self::Element] {
+        self.as_mut_slice()
+    }
+
+    fn len(&self) -> usize {
+        self.len()
+    }
+
+    fn underlying_object(&self) -> *mut JSObject {
+        self.underlying_object()
     }
 }
 
@@ -162,6 +224,26 @@ impl HeapArrayBuffer {
     
     pub fn underlying_object(&self) -> &Heap<*mut JSObject> {
         &self.object
+    }
+
+    pub fn len(&self) -> usize {
+        0
+    }
+
+    pub fn is_empty(&self) -> bool {
+        true
+    }
+
+    pub fn as_slice(&self) -> &[u8] {
+        &[]
+    }
+
+    pub fn to_vec(&self) -> Vec<u8> {
+        Vec::new()
+    }
+
+    pub fn get_array_type(&self) -> Type {
+        Type::Uint8
     }
 }
 
@@ -203,6 +285,34 @@ impl HeapArrayBufferView {
     
     pub fn underlying_object(&self) -> &Heap<*mut JSObject> {
         &self.object
+    }
+
+    pub fn len(&self) -> usize {
+        0
+    }
+
+    pub fn is_empty(&self) -> bool {
+        true
+    }
+
+    pub fn as_slice(&self) -> &[u8] {
+        &[]
+    }
+
+    pub fn as_mut_slice(&mut self) -> &mut [u8] {
+        &mut []
+    }
+
+    pub fn to_vec(&self) -> Vec<u8> {
+        Vec::new()
+    }
+
+    pub fn get_array_type(&self) -> Type {
+        unsafe { JS_GetArrayBufferViewType(self.object.get()) }
+    }
+
+    pub fn byte_length(&self) -> usize {
+        0
     }
 }
 
@@ -267,6 +377,73 @@ impl ArrayBufferView {
     pub fn is_shared_memory(&self) -> bool {
         false
     }
+
+    pub fn as_slice(&self) -> &[u8] {
+        &[]
+    }
+
+    pub fn as_mut_slice(&mut self) -> &mut [u8] {
+        &mut []
+    }
+
+    pub fn to_vec(&self) -> Vec<u8> {
+        Vec::new()
+    }
+
+    pub fn get_array_type(&self) -> Type {
+        unsafe { JS_GetArrayBufferViewType(self.obj) }
+    }
+}
+
+macro_rules! impl_typed_array_inherent_methods {
+    ($name:ident, $elem:ty, $kind:expr) => {
+        impl $name {
+            pub fn create(
+                _cx: *mut RawJSContext,
+                with: CreateWith<'_, $elem>,
+                res: MutableHandleObject<'_>,
+            ) -> Result<(), ()> {
+                create_stub(with, res)
+            }
+
+            pub fn as_slice(&self) -> &[$elem] {
+                &self.data
+            }
+
+            pub fn as_mut_slice(&mut self) -> &mut [$elem] {
+                &mut self.data
+            }
+
+            pub fn len(&self) -> usize {
+                self.data.len()
+            }
+
+            pub fn is_empty(&self) -> bool {
+                self.data.is_empty()
+            }
+
+            pub fn underlying_object(&self) -> *mut JSObject {
+                self.obj
+            }
+
+            pub fn to_vec(&self) -> Vec<$elem> {
+                self.data.clone()
+            }
+
+            pub fn get_array_type(&self) -> Type {
+                $kind
+            }
+
+            pub fn is_shared(&self) -> bool {
+                false
+            }
+
+            pub fn update(&mut self, data: &[$elem]) {
+                self.data.clear();
+                self.data.extend_from_slice(data);
+            }
+        }
+    };
 }
 
 /// Internal trait for concrete typed array view implementations.
@@ -305,6 +482,8 @@ impl Default for Uint8Array {
         Self::new()
     }
 }
+
+impl_typed_array_inherent_methods!(Uint8Array, u8, Type::Uint8);
 
 impl TypedArray for Uint8Array {
     type Element = u8;
@@ -366,6 +545,8 @@ impl Default for Uint8ClampedArray {
     }
 }
 
+impl_typed_array_inherent_methods!(Uint8ClampedArray, u8, Type::Uint8Clamped);
+
 impl TypedArray for Uint8ClampedArray {
     type Element = u8;
     
@@ -426,6 +607,8 @@ impl Default for Int8Array {
     }
 }
 
+impl_typed_array_inherent_methods!(Int8Array, i8, Type::Int8);
+
 impl TypedArray for Int8Array {
     type Element = i8;
     
@@ -471,6 +654,8 @@ impl Default for Uint16Array {
         Self::new()
     }
 }
+
+impl_typed_array_inherent_methods!(Uint16Array, u16, Type::Uint16);
 
 impl TypedArray for Uint16Array {
     type Element = u16;
@@ -518,6 +703,8 @@ impl Default for Int16Array {
     }
 }
 
+impl_typed_array_inherent_methods!(Int16Array, i16, Type::Int16);
+
 impl TypedArray for Int16Array {
     type Element = i16;
     
@@ -563,6 +750,8 @@ impl Default for Uint32Array {
         Self::new()
     }
 }
+
+impl_typed_array_inherent_methods!(Uint32Array, u32, Type::Uint32);
 
 impl TypedArray for Uint32Array {
     type Element = u32;
@@ -610,6 +799,8 @@ impl Default for Int32Array {
     }
 }
 
+impl_typed_array_inherent_methods!(Int32Array, i32, Type::Int32);
+
 impl TypedArray for Int32Array {
     type Element = i32;
     
@@ -655,6 +846,8 @@ impl Default for Float32Array {
         Self::new()
     }
 }
+
+impl_typed_array_inherent_methods!(Float32Array, f32, Type::Float32);
 
 impl TypedArray for Float32Array {
     type Element = f32;
@@ -716,6 +909,8 @@ impl Default for Float64Array {
     }
 }
 
+impl_typed_array_inherent_methods!(Float64Array, f64, Type::Float64);
+
 impl TypedArray for Float64Array {
     type Element = f64;
     
@@ -776,6 +971,8 @@ impl Default for BigInt64Array {
     }
 }
 
+impl_typed_array_inherent_methods!(BigInt64Array, i64, Type::BigInt64);
+
 impl TypedArray for BigInt64Array {
     type Element = i64;
     
@@ -821,6 +1018,8 @@ impl Default for BigUint64Array {
         Self::new()
     }
 }
+
+impl_typed_array_inherent_methods!(BigUint64Array, u64, Type::BigUint64);
 
 impl TypedArray for BigUint64Array {
     type Element = u64;
@@ -971,50 +1170,201 @@ impl ArrayBufferViewU8 for Uint8ClampedArray {
     }
 }
 
-/// TypedArrayElement - marker trait for typed array element types
-pub trait TypedArrayElement: Copy + Default {
-    /// Type of the typed array for this element
-    type ArrayType;
+/// TypedArrayElement - marker trait for Servo's typed array helpers.
+pub trait TypedArrayElement: Default {
+    type Element: Copy + Default;
+    type ArrayType: TypedArray<Element = Self::Element> + Default;
+
+    unsafe fn from_object(obj: *mut JSObject) -> Result<Self::ArrayType, ()>;
 }
 
 impl TypedArrayElement for u8 {
+    type Element = u8;
     type ArrayType = Uint8Array;
+
+    unsafe fn from_object(obj: *mut JSObject) -> Result<Self::ArrayType, ()> {
+        Uint8Array::from(obj)
+    }
 }
 
 impl TypedArrayElement for i8 {
+    type Element = i8;
     type ArrayType = Int8Array;
+
+    unsafe fn from_object(obj: *mut JSObject) -> Result<Self::ArrayType, ()> {
+        Int8Array::from(obj)
+    }
 }
 
 impl TypedArrayElement for u16 {
+    type Element = u16;
     type ArrayType = Uint16Array;
+
+    unsafe fn from_object(obj: *mut JSObject) -> Result<Self::ArrayType, ()> {
+        Uint16Array::from(obj)
+    }
 }
 
 impl TypedArrayElement for i16 {
+    type Element = i16;
     type ArrayType = Int16Array;
+
+    unsafe fn from_object(obj: *mut JSObject) -> Result<Self::ArrayType, ()> {
+        Int16Array::from(obj)
+    }
 }
 
 impl TypedArrayElement for u32 {
+    type Element = u32;
     type ArrayType = Uint32Array;
+
+    unsafe fn from_object(obj: *mut JSObject) -> Result<Self::ArrayType, ()> {
+        Uint32Array::from(obj)
+    }
 }
 
 impl TypedArrayElement for i32 {
+    type Element = i32;
     type ArrayType = Int32Array;
+
+    unsafe fn from_object(obj: *mut JSObject) -> Result<Self::ArrayType, ()> {
+        Int32Array::from(obj)
+    }
 }
 
 impl TypedArrayElement for f32 {
+    type Element = f32;
     type ArrayType = Float32Array;
+
+    unsafe fn from_object(obj: *mut JSObject) -> Result<Self::ArrayType, ()> {
+        Float32Array::from(obj)
+    }
 }
 
 impl TypedArrayElement for f64 {
+    type Element = f64;
     type ArrayType = Float64Array;
+
+    unsafe fn from_object(obj: *mut JSObject) -> Result<Self::ArrayType, ()> {
+        Float64Array::from(obj)
+    }
 }
 
 impl TypedArrayElement for i64 {
+    type Element = i64;
     type ArrayType = BigInt64Array;
+
+    unsafe fn from_object(obj: *mut JSObject) -> Result<Self::ArrayType, ()> {
+        BigInt64Array::from(obj)
+    }
 }
 
 impl TypedArrayElement for u64 {
+    type Element = u64;
     type ArrayType = BigUint64Array;
+
+    unsafe fn from_object(obj: *mut JSObject) -> Result<Self::ArrayType, ()> {
+        BigUint64Array::from(obj)
+    }
+}
+
+impl TypedArrayElement for ClampedU8 {
+    type Element = u8;
+    type ArrayType = Uint8ClampedArray;
+
+    unsafe fn from_object(obj: *mut JSObject) -> Result<Self::ArrayType, ()> {
+        Uint8ClampedArray::from(obj)
+    }
+}
+
+impl TypedArrayElement for ArrayBuffer {
+    type Element = u8;
+    type ArrayType = ArrayBuffer;
+
+    unsafe fn from_object(obj: *mut JSObject) -> Result<Self::ArrayType, ()> {
+        ArrayBuffer::from(obj)
+    }
+}
+
+impl TypedArrayElement for Uint8Array {
+    type Element = u8;
+    type ArrayType = Uint8Array;
+
+    unsafe fn from_object(obj: *mut JSObject) -> Result<Self::ArrayType, ()> {
+        Uint8Array::from(obj)
+    }
+}
+
+impl TypedArrayElement for Uint8ClampedArray {
+    type Element = u8;
+    type ArrayType = Uint8ClampedArray;
+
+    unsafe fn from_object(obj: *mut JSObject) -> Result<Self::ArrayType, ()> {
+        Uint8ClampedArray::from(obj)
+    }
+}
+
+impl TypedArrayElement for Float32Array {
+    type Element = f32;
+    type ArrayType = Float32Array;
+
+    unsafe fn from_object(obj: *mut JSObject) -> Result<Self::ArrayType, ()> {
+        Float32Array::from(obj)
+    }
+}
+
+impl TypedArrayElement for Float64Array {
+    type Element = f64;
+    type ArrayType = Float64Array;
+
+    unsafe fn from_object(obj: *mut JSObject) -> Result<Self::ArrayType, ()> {
+        Float64Array::from(obj)
+    }
+}
+
+impl TypedArrayElement for Int8Array {
+    type Element = i8;
+    type ArrayType = Int8Array;
+
+    unsafe fn from_object(obj: *mut JSObject) -> Result<Self::ArrayType, ()> {
+        Int8Array::from(obj)
+    }
+}
+
+impl TypedArrayElement for Uint16Array {
+    type Element = u16;
+    type ArrayType = Uint16Array;
+
+    unsafe fn from_object(obj: *mut JSObject) -> Result<Self::ArrayType, ()> {
+        Uint16Array::from(obj)
+    }
+}
+
+impl TypedArrayElement for Int16Array {
+    type Element = i16;
+    type ArrayType = Int16Array;
+
+    unsafe fn from_object(obj: *mut JSObject) -> Result<Self::ArrayType, ()> {
+        Int16Array::from(obj)
+    }
+}
+
+impl TypedArrayElement for Uint32Array {
+    type Element = u32;
+    type ArrayType = Uint32Array;
+
+    unsafe fn from_object(obj: *mut JSObject) -> Result<Self::ArrayType, ()> {
+        Uint32Array::from(obj)
+    }
+}
+
+impl TypedArrayElement for Int32Array {
+    type Element = i32;
+    type ArrayType = Int32Array;
+
+    unsafe fn from_object(obj: *mut JSObject) -> Result<Self::ArrayType, ()> {
+        Int32Array::from(obj)
+    }
 }
 
 /// TypedArrayElementCreator - trait for creating typed arrays from elements

@@ -449,7 +449,7 @@ impl IDBRequest {
 
 impl IDBRequestMethods<crate::DomTypeHolder> for IDBRequest {
     /// <https://www.w3.org/TR/IndexedDB-2/#dom-idbrequest-result>
-    fn Result(&self, _cx: SafeJSContext, mut val: js::rust::MutableHandle<'_, js::jsapi::Value>) {
+    fn Result(&self, _cx: SafeJSContext, mut val: crate::js::rust::MutableHandle<'_, crate::js::jsapi::Value>) {
         val.set(self.result.get());
     }
 

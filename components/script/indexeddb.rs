@@ -62,8 +62,8 @@ pub fn key_type_to_jsval(
         IndexedDBKeyType::String(s) => s.safe_to_jsval(cx, result, can_gc),
         IndexedDBKeyType::Binary(b) => b.safe_to_jsval(cx, result, can_gc),
         IndexedDBKeyType::Date(d) => {
-            let time = js::jsapi::ClippedTime { t: *d };
-            let date = unsafe { js::jsapi::NewDateObject(*cx, time) };
+            let time = crate::js::jsapi::ClippedTime { t: *d };
+            let date = unsafe { crate::js::jsapi::NewDateObject(*cx, time) };
             date.safe_to_jsval(cx, result, can_gc);
         },
         IndexedDBKeyType::Array(a) => {
@@ -194,7 +194,7 @@ pub fn convert_value_to_key(
 
             if let ESClass::Date = built_in_class {
                 let mut f = f64::NAN;
-                if !js::jsapi::DateGetMsecSinceEpoch(*cx, object.handle().into(), &mut f) {
+                if !crate::js::jsapi::DateGetMsecSinceEpoch(*cx, object.handle().into(), &mut f) {
                     return Err(Error::JSFailed);
                 }
                 if f.is_nan() {
@@ -220,7 +220,7 @@ pub fn convert_value_to_key(
                 let mut values = vec![];
                 for i in 0..len {
                     rooted!(in(*cx) let mut id: PropertyKey);
-                    if !JS_IndexToId(*cx, i, js::jsapi::MutableHandleId::from(id.handle_mut())) {
+                    if !JS_IndexToId(*cx, i, crate::js::jsapi::MutableHandleId::from(id.handle_mut())) {
                         return Err(Error::JSFailed);
                     }
                     let mut has_own = false;
@@ -236,7 +236,7 @@ pub fn convert_value_to_key(
                         return Ok(ConversionResult::Invalid);
                     }
                     rooted!(in(*cx) let mut item = UndefinedValue());
-                    if !js::jsapi::JS_GetPropertyById(
+                    if !crate::js::jsapi::JS_GetPropertyById(
                         *cx,
                         object.handle().into_handle(),
                         id.handle().into_handle(),

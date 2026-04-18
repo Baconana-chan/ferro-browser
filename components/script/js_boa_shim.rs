@@ -73,7 +73,7 @@ pub use boa_bindings::js_compat::jsapi::{
     JobQueue,
     CurrentGlobalOrNull,
 };
-// Re-export GC types that some code imports from js::rust
+// Re-export GC types that some code imports from crate::js::rust
 pub use boa_bindings::js_compat::gc::CustomAutoRooter;
 pub use boa_bindings::js_compat::gc::CustomAutoRooterGuard;
 

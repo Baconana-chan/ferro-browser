@@ -170,7 +170,7 @@ pub fn init() -> JSEngineSetup {
         warn!("Disabling JIT for Javascript, since {reason}. This may cause subpar performance");
         // SAFETY: This function has no particular preconditions.
         unsafe {
-            js::jsapi::DisableJitBackend();
+            crate::js::jsapi::DisableJitBackend();
         }
     }
     proxyhandler::init();
@@ -181,7 +181,7 @@ pub fn init() -> JSEngineSetup {
     RegisterBindings::InitAllStatics::<crate::DomTypeHolder>();
 
     unsafe {
-        js::glue::InitializeMemoryReporter(Some(is_dom_object));
+        crate::js::glue::InitializeMemoryReporter(Some(is_dom_object));
     }
 
     perform_platform_specific_initialization();

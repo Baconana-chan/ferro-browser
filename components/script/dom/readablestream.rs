@@ -103,7 +103,7 @@ enum ShutdownAction {
     Abort,
 }
 
-impl js::gc::Rootable for PipeTo {}
+impl crate::js::gc::Rootable for PipeTo {}
 
 /// The "in parallel, but not really" part of
 /// <https://streams.spec.whatwg.org/#readable-stream-pipe-to>
@@ -2244,7 +2244,7 @@ pub(crate) unsafe fn get_type_and_value_from_message(
     type_string
 }
 
-impl js::gc::Rootable for CrossRealmTransformReadable {}
+impl crate::js::gc::Rootable for CrossRealmTransformReadable {}
 
 /// <https://streams.spec.whatwg.org/#abstract-opdef-setupcrossrealmtransformreadable>
 /// A wrapper to handle `message` and `messageerror` events

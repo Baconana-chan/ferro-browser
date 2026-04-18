@@ -7,7 +7,9 @@ use std::ptr;
 use std::ffi::c_void;
 
 use super::jsapi::{JSContext, RawJSContext, JSObject, JSString, JSTracer, Value, JSClass, JSPrincipals};
-use super::rust::{HandleObject, HandleValue, MutableHandleValue, MutableHandleObject};
+use super::rust::{
+    Handle, HandleObject, HandleValue, MutableHandle, MutableHandleObject, MutableHandleValue,
+};
 
 /// Get reserved slot from object
 pub unsafe fn GetReservedSlot(_obj: *mut JSObject, _slot: u32) -> Value {
@@ -440,8 +442,9 @@ pub unsafe fn NewProxyObject(
     _cx: *mut RawJSContext,
     _handler: *const ProxyHandler,
     _priv: HandleValue<'_>,
-    _proto: HandleObject<'_>,
+    _proto: *mut JSObject,
     _clasp: *const JSClass,
+    _singleton: bool,
 ) -> *mut JSObject {
     ptr::null_mut()
 }
@@ -572,20 +575,20 @@ use super::rust::wrappers::MutableHandleIdVector;
 #[repr(C)]
 pub struct ProxyTraps {
     pub enter: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>) -> bool>,
-    pub getOwnPropertyDescriptor: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleId<'_>, *mut PropertyDescriptor) -> bool>,
-    pub defineProperty: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleId<'_>, HandleValue<'_>, *mut c_void) -> bool>,
+    pub getOwnPropertyDescriptor: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleId<'_>, MutableHandle<'_, PropertyDescriptor>, *mut bool) -> bool>,
+    pub defineProperty: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleId<'_>, Handle<'_, PropertyDescriptor>, *mut super::jsapi::ObjectOpResult) -> bool>,
     pub ownPropertyKeys: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, MutableHandleIdVector<'_>) -> bool>,
-    pub delete_: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleId<'_>, *mut c_void) -> bool>,
-    pub get: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleValue<'_>, HandleValue<'_>) -> bool>,
+    pub delete_: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleId<'_>, *mut super::jsapi::ObjectOpResult) -> bool>,
+    pub get: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleValue<'_>, HandleId<'_>, MutableHandleValue<'_>) -> bool>,
     pub getIfAbsent: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleValue<'_>, HandleValue<'_>) -> bool>,
-    pub set: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleValue<'_>, HandleValue<'_>, HandleValue<'_>) -> bool>,
+    pub set: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleId<'_>, HandleValue<'_>, HandleValue<'_>, *mut super::jsapi::ObjectOpResult) -> bool>,
     pub has: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleId<'_>, *mut bool) -> bool>,
     pub keys: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, MutableHandleIdVector<'_>) -> bool>,
     pub iterate: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, MutableHandleIdVector<'_>) -> bool>,
     pub isExtensible: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, *mut bool) -> bool>,
-    pub preventExtensions: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, *mut c_void) -> bool>,
+    pub preventExtensions: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, *mut super::jsapi::ObjectOpResult) -> bool>,
     pub getPrototypeIfOrdinary: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, *mut bool, MutableHandleObject<'_>) -> bool>,
-    pub setPrototype: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleObject<'_>, HandleObject<'_>, *mut bool) -> bool>,
+    pub setPrototype: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleObject<'_>, *mut super::jsapi::ObjectOpResult) -> bool>,
     pub call: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleValue<'_>, *const super::jsapi::Value, u32, MutableHandleValue<'_>) -> bool>,
     pub construct: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, *const super::jsapi::Value, u32, HandleObject<'_>, MutableHandleValue<'_>) -> bool>,
     pub isCallable: Option<unsafe extern "C" fn(*mut JSObject) -> bool>,
@@ -598,12 +601,12 @@ pub struct ProxyTraps {
     pub getOwnEnumerablePropertyKeys: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, MutableHandleIdVector<'_>) -> bool>,
     pub nativeCall: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, *const super::jsapi::Value, u32, MutableHandleValue<'_>) -> bool>,
     pub objectClassIs: Option<unsafe extern "C" fn() -> bool>,
-    pub className: Option<unsafe extern "C" fn() -> *const i8>,
+    pub className: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>) -> *const i8>,
     pub fun_toString: Option<unsafe extern "C" fn() -> bool>,
     pub boxedValue_unbox: Option<unsafe extern "C" fn() -> bool>,
     pub defaultValue: Option<unsafe extern "C" fn() -> bool>,
-    pub trace: Option<unsafe extern "C" fn()>,
-    pub finalize: Option<unsafe extern "C" fn()>,
+    pub trace: Option<unsafe extern "C" fn(*mut super::jsapi::JSTracer, *mut JSObject)>,
+    pub finalize: Option<unsafe extern "C" fn(*mut super::jsapi::GCContext, *mut JSObject)>,
     pub objectMoved: Option<unsafe extern "C" fn() -> usize>,
 }
 
@@ -691,6 +694,9 @@ pub unsafe fn CollectServoSizes(
     _sizes: *mut c_void,
     _report: Option<unsafe extern "C" fn(*mut c_void, *const i8, usize, *const i8)>,
 ) {
+}
+
+pub unsafe fn InitializeMemoryReporter(_is_dom_object: Option<unsafe extern "C" fn(*mut JSObject) -> bool>) {
 }
 
 /// Job queue traps structure

@@ -43,10 +43,10 @@ pub(crate) unsafe extern "C" fn write_jsprincipal(
     };
 
     unsafe {
-        if !js::jsapi::JS_WriteUint32Pair(writer, StructuredCloneTags::Principals as u32, len) {
+        if !crate::js::jsapi::JS_WriteUint32Pair(writer, StructuredCloneTags::Principals as u32, len) {
             return false;
         }
-        if !js::jsapi::JS_WriteBytes(writer, bytes_of_origin.as_ptr() as _, len as usize) {
+        if !crate::js::jsapi::JS_WriteBytes(writer, bytes_of_origin.as_ptr() as _, len as usize) {
             return false;
         }
     }
@@ -74,7 +74,7 @@ pub(crate) unsafe extern "C" fn read_jsprincipal(
     let mut bytes = vec![0u8; len as usize];
 
     unsafe {
-        if !js::jsapi::JS_ReadBytes(reader, bytes.as_mut_ptr() as _, len as usize) {
+        if !crate::js::jsapi::JS_ReadBytes(reader, bytes.as_mut_ptr() as _, len as usize) {
             return false;
         }
     }

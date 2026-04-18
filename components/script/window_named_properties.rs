@@ -206,7 +206,7 @@ unsafe extern "C" fn get_prototype_if_ordinary(
 ) -> bool {
     unsafe {
         *is_ordinary = true;
-        proto.set(js::jsapi::GetStaticPrototype(proxy.get()));
+        proto.set(crate::js::jsapi::GetStaticPrototype(proxy.get()));
     }
     true
 }

@@ -519,9 +519,9 @@ impl VirtualMethods for HTMLSlotElement {
     }
 }
 
-impl js::gc::Rootable for Slottable {}
+impl crate::js::gc::Rootable for Slottable {}
 
-impl js::gc::Initialize for Slottable {
+impl crate::js::gc::Initialize for Slottable {
     #[expect(unsafe_code)]
     #[cfg_attr(crown, allow(crown::unrooted_must_root))]
     unsafe fn initial() -> Option<Self> {
