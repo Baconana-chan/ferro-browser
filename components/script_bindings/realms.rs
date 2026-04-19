@@ -29,9 +29,12 @@ impl AlreadyInRealm {
     }
 
     pub fn assert_for_cx(cx: JSContext) -> AlreadyInRealm {
+        #[cfg(not(feature = "js-boa"))]
         unsafe {
             assert!(!GetCurrentRealmOrNull(*cx).is_null());
         }
+        #[cfg(feature = "js-boa")]
+        let _ = cx; // No realm tracking in the Boa shim.
         AlreadyInRealm(())
     }
 }
@@ -79,6 +82,7 @@ pub fn enter_realm<D: DomTypes>(object: &impl DomObject) -> JSAutoRealm {
 }
 
 #[cfg(feature = "js-boa")]
-pub fn enter_realm<D: DomTypes>(object: &impl DomObject) -> JSAutoRealm {
-    panic!("enter_realm not implemented for Boa")
+pub fn enter_realm<D: DomTypes>(_object: &impl DomObject) -> JSAutoRealm {
+    // Realm management is a no-op in the Boa shim.
+    JSAutoRealm::new(std::ptr::null_mut(), std::ptr::null_mut())
 }

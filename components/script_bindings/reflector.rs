@@ -104,12 +104,22 @@ impl MutDomObject for Reflector {
 // For js-boa, provide minimal stubs for these traits
 #[cfg(feature = "js-boa")]
 pub trait DomGlobalGeneric<D: DomTypes>: DomObject {
-    fn global_(&self, realm: InRealm) -> DomRoot<D::GlobalScope>
+    fn global_(&self, _realm: InRealm) -> DomRoot<D::GlobalScope>
     where
         Self: Sized,
     {
-        let _ = realm;
-        unimplemented!("DomGlobalGeneric::global_ is not implemented for js-boa yet")
+        // BOA_GLOBAL_SLOT (slot 2) stores a *const D::GlobalScope written during boa_wrap.
+        let js_obj = self.reflector().get_jsobject().get();
+        let ptr = unsafe {
+            crate::js::glue::GetReservedSlot(js_obj, crate::js::jsapi::BOA_GLOBAL_SLOT as u32)
+                .to_private() as *const D::GlobalScope
+        };
+        assert!(
+            !ptr.is_null(),
+            "global_() called on a DOM object whose BOA_GLOBAL_SLOT is null — \
+             was it created without boa_wrap?"
+        );
+        unsafe { DomRoot::from_ref(&*ptr) }
     }
 }
 
@@ -141,33 +151,72 @@ pub trait DomObjectIteratorWrap<D: DomTypes>: DomObjectWrap<D> + JSTraceable + I
 }
 
 #[cfg(feature = "js-boa")]
-unsafe fn unimplemented_wrap<D, T>(
+unsafe fn boa_wrap<D, T>(
     _cx: JSContext,
-    _global: &D::GlobalScope,
+    global: &D::GlobalScope,
     _proto: Option<HandleObject>,
-    _obj: Box<T>,
+    obj: Box<T>,
     _can_gc: CanGc,
 ) -> Root<Dom<T>>
 where
     D: DomTypes,
     T: Sized + DomObject + DomGlobalGeneric<D>,
 {
-    unimplemented!("DomObjectWrap::WRAP is not implemented for js-boa yet")
+    // Allocate a fake JSObject to serve as this DOM object's reflector.
+    let js_obj = crate::js::jsapi::BoaObject::alloc(std::ptr::null());
+
+    // Slot 0 (DOM_OBJECT_SLOT): raw DOM object pointer, stored as a PrivateValue.
+    let raw: *mut T = Box::into_raw(obj);
+    crate::js::glue::SetReservedSlot(
+        js_obj,
+        0,
+        crate::js::jsval::PrivateValue(raw as *const std::ffi::c_void),
+    );
+
+    // Slot 2 (BOA_GLOBAL_SLOT): pointer to the owning global scope.
+    crate::js::glue::SetReservedSlot(
+        js_obj,
+        crate::js::jsapi::BOA_GLOBAL_SLOT as u32,
+        crate::js::jsval::PrivateValue(
+            global as *const D::GlobalScope as *const std::ffi::c_void,
+        ),
+    );
+
+    // Wire up the Reflector inside the DOM object.
+    (*raw).reflector().set_jsobject(js_obj);
+
+    // The Box is intentionally leaked — the Boa shim has no GC to collect it.
+    DomRoot::from_ref(&*raw)
 }
 
 #[cfg(feature = "js-boa")]
-unsafe fn unimplemented_iter_wrap<D, T>(
+unsafe fn boa_iter_wrap<D, T>(
     _cx: JSContext,
-    _global: &D::GlobalScope,
+    global: &D::GlobalScope,
     _proto: Option<HandleObject>,
-    _obj: Box<IterableIterator<D, T>>,
+    obj: Box<IterableIterator<D, T>>,
     _can_gc: CanGc,
 ) -> Root<Dom<IterableIterator<D, T>>>
 where
     D: DomTypes,
     T: Sized + DomObjectWrap<D> + JSTraceable + Iterable,
 {
-    unimplemented!("DomObjectIteratorWrap::ITER_WRAP is not implemented for js-boa yet")
+    let js_obj = crate::js::jsapi::BoaObject::alloc(std::ptr::null());
+    let raw: *mut IterableIterator<D, T> = Box::into_raw(obj);
+    crate::js::glue::SetReservedSlot(
+        js_obj,
+        0,
+        crate::js::jsval::PrivateValue(raw as *const std::ffi::c_void),
+    );
+    crate::js::glue::SetReservedSlot(
+        js_obj,
+        crate::js::jsapi::BOA_GLOBAL_SLOT as u32,
+        crate::js::jsval::PrivateValue(
+            global as *const D::GlobalScope as *const std::ffi::c_void,
+        ),
+    );
+    (*raw).reflector().set_jsobject(js_obj);
+    DomRoot::from_ref(&*raw)
 }
 
 #[cfg(feature = "js-boa")]
@@ -181,7 +230,7 @@ where
         Option<HandleObject>,
         Box<Self>,
         CanGc,
-    ) -> Root<Dom<Self>> = unimplemented_wrap::<D, T>;
+    ) -> Root<Dom<Self>> = boa_wrap::<D, T>;
 }
 
 #[cfg(feature = "js-boa")]
@@ -194,7 +243,7 @@ impl<D: DomTypes, T> DomObjectIteratorWrap<D> for T where
         Option<HandleObject>,
         Box<IterableIterator<D, Self>>,
         CanGc,
-    ) -> Root<Dom<IterableIterator<D, Self>>> = unimplemented_iter_wrap::<D, T>;
+    ) -> Root<Dom<IterableIterator<D, Self>>> = boa_iter_wrap::<D, T>;
 }
 
 // Full implementations for SpiderMonkey

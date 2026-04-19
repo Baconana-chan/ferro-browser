@@ -12,17 +12,24 @@ use super::rust::{
 };
 
 /// Get reserved slot from object
-pub unsafe fn GetReservedSlot(_obj: *mut JSObject, _slot: u32) -> Value {
-    Value::undefined()
+pub unsafe fn GetReservedSlot(obj: *mut JSObject, slot: u32) -> Value {
+    super::jsapi::BoaObject::from_js_object(obj)
+        .map(|bo| bo.get_slot(slot as usize))
+        .unwrap_or_else(Value::undefined)
 }
 
 /// Set reserved slot on object
-pub unsafe fn SetReservedSlot(_obj: *mut JSObject, _slot: u32, _val: Value) {
+pub unsafe fn SetReservedSlot(obj: *mut JSObject, slot: u32, val: Value) {
+    if let Some(bo) = super::jsapi::BoaObject::from_js_object(obj) {
+        bo.set_slot(slot as usize, val);
+    }
 }
 
 /// Get object class
-pub unsafe fn GetObjectClass(_obj: *mut JSObject) -> *const JSClass {
-    ptr::null()
+pub unsafe fn GetObjectClass(obj: *mut JSObject) -> *const JSClass {
+    super::jsapi::BoaObject::from_js_object(obj)
+        .map(|bo| bo.class)
+        .unwrap_or(ptr::null())
 }
 
 /// Get object prototype
@@ -36,18 +43,20 @@ pub unsafe fn GetObjectRealm(_obj: *mut JSObject) -> *mut c_void {
 }
 
 /// Get object global
-pub unsafe fn GetNonCCWObjectGlobal(_obj: *mut JSObject) -> *mut JSObject {
-    ptr::null_mut()
+pub unsafe fn GetNonCCWObjectGlobal(obj: *mut JSObject) -> *mut JSObject {
+    // Return the object itself; for DOM objects the caller should use global_().
+    // The global is stored in BOA_GLOBAL_SLOT (slot 2) by boa_wrap.
+    obj
 }
 
 /// Unwrap object (remove wrappers)
-pub unsafe fn UnwrapObject(_obj: *mut JSObject, _stopAtWindowProxy: bool) -> *mut JSObject {
-    ptr::null_mut()
+pub unsafe fn UnwrapObject(obj: *mut JSObject, _stopAtWindowProxy: bool) -> *mut JSObject {
+    obj // No wrapper objects in the Boa shim.
 }
 
 /// Unwrap object without CCW
-pub unsafe fn UnwrapObjectNoThrow(_obj: *mut JSObject) -> *mut JSObject {
-    ptr::null_mut()
+pub unsafe fn UnwrapObjectNoThrow(obj: *mut JSObject) -> *mut JSObject {
+    obj // No wrapper objects in the Boa shim.
 }
 
 /// Is wrapper object
@@ -56,22 +65,28 @@ pub unsafe fn IsWrapper(_obj: *mut JSObject) -> bool {
 }
 
 /// Is DOM object
-pub unsafe fn IsDOMObject(_obj: *mut JSObject) -> bool {
-    false
+pub unsafe fn IsDOMObject(obj: *mut JSObject) -> bool {
+    super::jsapi::BoaObject::from_js_object(obj).is_some()
 }
 
 /// Get DOM class
-pub unsafe fn GetDOMClass(_obj: *mut JSObject) -> *const c_void {
-    ptr::null()
+/// Returns the class pointer cast to *const c_void (caller casts to *const DOMJSClass)
+pub unsafe fn GetDOMClass(obj: *mut JSObject) -> *const c_void {
+    GetObjectClass(obj) as *const c_void
 }
 
-/// Get DOM private
-pub unsafe fn GetDOMPrivate(_obj: *mut JSObject) -> *mut c_void {
-    ptr::null_mut()
+/// Get DOM private (slot 0 = DOM_OBJECT_SLOT)
+pub unsafe fn GetDOMPrivate(obj: *mut JSObject) -> *mut c_void {
+    super::jsapi::BoaObject::from_js_object(obj)
+        .map(|bo| bo.get_slot(0).to_private() as *mut c_void)
+        .unwrap_or(ptr::null_mut())
 }
 
-/// Set DOM private
-pub unsafe fn SetDOMPrivate(_obj: *mut JSObject, _priv: *mut c_void) {
+/// Set DOM private (slot 0 = DOM_OBJECT_SLOT)
+pub unsafe fn SetDOMPrivate(obj: *mut JSObject, priv_: *mut c_void) {
+    if let Some(bo) = super::jsapi::BoaObject::from_js_object(obj) {
+        bo.set_slot(0, super::jsval::PrivateValue(priv_ as *const _));
+    }
 }
 
 /// JSID type
@@ -474,13 +489,19 @@ pub struct JSPrincipalsCallbacks {
     pub write: Option<unsafe extern "C" fn(*mut RawJSContext, *mut c_void, *mut c_void) -> bool>,
 }
 
-/// Destroy Rust JS principals
-pub unsafe fn DestroyRustJSPrincipals(_principals: *mut c_void) {
+/// Destroy Rust JS principals — frees the heap-allocated JSPrincipals box.
+pub unsafe fn DestroyRustJSPrincipals(principals: *mut c_void) {
+    if !principals.is_null() {
+        drop(Box::from_raw(principals as *mut super::jsapi::JSPrincipals));
+    }
 }
 
 /// Get Rust JS principals private data
-pub unsafe fn GetRustJSPrincipalsPrivate(_principals: *mut JSPrincipals) -> *mut c_void {
-    ptr::null_mut()
+pub unsafe fn GetRustJSPrincipalsPrivate(principals: *mut JSPrincipals) -> *mut c_void {
+    if principals.is_null() {
+        return ptr::null_mut();
+    }
+    (*principals).private_data
 }
 
 /// Call script tracer
@@ -760,12 +781,8 @@ pub struct JSErrorFormatString {
 }
 
 /// Get reserved slot from object (SpiderMonkey-compatible signature with out parameter)
-pub unsafe fn JS_GetReservedSlot(
-    _obj: *mut JSObject,
-    _slot: u32,
-    val: &mut Value,
-) {
-    *val = Value::undefined();
+pub unsafe fn JS_GetReservedSlot(obj: *mut JSObject, slot: u32, val: &mut Value) {
+    *val = GetReservedSlot(obj, slot);
 }
 
 /// Set build ID operation
@@ -844,12 +861,17 @@ pub unsafe fn UncheckedUnwrapObject(
     ptr::null_mut()
 }
 
-/// CreateRustJSPrincipals - create principals from Rust
+/// CreateRustJSPrincipals - allocate a heap JSPrincipals storing the given private pointer.
 pub unsafe fn CreateRustJSPrincipals(
     _callbacks: &'static JSPrincipalsCallbacks,
-    _private: *mut c_void,
+    private: *mut c_void,
 ) -> *mut JSPrincipals {
-    ptr::null_mut()
+    use std::sync::atomic::AtomicI32;
+    let principals = Box::new(super::jsapi::JSPrincipals {
+        refcount: AtomicI32::new(0),
+        private_data: private,
+    });
+    Box::into_raw(principals)
 }
 
 /// GetProxyHandlerFamily - get the handler family for a proxy

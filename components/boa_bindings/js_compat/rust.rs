@@ -457,10 +457,14 @@ impl<'a, T> MutableHandle<'a, T> {
         Self { ptr: ptr.into_mut_raw_ptr(), _marker: PhantomData }
     }
     
-    /// Check if the pointer value is null (for *mut T types)
+    /// Check if the held value is null/zero (for *mut T pointer types).
     pub fn is_null(&self) -> bool where T: Copy + PartialEq<T> {
-        // For pointer types, we check if the inner value is null
-        false  // Default implementation - actual null check is type-specific
+        // Safety: ptr must be valid for the lifetime of the handle.
+        // For raw pointer T (e.g. *mut JSObject), zeroed() yields the null pointer,
+        // and raw-pointer PartialEq compares by address.
+        let val: T = unsafe { *self.ptr };
+        let zero: T = unsafe { std::mem::zeroed() };
+        val == zero
     }
     
     /// Reborrow this mutable handle with a shorter lifetime
@@ -557,8 +561,9 @@ pub unsafe fn ToString(_cx: *mut RawJSContext, _v: HandleValue<'_>) -> *mut JSSt
 // ===================
 
 /// is_dom_object - check if an object is a DOM object
-pub unsafe fn is_dom_object(_obj: *mut JSObject) -> bool {
-    false
+pub unsafe fn is_dom_object(obj: *mut JSObject) -> bool {
+    let clasp = super::glue::GetObjectClass(obj);
+    !clasp.is_null() && is_dom_class(clasp)
 }
 
 /// maybe_wrap_value - wrap a value for cross-realm use
@@ -1532,8 +1537,9 @@ pub mod wrappers2 {
     
     pub unsafe fn JS_InitDestroyPrincipalsCallback(
         _cx: *mut RawJSContext,
-        _callback: Option<unsafe extern "C" fn(*mut super::super::jsapi::JSPrincipals)>,
+        callback: Option<unsafe extern "C" fn(*mut super::super::jsapi::JSPrincipals)>,
     ) {
+        super::super::jsapi::DESTROY_PRINCIPALS_CB.with(|c| c.set(callback));
     }
     
     pub unsafe fn JS_InitReadPrincipalsCallback(
@@ -1626,13 +1632,13 @@ pub struct ScriptedCaller {
 }
 
 /// Check if a class is a DOM class
-pub unsafe fn is_dom_class(_class: *const JSClass) -> bool {
-    false
+pub unsafe fn is_dom_class(class: *const JSClass) -> bool {
+    !class.is_null() && ((*class).flags & super::jsapi::JSCLASS_IS_DOMJSCLASS) != 0
 }
 
 /// Get the class of an object
-pub unsafe fn get_object_class(_obj: *mut JSObject) -> *const JSClass {
-    ptr::null()
+pub unsafe fn get_object_class(obj: *mut JSObject) -> *const JSClass {
+    super::glue::GetObjectClass(obj)
 }
 
 /// Structured clone buffer wrapper

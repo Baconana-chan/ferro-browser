@@ -36,8 +36,17 @@ impl ServoJSPrincipals {
     }
 
     #[cfg(feature = "js-boa")]
-    pub fn new<D: DomTypes>(_origin: &MutableOrigin) -> Self {
-        panic!("ServoJSPrincipals::new not implemented for Boa")
+    pub fn new<D: DomTypes>(origin: &MutableOrigin) -> Self {
+        unsafe {
+            static BOA_CALLBACKS: crate::js::glue::JSPrincipalsCallbacks =
+                crate::js::glue::JSPrincipalsCallbacks { write: None };
+            let private: Box<MutableOrigin> = Box::new(origin.clone());
+            let raw = crate::js::glue::CreateRustJSPrincipals(
+                &BOA_CALLBACKS,
+                Box::into_raw(private) as *mut _,
+            );
+            Self::from_raw_nonnull(NonNull::new_unchecked(raw))
+        }
     }
 
     /// Construct `Self` from a raw `*mut JSPrincipals`, incrementing its

@@ -138,7 +138,8 @@ impl JSContext {
 /// Raw JSContext pointer type - must be JSContext for compatibility with script_bindings
 pub type RawJSContext = JSContext;
 
-/// JSObject - represents a JavaScript object
+/// JSObject - represents a JavaScript object.
+/// In the Boa shim every `*mut JSObject` is actually a `*mut BoaObject`.
 #[repr(C)]
 pub struct JSObject {
     _private: [u8; 0],
@@ -151,6 +152,68 @@ impl JSObject {
 }
 
 pub unsafe extern "C" fn JS_GlobalObjectTraceHook(_trc: *mut JSTracer, _obj: *mut JSObject) {}
+
+// =============================================================================
+// BoaObject — minimal heap-allocated fake JSObject for the Boa backend
+// =============================================================================
+
+/// Magic sentinel stored at byte-offset 0 of every BoaObject.
+/// Used to detect valid BoaObject pointers vs random/null pointers.
+pub(crate) const BOA_OBJECT_MAGIC: u64 = 0xB0A0_CAFE_DEAD_0001;
+
+/// Reserved slot index used by `boa_wrap` to store the `*const GlobalScope`.
+/// Slot 0 = DOM_OBJECT_SLOT (private DOM ptr, set by boa_wrap)
+/// Slot 78 = DOM_PROTOTYPE_SLOT (proto array ptr, set by create_global_object)
+/// Slot 2 = BOA_GLOBAL_SLOT  (global scope ptr — Boa-only convention)
+pub const BOA_GLOBAL_SLOT: usize = 2;
+
+/// Heap-allocated fake JSObject for the Boa backend.
+/// **Intentionally leaked** — the Boa shim has no GC, so objects live forever.
+pub struct BoaObject {
+    magic: u64,
+    pub class: *const JSClass,
+    slots: Vec<Value>,
+}
+
+unsafe impl Send for BoaObject {}
+unsafe impl Sync for BoaObject {}
+
+impl BoaObject {
+    /// Allocate a new `BoaObject` and return it as `*mut JSObject`.
+    pub fn alloc(class: *const JSClass) -> *mut JSObject {
+        let obj = Box::new(BoaObject {
+            magic: BOA_OBJECT_MAGIC,
+            class,
+            slots: vec![Value::undefined(); 8],
+        });
+        Box::into_raw(obj) as *mut JSObject
+    }
+
+    /// Cast a `*mut JSObject` to `&mut BoaObject` if it carries the magic sentinel.
+    /// Returns `None` for null or non-BoaObject pointers.
+    pub unsafe fn from_js_object<'a>(obj: *mut JSObject) -> Option<&'a mut BoaObject> {
+        if obj.is_null() {
+            return None;
+        }
+        let bo = obj as *mut BoaObject;
+        if (*bo).magic == BOA_OBJECT_MAGIC {
+            Some(&mut *bo)
+        } else {
+            None
+        }
+    }
+
+    pub fn get_slot(&self, slot: usize) -> Value {
+        self.slots.get(slot).copied().unwrap_or_else(Value::undefined)
+    }
+
+    pub fn set_slot(&mut self, slot: usize, val: Value) {
+        if slot >= self.slots.len() {
+            self.slots.resize(slot + 1, Value::undefined());
+        }
+        self.slots[slot] = val;
+    }
+}
 
 /// JSString - represents a JavaScript string
 #[repr(C)]
@@ -313,7 +376,9 @@ impl Value {
     }
     
     pub fn is_object(&self) -> bool {
-        self.data >= 0x1000
+        // Raw JSObject pointer: canonical x86-64 user-space address has top 16 bits == 0.
+        // Private/string/symbol/bigint/boolean values have a non-zero tag in bits 48+.
+        self.data >= 0x1000 && (self.data >> 48) == 0
     }
     
     pub fn is_boolean(&self) -> bool {
@@ -412,9 +477,11 @@ impl Value {
         Self { data: obj as u64 }
     }
     
-    /// Get the value as a private pointer
+    /// Get the value as a private pointer.
+    /// Strips the PrivateValue tag (bits 48-50) set by `jsval::PrivateValue()`.
     pub fn to_private(&self) -> *const std::ffi::c_void {
-        self.data as *const std::ffi::c_void
+        // PrivateValue stores `ptr | 0x0007_0000_0000_0000`; mask off the tag.
+        (self.data & 0x0000_FFFF_FFFF_FFFF) as *const std::ffi::c_void
     }
     
     pub fn to_object_or_null(&self) -> *mut JSObject {
@@ -800,12 +867,12 @@ pub enum JSJitCompilerOption {
 }
 
 // Function stubs
-pub unsafe fn JS_NewObject(_cx: *mut RawJSContext, _class: *const JSClass) -> *mut JSObject {
-    ptr::null_mut()
+pub unsafe fn JS_NewObject(_cx: *mut RawJSContext, class: *const JSClass) -> *mut JSObject {
+    BoaObject::alloc(class)
 }
 
 pub unsafe fn JS_NewPlainObject(_cx: *mut RawJSContext) -> *mut JSObject {
-    ptr::null_mut()
+    BoaObject::alloc(ptr::null())
 }
 
 pub unsafe fn JS_NewStringCopyUTF8N(
@@ -816,7 +883,11 @@ pub unsafe fn JS_NewStringCopyUTF8N(
     ptr::null_mut()
 }
 
-pub unsafe fn JS_SetReservedSlot(_obj: *mut JSObject, _slot: u32, _val: &Value) {}
+pub unsafe fn JS_SetReservedSlot(obj: *mut JSObject, slot: u32, val: &Value) {
+    if let Some(bo) = BoaObject::from_js_object(obj) {
+        bo.set_slot(slot as usize, *val);
+    }
+}
 
 pub unsafe fn CurrentGlobalOrNull(_cx: *mut RawJSContext) -> *mut JSObject {
     ptr::null_mut()
@@ -1291,11 +1362,25 @@ pub unsafe fn JS_WriteBytes(
 // Principals
 // ===================
 
+use std::sync::atomic::{AtomicI32, Ordering};
+
+thread_local! {
+    /// Registered per-thread destroy-principals callback (set by JS_InitDestroyPrincipalsCallback).
+    pub(crate) static DESTROY_PRINCIPALS_CB:
+        std::cell::Cell<Option<unsafe extern "C" fn(*mut JSPrincipals)>> =
+        const { std::cell::Cell::new(None) };
+}
+
+/// Heap-allocated principals object used by the Boa shim.
+/// Layout: principals header first so a *mut JSPrincipals can be cast to *mut BoaPrincipals.
 #[repr(C)]
 pub struct JSPrincipals {
-    pub refcount: i32,
-    _private: [u8; 0],
+    pub refcount: AtomicI32,
+    pub private_data: *mut std::ffi::c_void,
 }
+
+unsafe impl Send for JSPrincipals {}
+unsafe impl Sync for JSPrincipals {}
 
 // ===================
 // DOM Callbacks
@@ -2434,12 +2519,12 @@ pub enum OnNewGlobalHookOption {
 /// JS_NewGlobalObject - create a new global object
 pub unsafe fn JS_NewGlobalObject(
     _cx: *mut RawJSContext,
-    _clasp: *const JSClass,
+    clasp: *const JSClass,
     _principals: *mut JSPrincipals,
     _hook_option: OnNewGlobalHookOption,
     _options: *const c_void,
 ) -> *mut JSObject {
-    ptr::null_mut()
+    BoaObject::alloc(clasp)
 }
 
 /// JS_SetTrustedPrincipals - set trusted principals
@@ -2833,12 +2918,27 @@ pub unsafe fn TrueHandleValue() -> HandleValue<'static> {
 // Principals Functions
 // ===================
 
-/// JS_DropPrincipals - decrement principals refcount
-pub unsafe fn JS_DropPrincipals(_cx: *mut RawJSContext, _principals: *mut JSPrincipals) {
+/// JS_DropPrincipals - decrement principals refcount and destroy when reaching zero
+pub unsafe fn JS_DropPrincipals(_cx: *mut RawJSContext, principals: *mut JSPrincipals) {
+    if principals.is_null() {
+        return;
+    }
+    let prev = (*principals).refcount.fetch_sub(1, Ordering::Release);
+    if prev == 1 {
+        // Last reference — call the registered destroy callback if any, or free directly.
+        if let Some(cb) = DESTROY_PRINCIPALS_CB.with(|c| c.get()) {
+            cb(principals);
+        } else {
+            drop(Box::from_raw(principals));
+        }
+    }
 }
 
 /// JS_HoldPrincipals - increment principals refcount
-pub unsafe fn JS_HoldPrincipals(_principals: *mut JSPrincipals) {
+pub unsafe fn JS_HoldPrincipals(principals: *mut JSPrincipals) {
+    if !principals.is_null() {
+        (*principals).refcount.fetch_add(1, Ordering::Relaxed);
+    }
 }
 
 // ===================
