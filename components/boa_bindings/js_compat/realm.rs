@@ -116,17 +116,24 @@ impl Drop for AutoRealm {
 pub type JSAutoRealm = AutoRealm;
 
 /// Get realm for object
-pub unsafe fn GetObjectRealm(_obj: *mut JSObject) -> *mut c_void {
-    ptr::null_mut()
+pub unsafe fn GetObjectRealm(obj: *mut JSObject) -> *mut c_void {
+    if let Some(bo) = super::jsapi::BoaObject::from_js_object(obj) {
+        let global = bo.get_slot(super::jsapi::BOA_GLOBAL_SLOT).to_private() as *mut JSObject;
+        if !global.is_null() {
+            return global as *mut c_void;
+        }
+    }
+    obj as *mut c_void
 }
 
 /// Get current realm
-pub unsafe fn GetCurrentRealmOrNull(_cx: *mut RawJSContext) -> *mut c_void {
-    ptr::null_mut()
+pub unsafe fn GetCurrentRealmOrNull(cx: *mut RawJSContext) -> *mut c_void {
+    super::jsapi::CurrentGlobalOrNull(cx) as *mut c_void
 }
 
 /// Enter realm
-pub unsafe fn EnterRealm(_cx: *mut RawJSContext, _realm: *mut c_void) {
+pub unsafe fn EnterRealm(cx: *mut RawJSContext, realm: *mut c_void) {
+    super::jsapi::EnterRealm(cx, realm as *mut JSObject);
 }
 
 /// Leave realm
@@ -134,8 +141,8 @@ pub unsafe fn LeaveRealm(_cx: *mut RawJSContext, _old_realm: *mut c_void) {
 }
 
 /// Get realm global
-pub unsafe fn GetRealmGlobalOrNull(_realm: *mut c_void) -> *mut JSObject {
-    ptr::null_mut()
+pub unsafe fn GetRealmGlobalOrNull(realm: *mut c_void) -> *mut JSObject {
+    realm as *mut JSObject
 }
 
 /// Get realm object

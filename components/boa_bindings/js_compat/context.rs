@@ -210,22 +210,24 @@ pub unsafe fn JS_IsOnCurrentThread(_cx: *mut RawJSContext) -> bool {
 }
 
 /// Enter realm
-pub unsafe fn JS_EnterRealm(_cx: *mut RawJSContext, _obj: HandleObject<'_>) -> *mut c_void {
-    ptr::null_mut()
+pub unsafe fn JS_EnterRealm(cx: *mut RawJSContext, obj: HandleObject<'_>) -> *mut c_void {
+    super::jsapi::EnterRealm(cx, obj.get()) as *mut c_void
 }
 
 /// Leave realm
-pub unsafe fn JS_LeaveRealm(_cx: *mut RawJSContext, _old_realm: *mut c_void) {
+pub unsafe fn JS_LeaveRealm(cx: *mut RawJSContext, old_realm: *mut c_void) {
+    super::jsapi::LeaveRealm(cx, old_realm as *mut super::jsapi::Realm)
 }
 
 /// Get current global
-pub unsafe fn CurrentGlobalOrNull(_cx: *mut RawJSContext) -> *mut JSObject {
-    ptr::null_mut()
+pub unsafe fn CurrentGlobalOrNull(cx: *mut RawJSContext) -> *mut JSObject {
+    let _ = cx;
+    super::jsapi::CurrentGlobalOrNull(cx)
 }
 
 /// Get realm global
-pub unsafe fn GetRealmGlobalOrNull(_realm: *mut c_void) -> *mut JSObject {
-    ptr::null_mut()
+pub unsafe fn GetRealmGlobalOrNull(realm: *mut c_void) -> *mut JSObject {
+    super::jsapi::GetRealmGlobalOrNull(realm as *mut super::jsapi::Realm)
 }
 
 /// Init standard classes

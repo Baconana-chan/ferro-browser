@@ -3,6 +3,7 @@
 //
 // SpiderMonkey jsapi compatibility layer for Boa
 
+use std::cell::Cell;
 use std::ptr;
 use std::ffi::c_void;
 use std::fmt;
@@ -167,11 +168,28 @@ pub(crate) const BOA_OBJECT_MAGIC: u64 = 0xB0A0_CAFE_DEAD_0001;
 /// Slot 2 = BOA_GLOBAL_SLOT  (global scope ptr — Boa-only convention)
 pub const BOA_GLOBAL_SLOT: usize = 2;
 
+thread_local! {
+    static CURRENT_GLOBAL: Cell<*mut JSObject> = const { Cell::new(ptr::null_mut()) };
+    static REALM_OBJECT_PROTO: Cell<*mut JSObject> = const { Cell::new(ptr::null_mut()) };
+    static REALM_FUNCTION_PROTO: Cell<*mut JSObject> = const { Cell::new(ptr::null_mut()) };
+    static REALM_ITERATOR_PROTO: Cell<*mut JSObject> = const { Cell::new(ptr::null_mut()) };
+    static REALM_ERROR_PROTO: Cell<*mut JSObject> = const { Cell::new(ptr::null_mut()) };
+}
+
+pub(crate) fn replace_current_global(global: *mut JSObject) -> *mut JSObject {
+    CURRENT_GLOBAL.with(|current| current.replace(global))
+}
+
+pub(crate) fn current_global() -> *mut JSObject {
+    CURRENT_GLOBAL.with(Cell::get)
+}
+
 /// Heap-allocated fake JSObject for the Boa backend.
 /// **Intentionally leaked** — the Boa shim has no GC, so objects live forever.
 pub struct BoaObject {
     magic: u64,
     pub class: *const JSClass,
+    pub proto: *mut JSObject,
     slots: Vec<Value>,
 }
 
@@ -181,9 +199,14 @@ unsafe impl Sync for BoaObject {}
 impl BoaObject {
     /// Allocate a new `BoaObject` and return it as `*mut JSObject`.
     pub fn alloc(class: *const JSClass) -> *mut JSObject {
+        Self::alloc_with_proto(class, ptr::null_mut())
+    }
+
+    pub fn alloc_with_proto(class: *const JSClass, proto: *mut JSObject) -> *mut JSObject {
         let obj = Box::new(BoaObject {
             magic: BOA_OBJECT_MAGIC,
             class,
+            proto,
             slots: vec![Value::undefined(); 8],
         });
         Box::into_raw(obj) as *mut JSObject
@@ -599,12 +622,20 @@ unsafe impl<T> super::gc::Traceable for Heap<T> {
 
 /// JSAutoRealm - RAII guard for entering a realm
 pub struct JSAutoRealm {
-    _private: (),
+    old_global: *mut JSObject,
 }
 
 impl JSAutoRealm {
-    pub fn new(_cx: *mut RawJSContext, _obj: *mut JSObject) -> Self {
-        Self { _private: () }
+    pub fn new(_cx: *mut RawJSContext, obj: *mut JSObject) -> Self {
+        Self {
+            old_global: replace_current_global(obj),
+        }
+    }
+}
+
+impl Drop for JSAutoRealm {
+    fn drop(&mut self) {
+        replace_current_global(self.old_global);
     }
 }
 
@@ -890,7 +921,7 @@ pub unsafe fn JS_SetReservedSlot(obj: *mut JSObject, slot: u32, val: &Value) {
 }
 
 pub unsafe fn CurrentGlobalOrNull(_cx: *mut RawJSContext) -> *mut JSObject {
-    ptr::null_mut()
+    current_global()
 }
 
 pub unsafe fn IsCallable(_obj: *mut JSObject) -> bool {
@@ -2262,12 +2293,13 @@ pub struct Realm {
 }
 
 /// Enter a realm, returning the old realm
-pub unsafe fn EnterRealm(_cx: *mut RawJSContext, _target: *mut JSObject) -> *mut Realm {
-    ptr::null_mut()
+pub unsafe fn EnterRealm(_cx: *mut RawJSContext, target: *mut JSObject) -> *mut Realm {
+    replace_current_global(target) as *mut Realm
 }
 
 /// Leave a realm, restoring the old realm
-pub unsafe fn LeaveRealm(_cx: *mut RawJSContext, _old_realm: *mut Realm) {
+pub unsafe fn LeaveRealm(_cx: *mut RawJSContext, old_realm: *mut Realm) {
+    replace_current_global(old_realm as *mut JSObject);
 }
 
 /// Check if an object is a WindowProxy
@@ -2478,13 +2510,20 @@ pub unsafe fn CheckedUnwrapStatic(_obj: *mut JSObject) -> *mut JSObject {
 }
 
 /// GetFunctionRealm - get the realm of a function
-pub unsafe fn GetFunctionRealm(_cx: *mut RawJSContext, _fun: HandleObject<'_>) -> *mut Realm {
-    ptr::null_mut()
+pub unsafe fn GetFunctionRealm(_cx: *mut RawJSContext, fun: HandleObject<'_>) -> *mut Realm {
+    let obj = fun.get();
+    if let Some(bo) = BoaObject::from_js_object(obj) {
+        let global = bo.get_slot(BOA_GLOBAL_SLOT).to_private() as *mut JSObject;
+        if !global.is_null() {
+            return global as *mut Realm;
+        }
+    }
+    current_global() as *mut Realm
 }
 
 /// GetRealmGlobalOrNull - get the global for a realm
-pub unsafe fn GetRealmGlobalOrNull(_realm: *mut Realm) -> *mut JSObject {
-    ptr::null_mut()
+pub unsafe fn GetRealmGlobalOrNull(realm: *mut Realm) -> *mut JSObject {
+    realm as *mut JSObject
 }
 
 /// IsSharableCompartment - check if compartment is sharable
@@ -2539,28 +2578,62 @@ pub unsafe fn JS_SetTrustedPrincipals(
 // ===================
 
 /// GetRealmErrorPrototype - get Error.prototype for a realm
-pub unsafe fn GetRealmErrorPrototype(_cx: *mut RawJSContext) -> *mut JSObject {
-    ptr::null_mut()
+pub unsafe fn GetRealmErrorPrototype(cx: *mut RawJSContext) -> *mut JSObject {
+    REALM_ERROR_PROTO.with(|cell| {
+        let existing = cell.get();
+        if !existing.is_null() {
+            return existing;
+        }
+        let proto = BoaObject::alloc_with_proto(ptr::null(), GetRealmObjectPrototype(cx));
+        cell.set(proto);
+        proto
+    })
 }
 
 /// GetRealmFunctionPrototype - get Function.prototype for a realm
-pub unsafe fn GetRealmFunctionPrototype(_cx: *mut RawJSContext) -> *mut JSObject {
-    ptr::null_mut()
+pub unsafe fn GetRealmFunctionPrototype(cx: *mut RawJSContext) -> *mut JSObject {
+    REALM_FUNCTION_PROTO.with(|cell| {
+        let existing = cell.get();
+        if !existing.is_null() {
+            return existing;
+        }
+        let proto = BoaObject::alloc_with_proto(ptr::null(), GetRealmObjectPrototype(cx));
+        cell.set(proto);
+        proto
+    })
 }
 
 /// GetRealmIteratorPrototype - get the iterator prototype for a realm
-pub unsafe fn GetRealmIteratorPrototype(_cx: *mut RawJSContext) -> *mut JSObject {
-    ptr::null_mut()
+pub unsafe fn GetRealmIteratorPrototype(cx: *mut RawJSContext) -> *mut JSObject {
+    REALM_ITERATOR_PROTO.with(|cell| {
+        let existing = cell.get();
+        if !existing.is_null() {
+            return existing;
+        }
+        let proto = BoaObject::alloc_with_proto(ptr::null(), GetRealmObjectPrototype(cx));
+        cell.set(proto);
+        proto
+    })
 }
 
 /// GetRealmObjectPrototype - get Object.prototype for a realm
 pub unsafe fn GetRealmObjectPrototype(_cx: *mut RawJSContext) -> *mut JSObject {
-    ptr::null_mut()
+    REALM_OBJECT_PROTO.with(|cell| {
+        let existing = cell.get();
+        if !existing.is_null() {
+            return existing;
+        }
+        let proto = BoaObject::alloc_with_proto(ptr::null(), ptr::null_mut());
+        cell.set(proto);
+        proto
+    })
 }
 
 /// GetStaticPrototype - get the [[Prototype]] slot of an object
-pub unsafe fn GetStaticPrototype(_obj: *mut JSObject) -> *mut JSObject {
-    ptr::null_mut()
+pub unsafe fn GetStaticPrototype(obj: *mut JSObject) -> *mut JSObject {
+    BoaObject::from_js_object(obj)
+        .map(|bo| bo.proto)
+        .unwrap_or(ptr::null_mut())
 }
 
 // ===================
@@ -3340,10 +3413,10 @@ pub unsafe fn GetObjectProto(
 /// Create object with given prototype
 pub unsafe fn JS_NewObjectWithGivenProto(
     _cx: *mut RawJSContext,
-    _clasp: *const JSClass,
-    _proto: HandleObject<'_>,
+    clasp: *const JSClass,
+    proto: HandleObject<'_>,
 ) -> *mut JSObject {
-    ptr::null_mut()
+    BoaObject::alloc_with_proto(clasp, proto.get())
 }
 
 /// Define properties on an object
