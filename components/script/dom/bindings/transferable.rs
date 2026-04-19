@@ -42,7 +42,7 @@ where
     ) -> Result<DomRoot<Self>, ()>;
 
     fn serialized_storage<'a>(
-        data: StructuredData<'a, '_>,
+        data: StructuredData<'a>,
     ) -> &'a mut Option<FxHashMap<NamespaceIndex<Self::Index>, Self::Data>>;
 }
 

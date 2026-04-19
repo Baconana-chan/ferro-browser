@@ -212,7 +212,7 @@ impl Serializable for DOMPointReadOnly {
     }
 
     fn serialized_storage<'a>(
-        data: StructuredData<'a, '_>,
+        data: StructuredData<'a>,
     ) -> &'a mut Option<FxHashMap<DomPointId, Self::Data>> {
         match data {
             StructuredData::Reader(r) => &mut r.points,

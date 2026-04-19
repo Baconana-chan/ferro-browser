@@ -463,7 +463,7 @@ impl AbortSignalMethods<crate::DomTypeHolder> for AbortSignal {
                 JS_SetPendingException(
                     cx,
                     HandleValue::from_raw(self.abort_reason.handle()),
-                    ExceptionStackBehavior::Capture,
+                    ExceptionStackBehavior::Capture as u32,
                 )
             };
             return Err(Error::JSFailed);

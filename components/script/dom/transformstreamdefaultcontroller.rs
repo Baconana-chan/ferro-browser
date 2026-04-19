@@ -614,7 +614,7 @@ impl TransformStreamDefaultController {
                     JS_SetPendingException(
                         *cx,
                         stored_error.handle().into(),
-                        ExceptionStackBehavior::Capture,
+                        ExceptionStackBehavior::Capture as u32,
                     );
                 }
             }

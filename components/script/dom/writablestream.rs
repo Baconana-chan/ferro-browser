@@ -1292,7 +1292,7 @@ impl Transferable for WritableStream {
 
     /// Note: we are relying on the port transfer, so the data returned here are related to the port.
     fn serialized_storage<'a>(
-        data: StructuredData<'a, '_>,
+        data: StructuredData<'a>,
     ) -> &'a mut Option<FxHashMap<MessagePortId, Self::Data>> {
         match data {
             StructuredData::Reader(r) => &mut r.port_impls,

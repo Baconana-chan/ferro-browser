@@ -69,7 +69,7 @@ where
     /// Returns the field of [StructuredDataReader]/[StructuredDataWriter] that
     /// should be used to read/store serialized instances of this type.
     fn serialized_storage<'a>(
-        data: StructuredData<'a, '_>,
+        data: StructuredData<'a>,
     ) -> &'a mut Option<FxHashMap<NamespaceIndex<Self::Index>, Self::Data>>;
 }
 

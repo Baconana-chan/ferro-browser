@@ -667,3 +667,24 @@ impl<D: crate::DomTypes> EventModifierInit<D> {
         modifiers
     }
 }
+
+#[allow(deprecated)]
+#[cfg(feature = "js-boa")]
+impl<D: crate::DomTypes> EventModifierInit<D> {
+    pub fn modifiers(&self) -> Modifiers {
+        let mut modifiers = Modifiers::empty();
+        if self.altKey {
+            modifiers.insert(Modifiers::ALT);
+        }
+        if self.ctrlKey {
+            modifiers.insert(Modifiers::CONTROL);
+        }
+        if self.shiftKey {
+            modifiers.insert(Modifiers::SHIFT);
+        }
+        if self.metaKey {
+            modifiers.insert(Modifiers::META);
+        }
+        modifiers
+    }
+}

@@ -8,13 +8,13 @@ use std::sync::LazyLock;
 
 use crate::js::conversions::jsstr_to_string;
 use crate::js::glue::{AppendToIdVector, CreateProxyHandler, NewProxyObject, ProxyTraps};
+use crate::js::UndefinedHandleValue as MakeUndefinedHandleValue;
 use crate::js::jsapi::{
     GetWellKnownSymbol, Handle, HandleId, HandleObject, JS_SetImmutablePrototype,
     JSCLASS_DELAY_METADATA_BUILDER, JSCLASS_IS_PROXY, JSCLASS_RESERVED_SLOTS_MASK,
     JSCLASS_RESERVED_SLOTS_SHIFT, JSClass, JSClass_NON_NATIVE, JSContext, JSErrNum,
     JSPROP_READONLY, MutableHandle, MutableHandleIdVector, MutableHandleObject, ObjectOpResult,
     PropertyDescriptor, ProxyClassExtension, ProxyClassOps, ProxyObjectOps, SymbolCode,
-    UndefinedHandleValue,
 };
 use crate::js::jsid::SymbolId;
 use crate::js::jsval::UndefinedValue;
@@ -45,6 +45,7 @@ static HANDLER: LazyLock<SyncWrapper> = LazyLock::new(|| {
         defineProperty: Some(define_property),
         ownPropertyKeys: Some(own_property_keys),
         delete_: Some(delete),
+        getIfAbsent: None,
         enumerate: None,
         getPrototypeIfOrdinary: Some(get_prototype_if_ordinary),
         getPrototype: None,
@@ -55,8 +56,11 @@ static HANDLER: LazyLock<SyncWrapper> = LazyLock::new(|| {
         has: None,
         get: None,
         set: None,
+        keys: None,
+        iterate: None,
         call: None,
         construct: None,
+        hasInstance: None,
         hasOwn: None,
         getOwnEnumerablePropertyKeys: None,
         nativeCall: None,
@@ -248,10 +252,10 @@ static CLASS: JSClass = JSClass {
         JSCLASS_IS_PROXY |
         JSCLASS_DELAY_METADATA_BUILDER |
         ((1 & JSCLASS_RESERVED_SLOTS_MASK) << JSCLASS_RESERVED_SLOTS_SHIFT), /* JSCLASS_HAS_RESERVED_SLOTS(1) */
-    cOps: unsafe { &ProxyClassOps },
+    cOps: ptr::null(),
     spec: ptr::null(),
-    ext: unsafe { &ProxyClassExtension },
-    oOps: unsafe { &ProxyObjectOps },
+    ext: &ProxyClassExtension as *const _ as *const _,
+    oOps: &ProxyObjectOps as *const _ as *const _,
 };
 
 #[expect(unsafe_code)]
@@ -264,7 +268,7 @@ pub(crate) fn create(
         properties_obj.set(NewProxyObject(
             *cx,
             HANDLER.0,
-            UndefinedHandleValue,
+            MakeUndefinedHandleValue(),
             proto.get(),
             &CLASS,
             false,

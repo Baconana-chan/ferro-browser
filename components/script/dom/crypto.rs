@@ -71,8 +71,7 @@ impl CryptoMethods<crate::DomTypeHolder> for Crypto {
             }
 
             let underlying_object = unsafe { input.underlying_object() };
-            TypedArray::<ArrayBufferViewU8, *mut JSObject>::from(*underlying_object)
-                .map_err(|_| Error::JSFailed)
+            unsafe { ArrayBufferView::from(underlying_object) }.map_err(|_| Error::JSFailed)
         }
     }
 

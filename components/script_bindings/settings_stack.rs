@@ -23,16 +23,22 @@ unsafe impl crate::JSTraceable for StackEntryKind {
 mod boa_impl {
     use std::marker::PhantomData;
     use crate::DomTypes;
+    use crate::root::{Dom, DomRoot};
     use super::StackEntryKind;
 
     pub struct StackEntry<D: DomTypes> {
+        pub global: Dom<D::GlobalScope>,
         pub kind: StackEntryKind,
         _marker: PhantomData<D>,
     }
 
     impl<D: DomTypes> StackEntry<D> {
-        pub fn new(kind: StackEntryKind) -> Self {
-            Self { kind, _marker: PhantomData }
+        pub fn new(global: &D::GlobalScope, kind: StackEntryKind) -> Self {
+            Self {
+                global: Dom::from_ref(global),
+                kind,
+                _marker: PhantomData,
+            }
         }
     }
 
@@ -41,12 +47,16 @@ mod boa_impl {
     }
 
     pub struct GenericAutoEntryScript<D: DomTypes> {
+        global: DomRoot<D::GlobalScope>,
         _marker: PhantomData<D>,
     }
 
     impl<D: DomTypes> GenericAutoEntryScript<D> {
-        pub fn new<G>(_global: &G) -> Self {
-            Self { _marker: PhantomData }
+        pub fn new(global: &D::GlobalScope) -> Self {
+            Self {
+                global: DomRoot::from_ref(global),
+                _marker: PhantomData,
+            }
         }
     }
 
@@ -55,12 +65,16 @@ mod boa_impl {
     }
 
     pub struct GenericAutoIncumbentScript<D: DomTypes> {
+        global: usize,
         _marker: PhantomData<D>,
     }
 
     impl<D: DomTypes> GenericAutoIncumbentScript<D> {
-        pub fn new<G>(_global: &G) -> Self {
-            Self { _marker: PhantomData }
+        pub fn new(global: &D::GlobalScope) -> Self {
+            Self {
+                global: global as *const _ as usize,
+                _marker: PhantomData,
+            }
         }
     }
 

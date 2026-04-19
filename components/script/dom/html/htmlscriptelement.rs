@@ -1124,16 +1124,12 @@ impl HTMLScriptElement {
                 }
             }
 
-            let record = module_tree
-                .get_record()
-                .borrow()
-                .as_ref()
-                .map(|record| record.handle());
+            let record = module_tree.get_record().borrow();
 
-            if let Some(record) = record {
+            if let Some(record) = record.as_ref() {
                 rooted!(in(*GlobalScope::get_cx()) let mut rval = UndefinedValue());
                 let evaluated =
-                    module_tree.execute_module(global, record, rval.handle_mut().into(), can_gc);
+                    module_tree.execute_module(global, record.handle(), rval.handle_mut().into(), can_gc);
 
                 if let Err(exception) = evaluated {
                     module_tree.set_rethrow_error(exception);

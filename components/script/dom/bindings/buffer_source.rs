@@ -37,12 +37,14 @@ use crate::js::rust::{
 #[cfg(feature = "webgpu")]
 use crate::js::typedarray::{ArrayBuffer, HeapArrayBuffer};
 use crate::js::typedarray::{
-    ArrayBufferU8, ArrayBufferViewU8, CreateWith, TypedArray, TypedArrayElement,
-    TypedArrayElementCreator,
+    ArrayBufferU8, ArrayBufferView, CreateWith, TypedArray, TypedArrayElement,
+    TypedArrayElementCreator, Uint8Array,
 };
 
 use crate::dom::bindings::error::{Error, Fallible};
 use crate::dom::bindings::trace::RootedTraceableBox;
+#[cfg(feature = "webgpu")]
+use crate::dom::bindings::trace::NoTrace;
 #[cfg(feature = "webgpu")]
 use crate::dom::globalscope::GlobalScope;
 use crate::script_runtime::{CanGc, JSContext};
@@ -311,10 +313,34 @@ where
     }
 
     pub(crate) fn is_array_buffer_object(&self) -> bool {
+        // Boa compatibility: stub implementation for now
+        // TODO: Implement proper check for Boa
         match &self.buffer_source {
-            BufferSource::ArrayBufferView(heap) | BufferSource::ArrayBuffer(heap) => unsafe {
-                IsArrayBufferObject(*heap.handle())
-            },
+            BufferSource::ArrayBufferView(_) | BufferSource::ArrayBuffer(_) => true,
+        }
+    }
+}
+
+impl HeapBufferSource<Uint8Array> {
+    pub(crate) fn from_array_buffer_view(
+        chunk: CustomAutoRooterGuard<ArrayBufferView>,
+    ) -> HeapBufferSource<Uint8Array> {
+        HeapBufferSource::<Uint8Array>::new(BufferSource::ArrayBufferView(
+            RootedTraceableBox::from_box(Heap::boxed(unsafe { chunk.underlying_object() })),
+        ))
+    }
+
+    pub(crate) fn array_buffer_view_to_option(&self) -> Option<ArrayBufferView> {
+        if self.is_initialized() {
+            let object = match &self.buffer_source {
+                BufferSource::ArrayBufferView(buffer) | BufferSource::ArrayBuffer(buffer) => {
+                    buffer.get()
+                },
+            };
+            unsafe { ArrayBufferView::from(object).ok() }
+        } else {
+            warn!("Buffer not initialized.");
+            None
         }
     }
 }
@@ -663,14 +689,14 @@ pub(crate) fn create_buffer_source_with_constructor(
     buffer_source: &HeapBufferSource<ArrayBufferU8>,
     byte_offset: usize,
     byte_length: usize,
-) -> Fallible<HeapBufferSource<ArrayBufferViewU8>> {
+) -> Fallible<HeapBufferSource<Uint8Array>> {
     match &buffer_source.buffer_source {
         BufferSource::ArrayBuffer(heap) => match constructor {
-            Constructor::DataView => Ok(HeapBufferSource::new(BufferSource::ArrayBufferView(
-                RootedTraceableBox::from_box(Heap::boxed(unsafe {
-                    JS_NewDataView(*cx, heap.handle().into(), byte_offset, byte_length)
-                })),
-            ))),
+            Constructor::DataView => {
+                // Boa compatibility: stub implementation for now
+                // TODO: Implement proper DataView creation for Boa
+                Err(Error::Type("DataView not yet implemented for Boa".to_owned()))
+            },
             Constructor::Name(name_type) => construct_typed_array(
                 cx,
                 name_type,
@@ -692,7 +718,7 @@ fn construct_typed_array(
     buffer_source: &HeapBufferSource<ArrayBufferU8>,
     byte_offset: usize,
     byte_length: i64,
-) -> Fallible<HeapBufferSource<ArrayBufferViewU8>> {
+) -> Fallible<HeapBufferSource<Uint8Array>> {
     match &buffer_source.buffer_source {
         BufferSource::ArrayBuffer(heap) => {
             let array_view = unsafe {
@@ -852,7 +878,7 @@ impl DataBlock {
         if self
             .data_views
             .iter()
-            .any(|view| range_overlap(&view.range, &range))
+            .any(|view| range_overlap(&view.range.0, &range))
         {
             return Err(());
         }
@@ -878,7 +904,7 @@ impl DataBlock {
             )
         });
         self.data_views.push(DataView {
-            range,
+            range: NoTrace(range),
             buffer: HeapArrayBuffer::from(*object).unwrap(),
         });
         Ok(self.data_views.last().unwrap())
@@ -886,19 +912,26 @@ impl DataBlock {
 }
 
 #[cfg(feature = "webgpu")]
-#[derive(JSTraceable, MallocSizeOf)]
+#[derive(MallocSizeOf)]
 #[cfg_attr(crown, allow(crown::unrooted_must_root))]
 pub(crate) struct DataView {
-    #[no_trace]
-    range: Range<usize>,
+    range: NoTrace<Range<usize>>,
     #[ignore_malloc_size_of = "defined in mozjs"]
     buffer: HeapArrayBuffer,
 }
 
 #[cfg(feature = "webgpu")]
+unsafe impl crate::dom::bindings::trace::JSTraceable for DataView {
+    unsafe fn trace(&self, tracer: *mut crate::js::jsapi::JSTracer) {
+        unsafe { self.buffer.trace(tracer) }
+    }
+}
+
+#[cfg(feature = "webgpu")]
 impl DataView {
     pub(crate) fn array_buffer(&self) -> ArrayBuffer {
-        unsafe { ArrayBuffer::from(self.buffer.underlying_object().get()).unwrap() }
+        let object = *self.buffer.underlying_object().handle();
+        unsafe { ArrayBuffer::from(object).unwrap() }
     }
 }
 

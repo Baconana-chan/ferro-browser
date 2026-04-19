@@ -4,7 +4,7 @@
 
 use dom_struct::dom_struct;
 use crate::js::gc::CustomAutoRooterGuard;
-use crate::js::typedarray::{ArrayBufferView, ArrayBufferViewU8};
+use crate::js::typedarray::{ArrayBufferView, ArrayBufferViewU8, Uint8Array};
 
 use super::bindings::buffer_source::HeapBufferSource;
 use super::bindings::cell::DomRefCell;
@@ -24,7 +24,7 @@ pub(crate) struct ReadableStreamBYOBRequest {
     reflector_: Reflector,
     controller: MutNullableDom<ReadableByteStreamController>,
     #[ignore_malloc_size_of = "mozjs"]
-    view: DomRefCell<HeapBufferSource<ArrayBufferViewU8>>,
+    view: DomRefCell<HeapBufferSource<Uint8Array>>,
 }
 
 impl ReadableStreamBYOBRequest {
@@ -32,7 +32,7 @@ impl ReadableStreamBYOBRequest {
         ReadableStreamBYOBRequest {
             reflector_: Reflector::new(),
             controller: MutNullableDom::new(None),
-            view: DomRefCell::new(HeapBufferSource::<ArrayBufferViewU8>::default()),
+            view: DomRefCell::new(HeapBufferSource::<Uint8Array>::default()),
         }
     }
 
@@ -44,13 +44,13 @@ impl ReadableStreamBYOBRequest {
         self.controller.set(controller);
     }
 
-    pub(crate) fn set_view(&self, view: Option<HeapBufferSource<ArrayBufferViewU8>>) {
+    pub(crate) fn set_view(&self, view: Option<HeapBufferSource<Uint8Array>>) {
         match view {
             Some(view) => {
                 *self.view.borrow_mut() = view;
             },
             None => {
-                *self.view.borrow_mut() = HeapBufferSource::<ArrayBufferViewU8>::default();
+                *self.view.borrow_mut() = HeapBufferSource::<Uint8Array>::default();
             },
         }
     }
@@ -60,7 +60,7 @@ impl ReadableStreamBYOBRequestMethods<crate::DomTypeHolder> for ReadableStreamBY
     /// <https://streams.spec.whatwg.org/#rs-byob-request-view>
     fn GetView(&self, _cx: SafeJSContext) -> Option<crate::js::typedarray::ArrayBufferView> {
         // Return this.[[view]].
-        self.view.borrow().typed_array_to_option()
+        self.view.borrow().array_buffer_view_to_option()
     }
 
     /// <https://streams.spec.whatwg.org/#rs-byob-request-respond>
@@ -99,7 +99,7 @@ impl ReadableStreamBYOBRequestMethods<crate::DomTypeHolder> for ReadableStreamBY
         can_gc: CanGc,
     ) -> Fallible<()> {
         let cx = GlobalScope::get_cx();
-        let view = HeapBufferSource::<ArrayBufferViewU8>::from_view(view);
+        let view = HeapBufferSource::<Uint8Array>::from_array_buffer_view(view);
 
         // If this.[[controller]] is undefined, throw a TypeError exception.
         let controller = if let Some(controller) = self.controller.get() {

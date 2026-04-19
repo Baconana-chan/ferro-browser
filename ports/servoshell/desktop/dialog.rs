@@ -3,7 +3,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 use std::path::Path;
-use std::sync::Arc;
 
 use egui::{
     Area, Button, CornerRadius, Frame, Id, Modal, Order, RichText, Sense, Stroke, Vec2, pos2,
@@ -63,19 +62,13 @@ impl Dialog {
     pub fn new_file_dialog(file_picker: FilePicker) -> Self {
         let mut dialog = EguiFileDialog::new();
         if !file_picker.filter_patterns().is_empty() {
-            let filter_patterns = file_picker.filter_patterns().to_owned();
+            let filter_patterns = file_picker
+                .filter_patterns()
+                .iter()
+                .map(|pattern| Box::leak(pattern.0.clone().into_boxed_str()) as &'static str)
+                .collect();
             dialog = dialog
-                .add_file_filter(
-                    "All Supported Types",
-                    Arc::new(move |path: &Path| {
-                        path.extension()
-                            .and_then(|e| e.to_str())
-                            .is_some_and(|ext| {
-                                let ext = ext.to_lowercase();
-                                filter_patterns.iter().any(|pattern| ext == pattern.0)
-                            })
-                    }),
-                )
+                .add_file_filter_extensions("All Supported Types", filter_patterns)
                 .default_file_filter("All Supported Types");
         }
 

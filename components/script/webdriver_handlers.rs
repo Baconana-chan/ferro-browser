@@ -578,7 +578,7 @@ fn clone_an_object(
                     *cx,
                     object_handle.into(),
                     id.handle().into(),
-                    desc.handle_mut().into(),
+                    desc.handle_mut(),
                     &mut is_none,
                 )
             };

@@ -90,7 +90,7 @@ pub(crate) fn throw_dom_exception(
             assert!(!JS_IsExceptionPending(*cx));
             rooted!(in(*cx) let mut thrown = UndefinedValue());
             exception.safe_to_jsval(cx, thrown.handle_mut(), can_gc);
-            JS_SetPendingException(*cx, thrown.handle(), ExceptionStackBehavior::Capture);
+            JS_SetPendingException(*cx, thrown.handle(), ExceptionStackBehavior::Capture as u32);
         },
 
         Err(JsEngineError::Type(message)) => unsafe {
@@ -277,28 +277,18 @@ impl ErrorInfo {
         }
 
         let filename = {
-            let filename = unsafe { (*report)._base.filename.data_ as *const u8 };
-            if !filename.is_null() {
-                let filename = unsafe {
-                    let length = (0..).find(|idx| *filename.offset(*idx) == 0).unwrap();
-                    from_raw_parts(filename, length as usize)
-                };
-                String::from_utf8_lossy(filename).into_owned()
-            } else {
-                "none".to_string()
-            }
+            // Boa compatibility: JSObject is opaque, cannot access _base field
+            // TODO: Implement proper error reporting for Boa
+            "none".to_string()
         };
 
-        let lineno = unsafe { (*report)._base.lineno };
-        let column = unsafe { (*report)._base.column._base };
+        let lineno = 0;
+        let column = 0;
 
         let message = {
-            let message = unsafe { (*report)._base.message_.data_ as *const u8 };
-            let message = unsafe {
-                let length = (0..).find(|idx| *message.offset(*idx) == 0).unwrap();
-                from_raw_parts(message, length as usize)
-            };
-            String::from_utf8_lossy(message).into_owned()
+            // Boa compatibility: JSObject is opaque, cannot access _base field
+            // TODO: Implement proper error message extraction for Boa
+            "unknown error".to_string()
         };
 
         Some(ErrorInfo {

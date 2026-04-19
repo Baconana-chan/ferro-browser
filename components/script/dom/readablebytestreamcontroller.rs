@@ -11,7 +11,7 @@ use dom_struct::dom_struct;
 use crate::js::jsapi::{Heap, Type};
 use crate::js::jsval::UndefinedValue;
 use crate::js::rust::{HandleObject, HandleValue as SafeHandleValue, HandleValue};
-use crate::js::typedarray::{ArrayBufferU8, ArrayBufferViewU8};
+use crate::js::typedarray::{ArrayBufferU8, Uint8Array};
 
 use super::bindings::buffer_source::HeapBufferSource;
 use super::bindings::cell::DomRefCell;
@@ -272,7 +272,7 @@ impl ReadableByteStreamController {
         &self,
         cx: SafeJSContext,
         read_into_request: &ReadIntoRequest,
-        view: HeapBufferSource<ArrayBufferViewU8>,
+        view: HeapBufferSource<Uint8Array>,
         options: &ReadableStreamBYOBReaderReadOptions,
         can_gc: CanGc,
     ) {
@@ -715,7 +715,7 @@ impl ReadableByteStreamController {
     pub(crate) fn respond_with_new_view(
         &self,
         cx: SafeJSContext,
-        view: HeapBufferSource<ArrayBufferViewU8>,
+        view: HeapBufferSource<Uint8Array>,
         can_gc: CanGc,
     ) -> Fallible<()> {
         let view_byte_length;
@@ -984,7 +984,7 @@ impl ReadableByteStreamController {
     pub(crate) fn enqueue(
         &self,
         cx: SafeJSContext,
-        chunk: HeapBufferSource<ArrayBufferViewU8>,
+        chunk: HeapBufferSource<Uint8Array>,
         can_gc: CanGc,
     ) -> Fallible<()> {
         // Let stream be controller.[[stream]].
@@ -1187,7 +1187,7 @@ impl ReadableByteStreamController {
         &self,
         cx: SafeJSContext,
         pull_into_descriptor: &PullIntoDescriptor,
-    ) -> Fallible<HeapBufferSource<ArrayBufferViewU8>> {
+    ) -> Fallible<HeapBufferSource<Uint8Array>> {
         // Let bytesFilled be pullIntoDescriptor’s bytes filled.
         let bytes_filled = pull_into_descriptor.bytes_filled.get();
 
@@ -1989,7 +1989,7 @@ impl ReadableByteStreamControllerMethods<crate::DomTypeHolder> for ReadableByteS
     ) -> Fallible<()> {
         let cx = GlobalScope::get_cx();
 
-        let chunk = HeapBufferSource::<ArrayBufferViewU8>::from_view(chunk);
+        let chunk = HeapBufferSource::<Uint8Array>::from_array_buffer_view(chunk);
 
         // If chunk.[[ByteLength]] is 0, throw a TypeError exception.
         if chunk.byte_length() == 0 {

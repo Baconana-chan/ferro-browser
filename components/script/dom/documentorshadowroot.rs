@@ -438,7 +438,8 @@ impl DocumentOrShadowRoot {
 
         match maybe_stylesheets {
             Ok(ConversionResult::Success(stylesheets)) => {
-                rooted_vec!(let stylesheets <- stylesheets.to_owned().iter().map(|s| s.as_traced()));
+                let stylesheets: Vec<Dom<CSSStyleSheet>> =
+                    stylesheets.iter().map(|sheet| Dom::from_ref(&**sheet)).collect();
 
                 DocumentOrShadowRoot::set_adopted_stylesheet(
                     adopted_stylesheets,

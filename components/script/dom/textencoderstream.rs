@@ -7,7 +7,7 @@ use std::num::{NonZero, NonZeroU16};
 use std::ptr::{self, NonNull};
 
 use dom_struct::dom_struct;
-use crate::js::conversions::latin1_to_string;
+use crate::js::conversions::jsstr_to_string;
 use crate::js::jsapi::{
     JS_DeprecatedStringHasLatin1Chars, JS_GetTwoByteStringCharsAndLength, JS_IsExceptionPending,
     JSObject, JSType, ToPrimitive,
@@ -244,7 +244,7 @@ pub(crate) fn encode_and_enqueue_a_chunk(
     let input = unsafe {
         if JS_DeprecatedStringHasLatin1Chars(*jsstr) {
             let s = NonNull::new(*jsstr).expect("jsstr cannot be null");
-            ConvertedInput::String(latin1_to_string(*cx, s))
+            ConvertedInput::String(jsstr_to_string(*cx, s))
         } else {
             let mut len = 0;
             let data = JS_GetTwoByteStringCharsAndLength(*cx, std::ptr::null(), *jsstr, &mut len);
@@ -275,7 +275,7 @@ pub(crate) fn encode_and_enqueue_a_chunk(
     //      given output and encoder’s relevant realm.
     rooted!(in(*cx) let mut js_object = ptr::null_mut::<JSObject>());
     let chunk: Uint8Array =
-        create_buffer_source::<typedarray::Uint8>(cx, output, js_object.handle_mut(), can_gc)
+        create_buffer_source::<crate::js::typedarray::Uint8>(cx, output, js_object.handle_mut(), can_gc)
         .map_err(|_| Error::Type("Cannot convert byte sequence to Uint8Array".to_owned()))?;
     rooted!(in(*cx) let mut rval = UndefinedValue());
     chunk.safe_to_jsval(cx, rval.handle_mut(), can_gc);
@@ -297,7 +297,7 @@ pub(crate) fn encode_and_flush(
         // Step 1.1 Let chunk be the result of creating a Uint8Array object
         //      given « 0xEF, 0xBF, 0xBD » and encoder’s relevant realm.
         rooted!(in(*cx) let mut js_object = ptr::null_mut::<JSObject>());
-        let chunk: Uint8Array = create_buffer_source::<typedarray::Uint8>(
+        let chunk: Uint8Array = create_buffer_source::<crate::js::typedarray::Uint8>(
             cx,
             &[0xEF_u8, 0xBF, 0xBD],
             js_object.handle_mut(),

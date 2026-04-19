@@ -38,10 +38,23 @@ impl<'a> CurrentRealm<'a> {
     pub fn as_ptr(&self) -> *mut c_void {
         self.realm
     }
+
+    pub fn realm(&self) -> &Self {
+        self
+    }
     
     /// Get the raw context
     pub fn raw_cx(&self) -> *mut RawJSContext {
         self.cx
+    }
+
+    pub fn raw_cx_no_gc(&self) -> *mut RawJSContext {
+        self.cx
+    }
+
+    pub fn global(&self) -> HandleObject<'static> {
+        let global = unsafe { GetRealmGlobalOrNull(self.realm) };
+        unsafe { HandleObject::from_raw(&global) }
     }
     
     /// Assert that we are in a realm and return a CurrentRealm

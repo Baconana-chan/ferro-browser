@@ -268,24 +268,7 @@ pub type HandleId<'a> = super::rust::Handle<'a, jsid>;
 /// MutableHandleId
 pub type MutableHandleId<'a> = super::rust::MutableHandle<'a, jsid>;
 
-/// GCDescription
-#[repr(C)]
-pub struct GCDescription {
-    pub invocation_kind: u32,
-    pub reason: u32,
-}
-
-/// GCOptions
-#[repr(C)]
-pub struct GCOptions {
-    pub options: u32,
-}
-
-impl Default for GCOptions {
-    fn default() -> Self {
-        Self { options: 0 }
-    }
-}
+pub use super::jsapi::{GCDescription, GCOptions};
 
 /// JSType - type tag for JS values
 #[repr(u32)]
@@ -539,14 +522,13 @@ pub unsafe fn CallObjectTracer(
 /// Opaque type for structured clone data
 #[repr(C)]
 pub struct JSStructuredCloneData {
-    _private: [u8; 0],
+    pub _private: [u8; 0],
 }
 
 /// Copy structured clone data to a buffer
 pub unsafe fn CopyJSStructuredCloneData(
     _src: *const JSStructuredCloneData,
     _dest: *mut u8,
-    _len: usize,
 ) -> bool {
     true
 }
@@ -558,9 +540,9 @@ pub unsafe fn GetLengthOfJSStructuredCloneData(_data: *const JSStructuredCloneDa
 
 /// Write bytes to structured clone data
 pub unsafe fn WriteBytesToJSStructuredCloneData(
-    _data: *mut JSStructuredCloneData,
     _src: *const u8,
     _len: usize,
+    _data: *mut JSStructuredCloneData,
 ) -> bool {
     true
 }
@@ -680,7 +662,7 @@ pub unsafe fn SetProxyReservedSlot(
 }
 
 /// Dump JS stack (for debugging)
-pub unsafe fn DumpJSStack(_cx: *mut RawJSContext) {
+pub unsafe fn DumpJSStack(_cx: *mut RawJSContext, _show_args: bool, _show_locals: bool, _show_this_props: bool) {
     // Stub for debugging
 }
 
@@ -691,9 +673,21 @@ pub unsafe fn DumpJSStack(_cx: *mut RawJSContext) {
 /// Collect Servo memory sizes
 pub unsafe fn CollectServoSizes(
     _cx: *mut RawJSContext,
-    _sizes: *mut c_void,
-    _report: Option<unsafe extern "C" fn(*mut c_void, *const i8, usize, *const i8)>,
-) {
+    _sizes: *mut ServoSizes,
+    _report: Option<unsafe extern "C" fn(*mut JSObject) -> usize>,
+) -> bool {
+    true
+}
+
+#[repr(C)]
+#[derive(Default, Clone, Copy)]
+pub struct ServoSizes {
+    pub gcHeapUsed: usize,
+    pub gcHeapUnused: usize,
+    pub gcHeapAdmin: usize,
+    pub gcHeapDecommitted: usize,
+    pub mallocHeap: usize,
+    pub nonHeap: usize,
 }
 
 pub unsafe fn InitializeMemoryReporter(_is_dom_object: Option<unsafe extern "C" fn(*mut JSObject) -> bool>) {
@@ -702,17 +696,25 @@ pub unsafe fn InitializeMemoryReporter(_is_dom_object: Option<unsafe extern "C" 
 /// Job queue traps structure
 #[repr(C)]
 pub struct JobQueueTraps {
-    pub get_incumbent_global: Option<unsafe extern "C" fn(*mut RawJSContext) -> *mut JSObject>,
-    pub enqueue_promise_job: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, HandleObject<'_>, HandleObject<'_>) -> bool>,
-    pub empty: Option<unsafe extern "C" fn(*mut RawJSContext) -> bool>,
+    pub getHostDefinedData: Option<unsafe extern "C" fn(*const c_void, *mut RawJSContext, MutableHandleObject<'_>) -> bool>,
+    pub enqueuePromiseJob: Option<unsafe extern "C" fn(*const c_void, *mut RawJSContext, HandleObject<'_>, HandleObject<'_>, HandleObject<'_>, HandleObject<'_>) -> bool>,
+    pub runJobs: Option<unsafe extern "C" fn(*const c_void, *mut RawJSContext)>,
+    pub empty: Option<unsafe extern "C" fn(*const c_void) -> bool>,
+    pub pushNewInterruptQueue: Option<unsafe extern "C" fn(*mut c_void) -> *const c_void>,
+    pub popInterruptQueue: Option<unsafe extern "C" fn(*mut c_void) -> *const c_void>,
+    pub dropInterruptQueues: Option<unsafe extern "C" fn(*mut c_void)>,
 }
 
 impl Default for JobQueueTraps {
     fn default() -> Self {
         Self {
-            get_incumbent_global: None,
-            enqueue_promise_job: None,
+            getHostDefinedData: None,
+            enqueuePromiseJob: None,
+            runJobs: None,
             empty: None,
+            pushNewInterruptQueue: None,
+            popInterruptQueue: None,
+            dropInterruptQueues: None,
         }
     }
 }
@@ -721,6 +723,7 @@ impl Default for JobQueueTraps {
 pub unsafe fn CreateJobQueue(
     _traps: *const JobQueueTraps,
     _data: *const c_void,
+    _interrupt_data: *mut c_void,
 ) -> *mut super::jsapi::JobQueue {
     ptr::null_mut()
 }
@@ -735,7 +738,8 @@ pub type DispatchablePointer = *mut c_void;
 /// Run a dispatchable
 pub unsafe fn DispatchableRun(
     _cx: *mut RawJSContext,
-    _dispatchable: DispatchablePointer,
+    _dispatchable: *mut DispatchablePointer,
+    _maybe_shutting_down: super::jsapi::Dispatchable_MaybeShuttingDown,
 ) {
 }
 
@@ -765,13 +769,17 @@ pub unsafe fn JS_GetReservedSlot(
 }
 
 /// Set build ID operation
-pub unsafe fn SetBuildId(_build_id: *const super::jsapi::BuildIdCharVector) -> bool {
+pub unsafe fn SetBuildId(
+    _build_id: *mut super::jsapi::BuildIdCharVector,
+    _chars: *const i8,
+    _len: usize,
+) -> bool {
     true
 }
 
 /// Stream consumer - consume chunk
 pub unsafe fn StreamConsumerConsumeChunk(
-    _consumer: *mut c_void,
+    _consumer: *mut super::jsapi::StreamConsumer,
     _chunk: *const u8,
     _length: usize,
 ) -> bool {
@@ -780,7 +788,7 @@ pub unsafe fn StreamConsumerConsumeChunk(
 
 /// Stream consumer - note response URLs
 pub unsafe fn StreamConsumerNoteResponseURLs(
-    _consumer: *mut c_void,
+    _consumer: *mut super::jsapi::StreamConsumer,
     _url: *const i8,
     _source_map_url: *const i8,
 ) {
@@ -788,13 +796,13 @@ pub unsafe fn StreamConsumerNoteResponseURLs(
 
 /// Stream consumer - stream end
 pub unsafe fn StreamConsumerStreamEnd(
-    _consumer: *mut c_void,
+    _consumer: *mut super::jsapi::StreamConsumer,
 ) {
 }
 
 /// Stream consumer - stream error
 pub unsafe fn StreamConsumerStreamError(
-    _consumer: *mut c_void,
+    _consumer: *mut super::jsapi::StreamConsumer,
     _error: usize,
 ) {
 }

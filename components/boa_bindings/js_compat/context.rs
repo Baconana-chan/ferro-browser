@@ -6,26 +6,50 @@
 use std::ptr;
 use std::ffi::c_void;
 
-use super::jsapi::{JSObject, Value};
+use super::jsapi::{AsmJSOption, JSObject, Value};
 use super::rust::{HandleObject, HandleValue, MutableHandleValue};
+use std::marker::PhantomData;
 
 // Re-export JSContext and RawJSContext from jsapi for convenience
 pub use super::jsapi::{JSContext, RawJSContext};
 
 /// CurrentRealm - get the current realm
-pub struct CurrentRealm {
-    _private: (),
+pub struct CurrentRealm<'a> {
+    realm: *mut c_void,
+    cx: *mut RawJSContext,
+    _marker: PhantomData<&'a mut RawJSContext>,
 }
 
-impl CurrentRealm {
-    pub fn new(_cx: *mut RawJSContext) -> Self {
-        Self { _private: () }
+impl<'a> CurrentRealm<'a> {
+    pub fn new(cx: *mut RawJSContext) -> Self {
+        Self {
+            realm: ptr::null_mut(),
+            cx,
+            _marker: PhantomData,
+        }
     }
-    
+
     pub fn get(&self) -> *mut c_void {
-        ptr::null_mut()
+        self.realm
     }
-    
+
+    pub fn as_ptr(&self) -> *mut c_void {
+        self.realm
+    }
+
+    pub fn realm(&self) -> &Self {
+        self
+    }
+
+    pub fn raw_cx_no_gc(&self) -> *mut RawJSContext {
+        self.cx
+    }
+
+    pub fn global(&self) -> HandleObject<'static> {
+        let global = unsafe { GetRealmGlobalOrNull(self.realm) };
+        unsafe { HandleObject::from_raw(&global) }
+    }
+
     /// Assert that the current realm matches expected
     pub fn assert(_cx: *mut RawJSContext, _realm: *mut c_void) {
         // Stub - in debug mode would assert realms match
@@ -34,41 +58,48 @@ impl CurrentRealm {
 
 /// Context options
 #[repr(C)]
+pub struct CompileOptions {
+    pub asmJSOption_: AsmJSOption,
+    pub wasm_: bool,
+    pub wasmBaseline_: bool,
+    pub wasmIon_: bool,
+}
+
+impl Default for CompileOptions {
+    fn default() -> Self {
+        Self {
+            asmJSOption_: AsmJSOption::Enabled,
+            wasm_: true,
+            wasmBaseline_: true,
+            wasmIon_: true,
+        }
+    }
+}
+
+#[repr(C)]
 pub struct ContextOptions {
-    pub baseline: bool,
-    pub ion: bool,
-    pub asmjs: bool,
-    pub wasm: bool,
-    pub wasm_verbose: bool,
-    pub wasm_baseline: bool,
-    pub wasm_ion: bool,
-    pub native_regexp: bool,
-    pub async_stack: bool,
-    pub throw_on_debuggee_would_run: bool,
-    pub dump_stack_on_debuggee_would_run: bool,
-    pub strict: bool,
-    pub extra_warnings: bool,
-    pub werror: bool,
+    pub compileOptions_: CompileOptions,
 }
 
 impl Default for ContextOptions {
     fn default() -> Self {
         Self {
-            baseline: true,
-            ion: true,
-            asmjs: true,
-            wasm: true,
-            wasm_verbose: false,
-            wasm_baseline: true,
-            wasm_ion: true,
-            native_regexp: true,
-            async_stack: true,
-            throw_on_debuggee_would_run: false,
-            dump_stack_on_debuggee_would_run: false,
-            strict: false,
-            extra_warnings: false,
-            werror: false,
+            compileOptions_: CompileOptions::default(),
         }
+    }
+}
+
+impl ContextOptions {
+    pub fn set_wasm_(&mut self, enabled: bool) {
+        self.compileOptions_.wasm_ = enabled;
+    }
+
+    pub fn set_wasmBaseline_(&mut self, enabled: bool) {
+        self.compileOptions_.wasmBaseline_ = enabled;
+    }
+
+    pub fn set_wasmIon_(&mut self, enabled: bool) {
+        self.compileOptions_.wasmIon_ = enabled;
     }
 }
 

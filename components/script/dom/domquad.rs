@@ -253,7 +253,7 @@ impl Serializable for DOMQuad {
     }
 
     fn serialized_storage<'a>(
-        data: StructuredData<'a, '_>,
+        data: StructuredData<'a>,
     ) -> &'a mut Option<FxHashMap<DomQuadId, Self::Data>> {
         match data {
             StructuredData::Reader(reader) => &mut reader.quads,

@@ -284,15 +284,7 @@ fn apply_boa_overrides(out_dir: &PathBuf) {
                 // Patch Handle<Value> to Handle<*mut JSObject> for Call function
                 patched = patched.replace(
                     "Call(\n            cx.raw_cx(), rootedThis.handle(), callable.handle(),",
-                    "Call(\n            cx.raw_cx(), rootedThis.handle(), crate::js::rust::Handle::from_raw(callable.handle().as_raw() as *mut _),"
-                );
-                patched = patched.replace(
-                    ", arg0.handle(), &call_args_handle,",
-                    ", arg0.handle().into(), &call_args_handle,"
-                );
-                patched = patched.replace(
-                    ", arg0.handle(),\n                   ignoredReturnVal.handle_mut())",
-                    ", arg0.handle().into(),\n                   ignoredReturnVal.handle_mut())"
+                    "Call(\n            cx.raw_cx(), rootedThis.handle(), crate::js::rust::Handle::from_raw(callable.handle().as_raw() as *const *mut JSObject),"
                 );
                 // Patch IterableIterator type annotation errors - add explicit type parameters
                 patched = patched.replace(

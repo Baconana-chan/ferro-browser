@@ -44,7 +44,7 @@ use embedder_traits::{
 };
 use euclid::default::{Point2D as UntypedPoint2D, Rect as UntypedRect};
 use euclid::{Point2D, Scale, Size2D, Vector2D};
-use fonts::{CspViolationHandler, FontContext, WebFontDocumentContext};
+use fonts::{CspViolationHandler, FontContext, WebFontDocumentContext as FontsWebFontDocumentContext};
 use ipc_channel::ipc::IpcSender;
 use crate::js::glue::DumpJSStack;
 use crate::js::jsapi::{
@@ -77,7 +77,6 @@ use profile_traits::time::ProfilerChan as TimeProfilerChan;
 use rustc_hash::{FxBuildHasher, FxHashMap};
 use script_bindings::codegen::GenericBindings::WindowBinding::ScrollToOptions;
 use script_bindings::conversions::SafeToJSValConvertible;
-use script_bindings::interfaces::WindowHelpers;
 use script_bindings::root::Root;
 use script_traits::{ConstellationInputEvent, ScriptThreadMessage};
 use selectors::attr::CaseSensitivity;
@@ -847,9 +846,9 @@ impl Window {
         with_script_thread(|script_thread| script_thread.perform_a_microtask_checkpoint(can_gc));
     }
 
-    pub(crate) fn web_font_context(&self) -> WebFontDocumentContext {
+    pub(crate) fn web_font_context(&self) -> FontsWebFontDocumentContext {
         let global = self.as_global_scope();
-        WebFontDocumentContext {
+        FontsWebFontDocumentContext {
             policy_container: global.policy_container(),
             document_url: global.api_base_url(),
             has_trustworthy_ancestor_origin: global.has_trustworthy_ancestor_origin(),
@@ -3729,7 +3728,11 @@ unsafe extern "C" fn dump_js_stack(cx: *mut RawJSContext) {
     }
 }
 
-impl WindowHelpers for Window {
+impl script_bindings::interfaces::WindowHelpers<crate::DomTypeHolder> for Window {
+    fn Document(&self) -> DomRoot<Document> {
+        WindowMethods::Document(self)
+    }
+
     fn create_named_properties_object(
         cx: JSContext,
         proto: HandleObject,

@@ -11,7 +11,7 @@ use crate::js::gc::CustomAutoRooterGuard;
 use crate::js::jsapi::Heap;
 use crate::js::jsval::{JSVal, UndefinedValue};
 use crate::js::rust::{HandleObject as SafeHandleObject, HandleValue as SafeHandleValue};
-use crate::js::typedarray::{ArrayBufferView, ArrayBufferViewU8};
+use crate::js::typedarray::{ArrayBufferView, Uint8Array};
 
 use super::bindings::buffer_source::HeapBufferSource;
 use super::bindings::codegen::Bindings::ReadableStreamBYOBReaderBinding::ReadableStreamBYOBReaderReadOptions;
@@ -237,7 +237,7 @@ impl ReadableStreamBYOBReader {
     pub(crate) fn read(
         &self,
         cx: SafeJSContext,
-        view: HeapBufferSource<ArrayBufferViewU8>,
+        view: HeapBufferSource<Uint8Array>,
         options: &ReadableStreamBYOBReaderReadOptions,
         read_into_request: &ReadIntoRequest,
         can_gc: CanGc,
@@ -300,7 +300,7 @@ impl ReadableStreamBYOBReaderMethods<crate::DomTypeHolder> for ReadableStreamBYO
         options: &ReadableStreamBYOBReaderReadOptions,
         can_gc: CanGc,
     ) -> Rc<Promise> {
-        let view = HeapBufferSource::<ArrayBufferViewU8>::from_view(view);
+        let view = HeapBufferSource::<Uint8Array>::from_array_buffer_view(view);
 
         // Let promise be a new promise.
         let promise = Promise::new(&self.global(), can_gc);

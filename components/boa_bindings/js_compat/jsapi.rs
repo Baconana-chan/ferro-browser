@@ -5,10 +5,11 @@
 
 use std::ptr;
 use std::ffi::c_void;
+use std::fmt;
 // Note: We don't use Boa's Context directly here, we define our own opaque types
 
 // Import IdVector from rust module
-use super::rust::IdVector;
+use super::rust::{IdVector, IntoHandleObject};
 
 // ===================
 // Bitfield Unit Support
@@ -274,9 +275,15 @@ pub type MutableHandleString<'a> = MutableHandle<'a, *mut JSString>;
 
 /// Value - JavaScript value (NaN-boxed in SpiderMonkey, we use Boa's JsValue)
 #[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Value {
     pub data: u64,
+}
+
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ValueBits {
+    pub asBits_: u64,
 }
 
 impl Value {
@@ -370,6 +377,24 @@ impl Value {
             ptr::null_mut()
         }
     }
+
+    pub fn to_string(&self) -> *mut JSString {
+        ptr::null_mut()
+    }
+
+    pub fn is_markable(&self) -> bool {
+        self.is_object() || self.is_string() || self.is_symbol() || self.is_bigint()
+    }
+
+    pub fn trace_kind(&self) -> TraceKind {
+        if self.is_string() {
+            TraceKind::String
+        } else if self.is_symbol() {
+            TraceKind::Symbol
+        } else {
+            TraceKind::Object
+        }
+    }
     
     pub fn from_bool(b: bool) -> Self {
         Self { data: 0x0001_0000 | (b as u64) }
@@ -401,9 +426,42 @@ impl Value {
     }
 }
 
+impl From<&Value> for Value {
+    fn from(value: &Value) -> Self {
+        *value
+    }
+}
+
 impl Default for Value {
     fn default() -> Self {
         Self::undefined()
+    }
+}
+
+
+impl std::ops::Deref for Value {
+    type Target = ValueBits;
+
+    fn deref(&self) -> &Self::Target {
+        unsafe { std::mem::transmute(self) }
+    }
+}
+
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_undefined() {
+            write!(f, "undefined")
+        } else if self.is_null() {
+            write!(f, "null")
+        } else if self.is_boolean() {
+            write!(f, "{}", self.to_boolean())
+        } else if self.is_number() {
+            write!(f, "{}", self.to_f64())
+        } else if self.is_object() {
+            write!(f, "[object {:p}]", self.to_object())
+        } else {
+            write!(f, "value({:#x})", self.data)
+        }
     }
 }
 
@@ -443,6 +501,20 @@ impl<T> Heap<T> {
         self.ptr.get()
     }
 }
+
+impl<T: Copy + PartialEq> PartialEq for Heap<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.get() == other.get()
+    }
+}
+
+impl<T: Copy + std::fmt::Debug> std::fmt::Debug for Heap<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.get().fmt(f)
+    }
+}
+
+impl<T: Copy + Eq> Eq for Heap<T> {}
 
 impl<T: Default> Default for Heap<T> {
     fn default() -> Self {
@@ -567,13 +639,56 @@ impl From<&Vec<Value>> for HandleValueArray {
     }
 }
 
+impl From<&super::gc::RootedVec<Value>> for HandleValueArray {
+    fn from(values: &super::gc::RootedVec<Value>) -> Self {
+        Self::from_rooted_slice(values)
+    }
+}
+
 // GC-related types - use proper enum from gc module
 pub use super::gc::GCReason;
-pub type GCOptions = u32;
-pub type GCProgress = u32;
-pub type GCDescription = u32;
-pub type JSGCStatus = u32;
-pub type JSGCParamKey = u32;
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GCOptions {
+    Normal = 0,
+    Shrink = 1,
+    Shutdown = 2,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct GCDescription {
+    pub options_: GCOptions,
+    pub isZone_: bool,
+}
+
+pub use super::gc::GCProgress;
+
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum JSGCStatus {
+    JSGC_BEGIN = 0,
+    JSGC_END = 1,
+}
+
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum JSGCParamKey {
+    JSGC_MAX_BYTES = 0,
+    JSGC_INCREMENTAL_GC_ENABLED = 1,
+    JSGC_PER_ZONE_GC_ENABLED = 2,
+    JSGC_SLICE_TIME_BUDGET_MS = 3,
+    JSGC_COMPACTING_ENABLED = 4,
+    JSGC_HIGH_FREQUENCY_TIME_LIMIT = 5,
+    JSGC_LOW_FREQUENCY_HEAP_GROWTH = 6,
+    JSGC_HIGH_FREQUENCY_LARGE_HEAP_GROWTH = 7,
+    JSGC_HIGH_FREQUENCY_SMALL_HEAP_GROWTH = 8,
+    JSGC_SMALL_HEAP_SIZE_MAX = 9,
+    JSGC_LARGE_HEAP_SIZE_MIN = 10,
+    JSGC_NON_INCREMENTAL_FACTOR = 11,
+    JSGC_MIN_EMPTY_CHUNK_COUNT = 12,
+    JSGC_BYTES = 13,
+}
 
 /// TraceKind - kinds of GC things that can be traced
 #[repr(u32)]
@@ -594,13 +709,37 @@ pub enum TraceKind {
 }
 
 // Compilation types
-pub type CompilationType = u32;
-pub type RuntimeCode = u32;
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CompilationType {
+    HostEnsureCanCompileStrings = 0,
+    HostEnsureCanAddPrivateField = 1,
+    Function = 2,
+}
+
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RuntimeCode {
+    JS = 0,
+    WASM = 1,
+}
 pub type MimeType = u32;
 
 // Promise types
-pub type PromiseRejectionHandlingState = u32;
-pub type PromiseUserInputEventHandlingState = u32;
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PromiseRejectionHandlingState {
+    Unhandled = 0,
+    Handled = 1,
+}
+
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PromiseUserInputEventHandlingState {
+    DontCare = 0,
+    HadUserInteractionAtCreation = 1,
+    DidntHaveUserInteractionAtCreation = 2,
+}
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -612,8 +751,9 @@ pub enum SavedFrameSelfHosted {
 // Security
 #[repr(C)]
 pub struct JSSecurityCallbacks {
-    pub content_security_policy_allows: Option<unsafe extern "C" fn() -> bool>,
-    pub subsumes: Option<unsafe extern "C" fn() -> bool>,
+    pub contentSecurityPolicyAllows: Option<unsafe extern "C" fn(*mut RawJSContext, RuntimeCode, HandleString<'_>, CompilationType, Handle<'_, super::gc::StackGCVector<*mut JSString>>, HandleString<'_>, Handle<'_, super::gc::StackGCVector<super::jsval::JSVal>>, HandleValue<'_>, *mut bool) -> bool>,
+    pub codeForEvalGets: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, MutableHandleString<'_>) -> bool>,
+    pub subsumes: Option<unsafe extern "C" fn(*mut JSPrincipals, *mut JSPrincipals) -> bool>,
 }
 
 /// JobQueue for promise jobs
@@ -629,10 +769,15 @@ pub struct BuildIdCharVector {
 }
 
 /// BuildIdOp callback type
-pub type BuildIdOp = unsafe extern "C" fn(build_id: *mut BuildIdCharVector) -> bool;
+pub type BuildIdOp = Option<unsafe extern "C" fn(build_id: *mut BuildIdCharVector) -> bool>;
 
 /// AsmJS options
-pub type AsmJSOption = u32;
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AsmJSOption {
+    Enabled = 0,
+    DisabledByAsmJSPref = 1,
+}
 
 /// Exception stack behavior
 #[repr(u32)]
@@ -643,7 +788,16 @@ pub enum ExceptionStackBehavior {
 }
 
 /// JSJitCompilerOption
-pub type JSJitCompilerOption = u32;
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum JSJitCompilerOption {
+    JSJITCOMPILER_BASELINE_INTERPRETER_ENABLE = 0,
+    JSJITCOMPILER_BASELINE_ENABLE = 1,
+    JSJITCOMPILER_ION_ENABLE = 2,
+    JSJITCOMPILER_NATIVE_REGEXP_ENABLE = 3,
+    JSJITCOMPILER_BASELINE_WARMUP_TRIGGER = 4,
+    JSJITCOMPILER_ION_NORMAL_WARMUP_TRIGGER = 5,
+}
 
 // Function stubs
 pub unsafe fn JS_NewObject(_cx: *mut RawJSContext, _class: *const JSClass) -> *mut JSObject {
@@ -687,14 +841,14 @@ pub unsafe fn NewArrayObject(_cx: *mut RawJSContext, _contents: &HandleValueArra
 pub unsafe fn GetPromiseUserInputEventHandlingState(
     _promise: HandleObject<'_>,
 ) -> PromiseUserInputEventHandlingState {
-    0
+    PromiseUserInputEventHandlingState::DontCare
 }
 
 pub unsafe fn GetObjectRealmOrNull(_obj: *mut JSObject) -> *mut c_void {
     ptr::null_mut()
 }
 
-pub unsafe fn GetRealmPrincipals(_realm: *mut c_void) -> *mut c_void {
+pub unsafe fn GetRealmPrincipals(_realm: *mut c_void) -> *mut JSPrincipals {
     ptr::null_mut()
 }
 
@@ -718,7 +872,12 @@ pub struct Dispatchable {
     _private: [u8; 0],
 }
 
-pub type Dispatchable_MaybeShuttingDown = u32;
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Dispatchable_MaybeShuttingDown {
+    NotShuttingDown = 0,
+    ShuttingDown = 1,
+}
 // ===================
 // ArrayBuffer APIs
 // ===================
@@ -819,7 +978,10 @@ pub unsafe fn HasDefinedArrayBufferDetachKey(
     true
 }
 
-pub unsafe fn IsArrayBufferObject(_obj: HandleObject<'_>) -> bool {
+pub unsafe fn IsArrayBufferObject<'a, O>(_obj: O) -> bool
+where
+    O: IntoHandleObject<'a>,
+{
     false
 }
 
@@ -1035,15 +1197,15 @@ pub enum StructuredCloneScope {
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct CloneDataPolicy {
-    allow_inlined_durable_storage: bool,
-    allow_shared_memory_objects: bool,
+    pub allowIntraClusterClonableSharedObjects_: bool,
+    pub allowSharedMemoryObjects_: bool,
 }
 
 impl CloneDataPolicy {
     pub fn new() -> Self {
         Self {
-            allow_inlined_durable_storage: false,
-            allow_shared_memory_objects: false,
+            allowIntraClusterClonableSharedObjects_: false,
+            allowSharedMemoryObjects_: false,
         }
     }
 }
@@ -1081,12 +1243,12 @@ pub struct JSStructuredCloneWriter {
 /// Structured clone callbacks
 #[repr(C)]
 pub struct JSStructuredCloneCallbacks {
-    pub read: Option<unsafe extern "C" fn(*mut RawJSContext, *mut JSStructuredCloneReader, *const c_void, u32, u32, *mut c_void) -> *mut JSObject>,
+    pub read: Option<unsafe extern "C" fn(*mut RawJSContext, *mut JSStructuredCloneReader, *const CloneDataPolicy, u32, u32, *mut c_void) -> *mut JSObject>,
     pub write: Option<unsafe extern "C" fn(*mut RawJSContext, *mut JSStructuredCloneWriter, HandleObject<'_>, *mut bool, *mut c_void) -> bool>,
-    pub report_error: Option<unsafe extern "C" fn(*mut RawJSContext, u32)>,
-    pub read_transfer: Option<unsafe extern "C" fn(*mut RawJSContext, *mut JSStructuredCloneReader, *const c_void, u32, *mut c_void, usize, *mut c_void) -> *mut JSObject>,
-    pub write_transfer: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, *mut c_void, *mut u32, *mut *mut c_void, *mut usize, *mut c_void) -> bool>,
-    pub free_transfer: Option<unsafe extern "C" fn(u32, TransferableOwnership, *mut c_void, usize, *mut c_void)>,
+    pub report_error: Option<unsafe extern "C" fn(*mut RawJSContext, u32, *mut c_void, *const i8)>,
+    pub read_transfer: Option<unsafe extern "C" fn(*mut RawJSContext, *mut JSStructuredCloneReader, *const CloneDataPolicy, u32, *mut c_void, u64, *mut c_void, MutableHandleObject<'_>) -> bool>,
+    pub write_transfer: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, *mut c_void, *mut u32, *mut TransferableOwnership, *mut *mut c_void, *mut u64) -> bool>,
+    pub free_transfer: Option<unsafe extern "C" fn(u32, TransferableOwnership, *mut c_void, u64, *mut c_void)>,
     pub can_transfer: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, *mut bool, *mut c_void) -> bool>,
     pub sabCloned: Option<unsafe extern "C" fn(*mut RawJSContext, bool, *mut c_void) -> bool>,
 }
@@ -1141,7 +1303,8 @@ pub struct JSPrincipals {
 
 #[repr(C)]
 pub struct DOMCallbacks {
-    pub instance_class_matches_proto: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, u32, HandleObject<'_>) -> bool>,
+    pub instanceClassMatchesProto: Option<unsafe extern "C" fn(*const JSClass, u32, u32) -> bool>,
+    pub instanceClassIsError: Option<unsafe extern "C" fn(*const JSClass) -> bool>,
 }
 
 // ===================
@@ -1208,9 +1371,8 @@ pub mod JS {
     /// Compile1 - compile with single source
     pub unsafe fn Compile1(
         _cx: *mut RawJSContext,
-        _options: &CompileOptions,
-        _source_text: *const std::os::raw::c_char,
-        _length: usize,
+        _options: *const CompileOptions,
+        _source_text: &mut SourceText<u8>,
     ) -> *mut JSScript {
         std::ptr::null_mut()
     }
@@ -1218,13 +1380,12 @@ pub mod JS {
     /// Compile a function
     pub unsafe fn CompileFunction(
         _cx: *mut RawJSContext,
-        _scope_chain: &[HandleObject<'_>],
+        _scope_chain: *const *mut JSObject,
         _options: &CompileOptions,
         _name: *const std::os::raw::c_char,
         _nargs: u32,
         _argnames: *const *const std::os::raw::c_char,
-        _source: *const std::os::raw::c_char,
-        _length: usize,
+        _source: &mut SourceText<u16>,
     ) -> *mut JSFunction {
         std::ptr::null_mut()
     }
@@ -1279,17 +1440,19 @@ pub unsafe fn SupportUnscopables(_cx: *mut RawJSContext, _obj: HandleObject<'_>)
 /// Instantiate options for stencil
 #[repr(C)]
 pub struct InstantiateOptions {
-    pub skip_filename_validation: bool,
-    pub hide_script_from_debugger: bool,
-    pub defer_debug_metadata: bool,
+    pub skipFilenameValidation: bool,
+    pub hideScriptFromDebugger: bool,
+    pub deferDebugMetadata: bool,
+    pub eagerDelazificationStrategy_: DelazificationOption,
 }
 
 impl Default for InstantiateOptions {
     fn default() -> Self {
         Self {
-            skip_filename_validation: false,
-            hide_script_from_debugger: false,
-            defer_debug_metadata: false,
+            skipFilenameValidation: false,
+            hideScriptFromDebugger: false,
+            deferDebugMetadata: false,
+            eagerDelazificationStrategy_: DelazificationOption::OnDemandOnly,
         }
     }
 }
@@ -1304,17 +1467,18 @@ pub struct Stencil {
 pub unsafe fn InstantiateGlobalStencil(
     _cx: *mut RawJSContext,
     _options: &InstantiateOptions,
-    _stencil: *mut Stencil,
+    _stencil: *const c_void,
     _script: *mut *mut JSScript,
-) -> bool {
-    true
+) -> *mut JSScript {
+    std::ptr::null_mut()
 }
 
 /// Set private value on script
-pub unsafe fn SetScriptPrivate(
+pub unsafe fn SetScriptPrivate<V: Into<Value>>(
     _script: *mut JSScript,
-    _value: Value,
+    _value: V,
 ) {
+    let _ = _value.into();
 }
 
 // ===================
@@ -1324,16 +1488,16 @@ pub unsafe fn SetScriptPrivate(
 /// Clipped time value (for Date objects)
 #[repr(transparent)]
 pub struct ClippedTime {
-    value: f64,
+    pub t: f64,
 }
 
 impl ClippedTime {
     pub fn new(value: f64) -> Self {
-        Self { value }
+        Self { t: value }
     }
     
     pub fn to_double(&self) -> f64 {
-        self.value
+        self.t
     }
 }
 
@@ -1358,8 +1522,12 @@ pub unsafe fn NewDateObject(
 pub unsafe fn DateGetMsecSinceEpoch(
     _cx: *mut RawJSContext,
     _obj: HandleObject<'_>,
-) -> f64 {
-    f64::NAN
+    _result: *mut f64,
+) -> bool {
+    if !_result.is_null() {
+        *_result = f64::NAN;
+    }
+    true
 }
 
 /// Check if an object is a Date
@@ -1468,16 +1636,21 @@ pub unsafe fn NewFunctionWithReserved(
     _nargs: u32,
     _flags: u32,
     _name: *const std::os::raw::c_char,
-) -> *mut JSObject {
+) -> *mut JSFunction {
     std::ptr::null_mut()
 }
 
 /// Get native reserved slot from function
-pub unsafe fn GetFunctionNativeReserved(
-    _fun: HandleObject<'_>,
+pub unsafe fn GetFunctionNativeReserved<'a, F>(
+    _fun: F,
     _slot: usize,
-) -> Value {
-    Value::undefined()
+) -> *const Value
+where
+    F: Into<HandleObject<'a>>,
+{
+    let _ = _fun.into();
+    static VALUE: Value = Value::undefined();
+    &VALUE
 }
 
 /// Set native reserved slot on function
@@ -1569,6 +1742,18 @@ pub enum JSType {
     JSTYPE_NULL = 6,
     JSTYPE_SYMBOL = 7,
     JSTYPE_BIGINT = 8,
+}
+
+impl PartialEq<JSType> for u32 {
+    fn eq(&self, other: &JSType) -> bool {
+        *self == *other as u32
+    }
+}
+
+impl PartialEq<u32> for JSType {
+    fn eq(&self, other: &u32) -> bool {
+        (*self as u32) == *other
+    }
 }
 
 /// Convert value to primitive
@@ -1695,9 +1880,8 @@ pub unsafe fn JS_AddInterruptCallback(
 /// Compile a module
 pub unsafe fn CompileModule1(
     _cx: *mut RawJSContext,
-    _options: &CompileOptions,
-    _source: *const std::os::raw::c_char,
-    _length: usize,
+    _options: *const CompileOptions,
+    _source: &mut SourceText<u8>,
 ) -> *mut JSObject {
     std::ptr::null_mut()
 }
@@ -1723,8 +1907,8 @@ pub unsafe fn GetModuleRequestSpecifier(
 
 /// Get module resolve hook
 pub unsafe fn GetModuleResolveHook(
-    _cx: *mut RawJSContext,
-) -> Option<unsafe extern "C" fn()> {
+    _rt: *mut JSRuntime,
+) -> Option<unsafe extern "C" fn(*mut RawJSContext, HandleValue<'_>, HandleObject<'_>) -> *mut JSObject> {
     None
 }
 
@@ -1746,13 +1930,17 @@ pub unsafe fn GetRequestedModulesCount(
 }
 
 /// Define property with value
-pub unsafe fn JS_DefineProperty4(
+pub unsafe fn JS_DefineProperty4<'a, V>(
     _cx: *mut RawJSContext,
     _obj: HandleObject<'_>,
     _name: *const std::os::raw::c_char,
-    _value: HandleValue<'_>,
+    _value: V,
     _attrs: u32,
-) -> bool {
+) -> bool
+where
+    V: Into<HandleValue<'a>>,
+{
+    let _ = _value.into();
     true
 }
 
@@ -1798,15 +1986,15 @@ pub unsafe fn ModuleLink(
 
 /// Set module dynamic import hook
 pub unsafe fn SetModuleDynamicImportHook(
-    _cx: *mut RawJSContext,
-    _hook: Option<unsafe extern "C" fn() -> bool>,
+    _rt: *mut JSRuntime,
+    _hook: Option<unsafe extern "C" fn(*mut RawJSContext, HandleValue<'_>, HandleObject<'_>, HandleObject<'_>) -> bool>,
 ) {
 }
 
 /// Set module metadata hook
 pub unsafe fn SetModuleMetadataHook(
-    _cx: *mut RawJSContext,
-    _hook: Option<unsafe extern "C" fn() -> bool>,
+    _rt: *mut JSRuntime,
+    _hook: Option<unsafe extern "C" fn(*mut RawJSContext, HandleValue<'_>, HandleObject<'_>) -> bool>,
 ) {
 }
 
@@ -1819,16 +2007,16 @@ pub unsafe fn SetModulePrivate(
 
 /// Set module resolve hook
 pub unsafe fn SetModuleResolveHook(
-    _cx: *mut RawJSContext,
-    _hook: Option<unsafe extern "C" fn() -> *mut JSObject>,
+    _rt: *mut JSRuntime,
+    _hook: Option<unsafe extern "C" fn(*mut RawJSContext, HandleValue<'_>, HandleObject<'_>) -> *mut JSObject>,
 ) {
 }
 
 /// Set script private reference hooks
 pub unsafe fn SetScriptPrivateReferenceHooks(
-    _cx: *mut RawJSContext,
-    _add: Option<unsafe extern "C" fn()>,
-    _release: Option<unsafe extern "C" fn()>,
+    _rt: *mut JSRuntime,
+    _add: Option<unsafe extern "C" fn(*const Value)>,
+    _release: Option<unsafe extern "C" fn(*const Value)>,
 ) {
 }
 
@@ -1894,13 +2082,14 @@ pub unsafe fn JS_ForwardSetPropertyTo(
 }
 
 /// Get own property descriptor by ID
-pub unsafe fn JS_GetOwnPropertyDescriptorById(
+pub unsafe fn JS_GetOwnPropertyDescriptorById<T: super::rust::IntoPropDescPtr>(
     _cx: *mut RawJSContext,
     _obj: HandleObject<'_>,
     _id: HandleId<'_>,
-    _desc: *mut super::glue::PropertyDescriptor,
+    _desc: T,
     _is_none: *mut bool,
 ) -> bool {
+    let _ = _desc.into_prop_desc_ptr();
     *_is_none = true;
     true
 }
@@ -1970,6 +2159,10 @@ pub enum JSErrNum {
     JSMSG_CANT_SET_PROTO = 3,
     JSMSG_CANT_DEFINE_INVALID = 4,
     JSMSG_OBJECT_NOT_EXTENSIBLE = 5,
+    JSMSG_CANT_DEFINE_WINDOW_NAMED_PROPERTY = 6,
+    JSMSG_CANT_DELETE_WINDOW_NAMED_PROPERTY = 7,
+    JSMSG_CANT_DEFINE_WINDOW_ELEMENT = 8,
+    JSMSG_READ_ONLY = 9,
     // Add more as needed
 }
 
@@ -2685,9 +2878,22 @@ pub unsafe fn JS_CALLEE(_cx: *mut RawJSContext, vp: *mut Value) -> Value {
 #[derive(Clone, Copy)]
 pub struct SymbolId(pub *mut Symbol);
 
+#[repr(transparent)]
+pub struct SymbolIdBits {
+    pub asBits_: usize,
+}
+
 impl SymbolId {
     pub fn new(symbol: *mut Symbol) -> Self {
         Self(symbol)
+    }
+}
+
+impl std::ops::Deref for SymbolId {
+    type Target = SymbolIdBits;
+
+    fn deref(&self) -> &Self::Target {
+        unsafe { std::mem::transmute(self) }
     }
 }
 
@@ -3115,12 +3321,13 @@ pub struct StreamConsumer {
 }
 
 /// Get property keys from object
-pub unsafe fn GetPropertyKeys(
+pub unsafe fn GetPropertyKeys<T: super::rust::IntoMutRawPtr<IdVector>>(
     _cx: *mut RawJSContext,
     _obj: HandleObject<'_>,
     _flags: u32,
-    _props: *mut IdVector,
+    _props: T,
 ) -> bool {
+    let _ = _props.into_mut_raw_ptr();
     true
 }
 

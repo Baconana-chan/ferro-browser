@@ -238,7 +238,7 @@ impl Serializable for DOMRectReadOnly {
     }
 
     fn serialized_storage<'a>(
-        data: StructuredData<'a, '_>,
+        data: StructuredData<'a>,
     ) -> &'a mut Option<FxHashMap<Type, Self::Data>> {
         match data {
             StructuredData::Reader(reader) => &mut reader.rects,

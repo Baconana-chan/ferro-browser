@@ -259,7 +259,7 @@ impl Serializable for ImageData {
     }
 
     fn serialized_storage<'a>(
-        reader: StructuredData<'a, '_>,
+        reader: StructuredData<'a>,
     ) -> &'a mut Option<FxHashMap<ImageDataId, Self::Data>> {
         match reader {
             StructuredData::Reader(r) => &mut r.image_data,

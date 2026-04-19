@@ -119,7 +119,7 @@ impl Serializable for Blob {
     }
 
     fn serialized_storage<'a>(
-        reader: StructuredData<'a, '_>,
+        reader: StructuredData<'a>,
     ) -> &'a mut Option<FxHashMap<BlobId, Self::Data>> {
         match reader {
             StructuredData::Reader(r) => &mut r.blob_impls,

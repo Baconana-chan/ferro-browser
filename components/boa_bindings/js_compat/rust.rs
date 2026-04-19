@@ -4,7 +4,7 @@
 // SpiderMonkey rust module compatibility layer for Boa
 
 use std::ptr;
-use std::ffi::c_void;
+use std::ffi::{c_void, CStr};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
@@ -65,24 +65,66 @@ impl<'a> IntoHandleObject<'a> for *mut JSObject {
 
 // Implementation for MutableHandle<PropertyDescriptor> is below after MutableHandle definition
 
+use std::cell::{Cell, UnsafeCell};
+
+thread_local! {
+    /// Whether a Runtime has been constructed on this thread and not yet dropped.
+    static RUNTIME_ACTIVE: Cell<bool> = const { Cell::new(false) };
+    /// A thread-local sentinel RawJSContext used as an opaque non-null token.
+    /// The Boa shim never dereferences this pointer in any meaningful way.
+    static SENTINEL_CX: UnsafeCell<RawJSContext> = UnsafeCell::new(RawJSContext::new());
+}
+
 /// Runtime - the JavaScript runtime
 pub struct Runtime {
     _private: (),
 }
 
 impl Runtime {
-    pub fn new(_engine: JSEngineHandle) -> Result<Self, ()> {
-        Ok(Self { _private: () })
+    pub fn new(_engine: JSEngineHandle) -> Self {
+        RUNTIME_ACTIVE.with(|a| a.set(true));
+        Self { _private: () }
+    }
+
+    pub unsafe fn create_with_parent(_parent: ParentRuntime) -> Self {
+        RUNTIME_ACTIVE.with(|a| a.set(true));
+        Self { _private: () }
     }
     
     pub fn cx(&self) -> *mut RawJSContext {
+        SENTINEL_CX.with(|s| s.get())
+    }
+
+    pub fn cx_no_gc(&self) -> *mut RawJSContext {
+        self.cx()
+    }
+
+    pub fn rt(&self) -> *mut super::jsapi::JSRuntime {
         ptr::null_mut()
     }
     
-    /// Get the current runtime (thread-local)
+    /// Get the current runtime (thread-local).
+    /// Returns `Some` while a Runtime is alive on this thread, `None` after shutdown.
     pub fn get() -> Option<std::ptr::NonNull<RawJSContext>> {
-        // TODO: Implement proper thread-local runtime storage
-        None
+        if RUNTIME_ACTIVE.with(|a| a.get()) {
+            SENTINEL_CX.with(|s| std::ptr::NonNull::new(s.get()))
+        } else {
+            None
+        }
+    }
+
+    pub fn thread_safe_js_context(&self) -> ThreadSafeJSContext {
+        ThreadSafeJSContext { _private: () }
+    }
+
+    pub fn prepare_for_new_child(&self) -> ParentRuntime {
+        ParentRuntime { _private: () }
+    }
+}
+
+impl Drop for Runtime {
+    fn drop(&mut self) {
+        RUNTIME_ACTIVE.with(|a| a.set(false));
     }
 }
 
@@ -97,8 +139,16 @@ pub struct JSEngine {
 }
 
 impl JSEngine {
-    pub fn init() -> Result<JSEngineHandle, ()> {
-        Ok(JSEngineHandle { _private: () })
+    pub fn init() -> Result<Self, ()> {
+        Ok(Self { _private: () })
+    }
+
+    pub fn can_shutdown(&self) -> bool {
+        true
+    }
+
+    pub fn handle(&self) -> JSEngineHandle {
+        JSEngineHandle { _private: () }
     }
 }
 
@@ -108,9 +158,25 @@ pub struct JSEngineHandle {
     _private: (),
 }
 
+impl JSEngineHandle {
+    pub fn handle(&self) -> Self {
+        self.clone()
+    }
+}
+
 /// Thread-safe JSContext reference
 pub struct ThreadSafeJSContext {
     _private: (),
+}
+
+impl Clone for ThreadSafeJSContext {
+    fn clone(&self) -> Self {
+        Self { _private: () }
+    }
+}
+
+impl ThreadSafeJSContext {
+    pub fn request_interrupt_callback(&self) {}
 }
 
 unsafe impl Send for ThreadSafeJSContext {}
@@ -162,6 +228,12 @@ impl<T> IntoRawPtr<T> for *mut T {
     fn into_raw_ptr(self) -> *const T { self as *const T }
 }
 
+impl IntoRawPtr<*mut JSObject> for *mut Value {
+    fn into_raw_ptr(self) -> *const *mut JSObject {
+        self.cast()
+    }
+}
+
 impl<T> IntoRawPtr<T> for &T {
     fn into_raw_ptr(self) -> *const T { self as *const T }
 }
@@ -192,6 +264,21 @@ impl<'a, T> Handle<'a, T> {
     /// Get the raw pointer for functions that need it
     pub fn as_raw(&self) -> *const T {
         self.ptr
+    }
+
+    pub unsafe fn from_marked_location<P: IntoRawPtr<T>>(ptr: P) -> Self {
+        Self::from_raw(ptr)
+    }
+}
+
+impl<'a, T: Copy> Handle<'a, super::gc::RootedVec<T>> {
+    pub fn len(&self) -> usize {
+        unsafe { (&*self.ptr).len() }
+    }
+
+    pub fn at(&self, index: usize) -> Option<Handle<'_, T>> {
+        let value = unsafe { (&*self.ptr).get(index)? as *const T };
+        Some(Handle { ptr: value, _marker: PhantomData })
     }
 }
 
@@ -248,6 +335,48 @@ impl Handle<'static, Value> {
     }
 }
 
+impl<'a> Handle<'a, Value> {
+    pub fn to_number(&self) -> f64 {
+        self.get().to_f64()
+    }
+
+    pub fn to_int32(&self) -> i32 {
+        self.get().to_i32()
+    }
+
+    pub fn is_primitive(&self) -> bool {
+        !self.get().is_object()
+    }
+
+    pub fn to_string(&self) -> *mut JSString {
+        ptr::null_mut()
+    }
+}
+
+impl<'a> From<*mut JSObject> for Handle<'a, *mut JSObject> {
+    fn from(value: *mut JSObject) -> Self {
+        unsafe { Handle::from_raw(&value as *const *mut JSObject) }
+    }
+}
+
+impl<'a> From<*mut JSString> for Handle<'a, *mut JSString> {
+    fn from(value: *mut JSString) -> Self {
+        unsafe { Handle::from_raw(&value as *const *mut JSString) }
+    }
+}
+
+impl<'a> From<Handle<'a, *mut JSString>> for Handle<'a, Value> {
+    fn from(handle: Handle<'a, *mut JSString>) -> Self {
+        unsafe { Handle::from_raw(handle.ptr.cast::<Value>()) }
+    }
+}
+
+impl<'a> std::fmt::Display for Handle<'a, Value> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.get().fmt(f)
+    }
+}
+
 /// HandleValue - Handle to a Value
 pub type HandleValue<'a> = Handle<'a, Value>;
 
@@ -260,6 +389,18 @@ impl<'a> From<Handle<'a, Value>> for Handle<'a, *mut JSObject> {
         // This is safe because we're treating the value's object pointer
         // Note: In a real implementation, we'd need to verify the value is actually an object
         unsafe { Handle::from_raw(handle.ptr as *const *mut JSObject) }
+    }
+}
+
+impl<'a> From<Handle<'a, *mut JSObject>> for Handle<'a, Value> {
+    fn from(handle: Handle<'a, *mut JSObject>) -> Self {
+        unsafe { Handle::from_raw(handle.ptr.cast::<Value>()) }
+    }
+}
+
+impl<'a> From<Handle<'a, super::jsapi::SymbolId>> for Handle<'a, super::jsapi::StringId> {
+    fn from(handle: Handle<'a, super::jsapi::SymbolId>) -> Self {
+        unsafe { Handle::from_raw(handle.ptr.cast::<super::jsapi::StringId>()) }
     }
 }
 
@@ -331,6 +472,10 @@ impl<'a, T> MutableHandle<'a, T> {
     pub fn as_raw(&self) -> *mut T {
         self.ptr
     }
+
+    pub fn into_handle_mut(self) -> Self {
+        self
+    }
 }
 
 // Specific implementation for MutableHandle<*mut JSObject>
@@ -344,6 +489,10 @@ impl<'a> MutableHandle<'a, *mut JSObject> {
 impl<'a> MutableHandle<'a, Value> {
     pub fn to_object(&self) -> *mut JSObject {
         unsafe { (*self.ptr).to_object() }
+    }
+
+    pub fn is_object(&self) -> bool {
+        unsafe { (*self.ptr).is_object() }
     }
 }
 
@@ -665,19 +814,19 @@ pub mod wrappers {
         ptr::null_mut()
     }
     
-    pub unsafe fn Call(
+    pub unsafe fn Call<'a>(
         _cx: *mut RawJSContext,
         _this: HandleValue<'_>,
-        _func: HandleObject<'_>,
+        _func: impl IntoHandleObject<'a>,
         _args: *const super::super::jsapi::HandleValueArray,
         _rval: MutableHandleValue<'_>,
     ) -> bool {
         true
     }
     
-    pub unsafe fn Construct1(
+    pub unsafe fn Construct1<'a>(
         _cx: *mut RawJSContext,
-        _ctor: HandleObject<'_>,
+        _ctor: impl IntoHandleObject<'a>,
         _args: *const super::super::jsapi::HandleValueArray,
         _rval: MutableHandleObject<'_>,
     ) -> bool {
@@ -707,7 +856,7 @@ pub mod wrappers {
         _vp: MutableHandleValue<'_>,
         _replacer: HandleObject<'_>,
         _space: HandleValue<'_>,
-        _callback: Option<unsafe extern "C" fn()>,
+        _callback: Option<unsafe extern "C" fn(*const u16, u32, *mut c_void) -> bool>,
         _data: *mut c_void,
     ) -> bool {
         true
@@ -730,7 +879,7 @@ pub mod wrappers {
     
     pub unsafe fn JS_IsIdentifier(
         _cx: *mut RawJSContext,
-        _str: HandleObject<'_>,
+        _str: Handle<*mut super::super::jsapi::JSString>,
         _is_ident: *mut bool,
     ) -> bool {
         true
@@ -755,18 +904,21 @@ pub mod wrappers {
     
     pub unsafe fn JS_ExecuteScript(
         _cx: *mut RawJSContext,
-        _script: HandleObject<'_>,
+        _script: Handle<'_, *mut super::super::jsapi::JSScript>,
         _rval: MutableHandleValue<'_>,
     ) -> bool {
         true
     }
     
-    pub unsafe fn JS_GetScriptPrivate(_script: HandleObject<'_>) -> Value {
-        Value::undefined()
+    pub unsafe fn JS_GetScriptPrivate(
+        _script: *mut super::super::jsapi::JSScript,
+        rval: MutableHandleValue<'_>,
+    ) {
+        rval.set(Value::undefined())
     }
     
-    pub unsafe fn JS_GetModulePrivate(_module: HandleObject<'_>) -> Value {
-        Value::undefined()
+    pub unsafe fn JS_GetModulePrivate(_module: *mut JSObject, rval: MutableHandleValue<'_>) {
+        rval.set(Value::undefined())
     }
     
     pub unsafe fn JS_SetPrototype(
@@ -795,7 +947,7 @@ pub mod wrappers {
     pub unsafe fn NewWindowProxy(
         _cx: *mut RawJSContext,
         _handler: HandleObject<'_>,
-        _class: *const super::super::jsapi::JSClass,
+        _class: *const c_void,
     ) -> *mut JSObject {
         ptr::null_mut()
     }
@@ -838,12 +990,13 @@ pub mod wrappers {
     
     pub unsafe fn JS_ReadStructuredClone(
         _cx: *mut RawJSContext,
-        _data: *const u8,
-        _len: usize,
+        _data: *mut super::super::glue::JSStructuredCloneData,
         _version: u32,
-        _callbacks: *const c_void,
-        _closure: *mut c_void,
+        _scope: super::super::jsapi::StructuredCloneScope,
         _vp: MutableHandleValue<'_>,
+        _policy: *const super::super::jsapi::CloneDataPolicy,
+        _callbacks: *const super::super::jsapi::JSStructuredCloneCallbacks,
+        _closure: *mut c_void,
     ) -> bool {
         true
     }
@@ -851,9 +1004,10 @@ pub mod wrappers {
     pub unsafe fn JS_WriteStructuredClone(
         _cx: *mut RawJSContext,
         _v: HandleValue<'_>,
-        _data: *mut *mut u8,
-        _len: *mut usize,
-        _callbacks: *const c_void,
+        _data: *mut super::super::glue::JSStructuredCloneData,
+        _scope: super::super::jsapi::StructuredCloneScope,
+        _policy: *const super::super::jsapi::CloneDataPolicy,
+        _callbacks: *const super::super::jsapi::JSStructuredCloneCallbacks,
         _closure: *mut c_void,
         _transferables: HandleValue<'_>,
     ) -> bool {
@@ -949,9 +1103,9 @@ pub mod wrappers {
     }
     
     /// Resolve a promise
-    pub unsafe fn ResolvePromise(
+    pub unsafe fn ResolvePromise<'a>(
         cx: *mut RawJSContext,
-        promise: HandleObject<'_>,
+        promise: impl IntoHandleObject<'a>,
         value: HandleValue<'_>,
     ) -> bool {
         let _ = (cx, promise, value);
@@ -959,9 +1113,9 @@ pub mod wrappers {
     }
     
     /// Reject a promise
-    pub unsafe fn RejectPromise(
+    pub unsafe fn RejectPromise<'a>(
         cx: *mut RawJSContext,
-        promise: HandleObject<'_>,
+        promise: impl IntoHandleObject<'a>,
         reason: HandleValue<'_>,
     ) -> bool {
         let _ = (cx, promise, reason);
@@ -1009,7 +1163,7 @@ pub mod wrappers {
     /// Set promise user input event handling state
     pub unsafe fn SetPromiseUserInputEventHandlingState(
         promise: HandleObject<'_>,
-        state: bool,
+        state: super::super::jsapi::PromiseUserInputEventHandlingState,
     ) {
         let _ = (promise, state);
     }
@@ -1159,7 +1313,7 @@ pub mod wrappers {
         _cx: *mut RawJSContext,
         _obj: HandleObject<'_>,
         _name: *const i8,
-        _value: HandleValue<'_>,
+        _value: impl Sized,
         _attrs: u32,
     ) -> bool {
         true
@@ -1333,9 +1487,12 @@ pub mod wrappers {
 pub mod wrappers2 {
     use super::*;
     
-    pub unsafe fn JS_GC(_cx: *mut RawJSContext, _reason: u32) {}
+    pub unsafe fn JS_GC(_cx: *mut RawJSContext, _reason: super::super::gc::GCReason) {}
     
-    pub unsafe fn JS_GetGCParameter(_cx: *mut RawJSContext, _param: u32) -> u32 {
+    pub unsafe fn JS_GetGCParameter(
+        _cx: *mut RawJSContext,
+        _param: super::super::jsapi::JSGCParamKey,
+    ) -> u32 {
         0
     }
     
@@ -1348,20 +1505,21 @@ pub mod wrappers2 {
     
     pub unsafe fn JS_AddInterruptCallback(
         _cx: *mut RawJSContext,
-        _callback: Option<unsafe extern "C" fn() -> bool>,
+        _callback: Option<unsafe extern "C" fn(*mut RawJSContext) -> bool>,
     ) {
     }
     
     pub unsafe fn SetWindowProxyClass(_cx: *mut RawJSContext, _class: *const super::super::jsapi::JSClass) {
     }
     
-    pub fn ContextOptionsRef(_cx: *mut RawJSContext) -> *mut c_void {
-        ptr::null_mut()
+    pub fn ContextOptionsRef(_cx: *mut RawJSContext) -> *mut super::super::context::ContextOptions {
+        Box::into_raw(Box::new(super::super::context::ContextOptions::default()))
     }
     
     pub unsafe fn InitConsumeStreamCallback(
         _cx: *mut RawJSContext,
-        _callback: Option<unsafe extern "C" fn()>,
+        _callback: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>, super::super::jsapi::MimeType, *mut super::super::jsapi::StreamConsumer) -> bool>,
+        _report_error: Option<unsafe extern "C" fn(*mut RawJSContext, usize)>,
     ) {
     }
     
@@ -1374,27 +1532,35 @@ pub mod wrappers2 {
     
     pub unsafe fn JS_InitDestroyPrincipalsCallback(
         _cx: *mut RawJSContext,
-        _callback: Option<unsafe extern "C" fn()>,
+        _callback: Option<unsafe extern "C" fn(*mut super::super::jsapi::JSPrincipals)>,
     ) {
     }
     
     pub unsafe fn JS_InitReadPrincipalsCallback(
         _cx: *mut RawJSContext,
-        _callback: Option<unsafe extern "C" fn()>,
+        _callback: Option<unsafe extern "C" fn(*mut RawJSContext, *mut super::super::jsapi::JSStructuredCloneReader, *mut *mut super::super::jsapi::JSPrincipals) -> bool>,
     ) {
     }
     
     pub unsafe fn JS_SetGCCallback(
         _cx: *mut RawJSContext,
-        _callback: Option<unsafe extern "C" fn()>,
+        _callback: Option<unsafe extern "C" fn(*mut RawJSContext, super::super::jsapi::JSGCStatus, super::super::jsapi::GCReason, *mut c_void)>,
         _data: *mut c_void,
     ) {
     }
     
-    pub unsafe fn JS_SetGCParameter(_cx: *mut RawJSContext, _param: u32, _value: u32) {
+    pub unsafe fn JS_SetGCParameter(
+        _cx: *mut RawJSContext,
+        _param: super::super::jsapi::JSGCParamKey,
+        _value: u32,
+    ) {
     }
     
-    pub unsafe fn JS_SetGlobalJitCompilerOption(_cx: *mut RawJSContext, _opt: u32, _val: u32) {
+    pub unsafe fn JS_SetGlobalJitCompilerOption(
+        _cx: *mut RawJSContext,
+        _opt: super::super::jsapi::JSJitCompilerOption,
+        _val: u32,
+    ) {
     }
     
     pub unsafe fn JS_SetOffthreadIonCompilationEnabled(_cx: *mut RawJSContext, _enabled: bool) {
@@ -1406,12 +1572,12 @@ pub mod wrappers2 {
     ) {
     }
     
-    pub unsafe fn SetDOMCallbacks(_cx: *mut RawJSContext, _callbacks: *const c_void) {
+    pub unsafe fn SetDOMCallbacks(_cx: *mut RawJSContext, _callbacks: *const super::super::jsapi::DOMCallbacks) {
     }
     
     pub unsafe fn SetGCSliceCallback(
         _cx: *mut RawJSContext,
-        _callback: Option<unsafe extern "C" fn()>,
+        _callback: Option<unsafe extern "C" fn(*mut RawJSContext, super::super::jsapi::GCProgress, *const super::super::jsapi::GCDescription)>,
     ) {
     }
     
@@ -1420,19 +1586,23 @@ pub mod wrappers2 {
     
     pub unsafe fn SetPreserveWrapperCallbacks(
         _cx: *mut RawJSContext,
-        _pre: Option<unsafe extern "C" fn() -> bool>,
-        _post: Option<unsafe extern "C" fn() -> bool>,
+        _pre: Option<unsafe extern "C" fn(*mut RawJSContext, HandleObject<'_>) -> bool>,
+        _post: Option<unsafe extern "C" fn(HandleObject<'_>) -> bool>,
     ) {
     }
     
     pub unsafe fn SetPromiseRejectionTrackerCallback(
         _cx: *mut RawJSContext,
-        _callback: Option<unsafe extern "C" fn()>,
+        _callback: Option<unsafe extern "C" fn(*mut RawJSContext, bool, HandleObject<'_>, super::super::jsapi::PromiseRejectionHandlingState, *mut c_void)>,
         _data: *mut c_void,
     ) {
     }
     
-    pub unsafe fn SetUpEventLoopDispatch(_cx: *mut RawJSContext, _dispatch: *const c_void) {
+    pub unsafe fn SetUpEventLoopDispatch(
+        _cx: *mut RawJSContext,
+        _dispatch: Option<unsafe extern "C" fn(*mut c_void, *mut super::super::glue::DispatchablePointer) -> bool>,
+        _data: *mut c_void,
+    ) {
     }
 }
 // ============================================================================
@@ -1445,7 +1615,7 @@ pub fn describe_scripted_caller(_cx: *mut RawJSContext) -> Option<ScriptedCaller
 }
 
 /// Information about a scripted caller
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ScriptedCaller {
     /// Filename of the script
     pub filename: String,
@@ -1466,19 +1636,42 @@ pub unsafe fn get_object_class(_obj: *mut JSObject) -> *const JSClass {
 }
 
 /// Structured clone buffer wrapper
+#[repr(C)]
+pub struct StructuredCloneBufferData {
+    pub data_: super::glue::JSStructuredCloneData,
+}
+
 pub struct JSAutoStructuredCloneBufferWrapper {
-    _private: [u8; 0],
+    raw: StructuredCloneBufferData,
 }
 
 impl JSAutoStructuredCloneBufferWrapper {
-    pub fn new() -> Self {
-        Self { _private: [] }
+    pub fn new(
+        _scope: super::jsapi::StructuredCloneScope,
+        _callbacks: *const super::jsapi::JSStructuredCloneCallbacks,
+    ) -> Self {
+        Self {
+            raw: StructuredCloneBufferData {
+                data_: super::glue::JSStructuredCloneData { _private: [] },
+            },
+        }
+    }
+
+    pub fn as_raw_ptr(&self) -> *const StructuredCloneBufferData {
+        &self.raw
+    }
+
+    pub fn as_raw_mut_ptr(&mut self) -> *mut StructuredCloneBufferData {
+        &mut self.raw
     }
 }
 
 impl Default for JSAutoStructuredCloneBufferWrapper {
     fn default() -> Self {
-        Self::new()
+        Self::new(
+            super::jsapi::StructuredCloneScope::DifferentProcess,
+            std::ptr::null(),
+        )
     }
 }
 /// CapturedJSStack - captured JavaScript stack trace
@@ -1487,8 +1680,12 @@ pub struct CapturedJSStack {
 }
 
 impl CapturedJSStack {
-    pub fn new() -> Self {
-        Self { _private: [] }
+    pub unsafe fn new(
+        _cx: *mut RawJSContext,
+        _stack: impl IntoMutRawPtr<*mut JSObject>,
+        _max_frame_count: Option<u32>,
+    ) -> Option<Self> {
+        Some(Self { _private: [] })
     }
     
     pub fn is_empty(&self) -> bool {
@@ -1498,11 +1695,17 @@ impl CapturedJSStack {
     pub fn as_str(&self) -> &str {
         ""
     }
+
+    pub fn for_each_stack_frame<F>(&self, _callback: F)
+    where
+        F: FnMut(HandleObject<'_>),
+    {
+    }
 }
 
 impl Default for CapturedJSStack {
     fn default() -> Self {
-        Self::new()
+        Self { _private: [] }
     }
 }
 
@@ -1563,6 +1766,7 @@ impl std::ops::Deref for IdVector {
 /// Wrapper for compile options
 pub struct CompileOptionsWrapper<'a> {
     _marker: PhantomData<&'a ()>,
+    pub ptr: *const super::jsapi::CompileOptions,
     filename: Option<String>,
     line: u32,
     column: u32,
@@ -1571,15 +1775,27 @@ pub struct CompileOptionsWrapper<'a> {
 }
 
 impl<'a> CompileOptionsWrapper<'a> {
-    pub fn new(_cx: *mut RawJSContext) -> Self {
+    fn blank() -> Self {
         Self {
             _marker: PhantomData,
+            ptr: Box::into_raw(Box::new(super::jsapi::CompileOptions::new(ptr::null_mut()))),
             filename: None,
             line: 1,
             column: 0,
             force_full_parse: false,
             no_script_rval: false,
         }
+    }
+
+    pub fn new<C>(_cx: C, filename: &str, line: u32) -> Self {
+        let mut options = Self::blank();
+        options.set_file(filename);
+        options.set_line(line);
+        options
+    }
+
+    pub unsafe fn new_raw(_cx: *mut RawJSContext, filename: &str, line: u32) -> Self {
+        Self::new(_cx, filename, line)
     }
     
     pub fn set_file(&mut self, filename: &str) {
@@ -1600,6 +1816,9 @@ impl<'a> CompileOptionsWrapper<'a> {
     
     pub fn set_no_script_rval(&mut self, value: bool) {
         self.no_script_rval = value;
+    }
+
+    pub fn set_introduction_type(&mut self, _value: &'static CStr) {
     }
 }
 
@@ -1639,6 +1858,7 @@ pub fn transform_char16_to_source_text(
 // ===================
 
 /// Stencil - compiled script representation
+#[derive(Clone, Copy)]
 pub struct Stencil {
     _private: [u8; 0],
 }
@@ -1653,6 +1873,18 @@ impl Default for Stencil {
     fn default() -> Self {
         Self::new()
     }
+}
+
+impl std::ops::Deref for Stencil {
+    type Target = *const std::ffi::c_void;
+
+    fn deref(&self) -> &Self::Target {
+        Box::leak(Box::new(std::ptr::null()))
+    }
+}
+
+unsafe impl super::gc::Traceable for Stencil {
+    unsafe fn trace(&self, _tracer: *mut super::jsapi::JSTracer) {}
 }
 
 // ===================

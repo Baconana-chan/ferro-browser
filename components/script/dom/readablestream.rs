@@ -17,7 +17,7 @@ use crate::js::rust::{
     HandleObject as SafeHandleObject, HandleValue as SafeHandleValue,
     MutableHandleValue as SafeMutableHandleValue,
 };
-use crate::js::typedarray::ArrayBufferViewU8;
+use crate::js::typedarray::Uint8Array;
 use rustc_hash::FxHashMap;
 use script_bindings::conversions::SafeToJSValConvertible;
 
@@ -1082,7 +1082,7 @@ impl ReadableStream {
         &self,
         cx: SafeJSContext,
         read_into_request: &ReadIntoRequest,
-        view: HeapBufferSource<ArrayBufferViewU8>,
+        view: HeapBufferSource<Uint8Array>,
         options: &ReadableStreamBYOBReaderReadOptions,
         can_gc: CanGc,
     ) {
@@ -2476,7 +2476,7 @@ impl Transferable for ReadableStream {
 
     /// Note: we are relying on the port transfer, so the data returned here are related to the port.
     fn serialized_storage<'a>(
-        data: StructuredData<'a, '_>,
+        data: StructuredData<'a>,
     ) -> &'a mut Option<FxHashMap<MessagePortId, Self::Data>> {
         match data {
             StructuredData::Reader(r) => &mut r.port_impls,

@@ -1437,7 +1437,7 @@ impl GlobalScope {
         can_gc: CanGc,
     ) {
         let cx = GlobalScope::get_cx();
-        rooted!(in(*cx) let mut cross_realm_transform = None);
+        let mut cross_realm_transform: Option<CrossRealmTransform> = None;
 
         let should_dispatch = if let MessagePortState::Managed(_id, message_ports) =
             &mut *self.message_port_state.borrow_mut()
@@ -1455,7 +1455,7 @@ impl GlobalScope {
                         let to_dispatch = port_impl.handle_incoming(task).map(|to_dispatch| {
                             (DomRoot::from_ref(&*managed_port.dom_port), to_dispatch)
                         });
-                        cross_realm_transform.set(managed_port.cross_realm_transform.clone());
+                        cross_realm_transform = managed_port.cross_realm_transform.clone();
                         to_dispatch
                     } else {
                         panic!("managed-port has no port-impl.");

@@ -141,7 +141,7 @@ pub(crate) unsafe fn uniform_typed<T>(
 {
     rooted!(in(cx) let mut rval = ptr::null_mut::<JSObject>());
     unsafe {
-        <TypedArray<T, *mut JSObject>>::create(cx, CreateWith::Slice(value), rval.handle_mut())
+        <T::ArrayType as TypedArray>::create(cx, CreateWith::Slice(value), rval.handle_mut())
     }
     .unwrap();
     retval.set(ObjectValue(rval.get()));

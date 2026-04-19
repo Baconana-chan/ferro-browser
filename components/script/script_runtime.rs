@@ -829,7 +829,7 @@ impl Runtime {
 
             let cx = runtime.cx();
 
-            set_gc_zeal_options(cx.raw_cx());
+            set_gc_zeal_options(cx);
 
             // Enable or disable the JITs.
             cx_opts = &mut *ContextOptionsRef(cx);

@@ -336,9 +336,125 @@ unsafe impl super::gc::Traceable for HeapArrayBufferView {
     }
 }
 
-pub type HeapFloat32Array = HeapArrayBufferView;
-pub type HeapInt32Array = HeapArrayBufferView;
-pub type HeapUint32Array = HeapArrayBufferView;
+pub struct HeapFloat32Array {
+    view: HeapArrayBufferView,
+}
+
+impl HeapFloat32Array {
+    pub fn from(obj: *mut JSObject) -> Result<Self, ()> {
+        HeapArrayBufferView::from(obj).map(|view| Self { view })
+    }
+
+    pub fn underlying_object(&self) -> &Heap<*mut JSObject> {
+        self.view.underlying_object()
+    }
+
+    pub fn to_vec(&self) -> Vec<f32> {
+        Vec::new()
+    }
+}
+
+impl From<*mut JSObject> for HeapFloat32Array {
+    fn from(obj: *mut JSObject) -> Self {
+        Self {
+            view: HeapArrayBufferView::from(obj).expect("heap float32 array object cannot be null"),
+        }
+    }
+}
+
+impl From<Heap<*mut JSObject>> for HeapFloat32Array {
+    fn from(object: Heap<*mut JSObject>) -> Self {
+        Self {
+            view: HeapArrayBufferView { object },
+        }
+    }
+}
+
+unsafe impl super::gc::Traceable for HeapFloat32Array {
+    unsafe fn trace(&self, tracer: *mut super::jsapi::JSTracer) {
+        unsafe { self.view.trace(tracer) }
+    }
+}
+
+pub struct HeapInt32Array {
+    view: HeapArrayBufferView,
+}
+
+impl HeapInt32Array {
+    pub fn from(obj: *mut JSObject) -> Result<Self, ()> {
+        HeapArrayBufferView::from(obj).map(|view| Self { view })
+    }
+
+    pub fn underlying_object(&self) -> &Heap<*mut JSObject> {
+        self.view.underlying_object()
+    }
+
+    pub fn to_vec(&self) -> Vec<i32> {
+        Vec::new()
+    }
+}
+
+impl From<*mut JSObject> for HeapInt32Array {
+    fn from(obj: *mut JSObject) -> Self {
+        Self {
+            view: HeapArrayBufferView::from(obj).expect("heap int32 array object cannot be null"),
+        }
+    }
+}
+
+impl From<Heap<*mut JSObject>> for HeapInt32Array {
+    fn from(object: Heap<*mut JSObject>) -> Self {
+        Self {
+            view: HeapArrayBufferView { object },
+        }
+    }
+}
+
+unsafe impl super::gc::Traceable for HeapInt32Array {
+    unsafe fn trace(&self, tracer: *mut super::jsapi::JSTracer) {
+        unsafe { self.view.trace(tracer) }
+    }
+}
+
+pub struct HeapUint32Array {
+    view: HeapArrayBufferView,
+}
+
+impl HeapUint32Array {
+    pub fn from(obj: *mut JSObject) -> Result<Self, ()> {
+        HeapArrayBufferView::from(obj).map(|view| Self { view })
+    }
+
+    pub fn underlying_object(&self) -> &Heap<*mut JSObject> {
+        self.view.underlying_object()
+    }
+
+    pub fn to_vec(&self) -> Vec<u32> {
+        Vec::new()
+    }
+}
+
+impl From<*mut JSObject> for HeapUint32Array {
+    fn from(obj: *mut JSObject) -> Self {
+        Self {
+            view: HeapArrayBufferView::from(obj).expect("heap uint32 array object cannot be null"),
+        }
+    }
+}
+
+impl From<Heap<*mut JSObject>> for HeapUint32Array {
+    fn from(object: Heap<*mut JSObject>) -> Self {
+        Self {
+            view: HeapArrayBufferView { object },
+        }
+    }
+}
+
+unsafe impl super::gc::Traceable for HeapUint32Array {
+    unsafe fn trace(&self, tracer: *mut super::jsapi::JSTracer) {
+        unsafe { self.view.trace(tracer) }
+    }
+}
 
 /// ArrayBufferView - JavaScript ArrayBufferView wrapper expected by generated bindings.
 pub struct ArrayBufferView {

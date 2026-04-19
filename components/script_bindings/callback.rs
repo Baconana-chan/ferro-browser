@@ -10,13 +10,27 @@ mod boa_impl {
     use std::rc::Rc;
     use malloc_size_of::MallocSizeOf;
     use crate::js::jsapi::{Heap, JSObject};
+    use crate::js::rust::HandleObject;
     use crate::js::jsval::JSVal;
     use crate::DomTypes;
+    use crate::reflector::DomObject;
     use crate::script_runtime::JSContext;
     use crate::JSTraceable;
 
     pub trait ThisReflector {
         fn jsobject(&self) -> *mut JSObject { std::ptr::null_mut() }
+    }
+
+    impl<T: DomObject> ThisReflector for T {
+        fn jsobject(&self) -> *mut JSObject {
+            self.reflector().get_jsobject().get()
+        }
+    }
+
+    impl ThisReflector for HandleObject<'_> {
+        fn jsobject(&self) -> *mut JSObject {
+            self.get()
+        }
     }
 
     #[derive(Clone, Copy, PartialEq)]

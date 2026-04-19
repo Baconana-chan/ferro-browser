@@ -651,7 +651,7 @@ impl Serializable for ImageBitmap {
     }
 
     fn serialized_storage<'a>(
-        data: StructuredData<'a, '_>,
+        data: StructuredData<'a>,
     ) -> &'a mut Option<FxHashMap<ImageBitmapId, Self::Data>> {
         match data {
             StructuredData::Reader(r) => &mut r.image_bitmaps,
@@ -708,7 +708,7 @@ impl Transferable for ImageBitmap {
     }
 
     fn serialized_storage<'a>(
-        data: StructuredData<'a, '_>,
+        data: StructuredData<'a>,
     ) -> &'a mut Option<FxHashMap<ImageBitmapId, Self::Data>> {
         match data {
             StructuredData::Reader(r) => &mut r.transferred_image_bitmaps,

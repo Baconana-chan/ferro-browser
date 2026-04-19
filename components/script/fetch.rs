@@ -333,7 +333,7 @@ pub(crate) fn FetchLater(
         signal.Reason(cx, abort_reason.handle_mut());
         unsafe {
             assert!(!JS_IsExceptionPending(*cx));
-            JS_SetPendingException(*cx, abort_reason.handle(), ExceptionStackBehavior::Capture);
+            JS_SetPendingException(*cx, abort_reason.handle(), ExceptionStackBehavior::Capture as u32);
         }
         return Err(Error::JSFailed);
     }

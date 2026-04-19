@@ -126,12 +126,7 @@ impl From<TransferrableInterface> for StructuredCloneTags {
 
 fn reader_for_type(
     val: SerializableInterface,
-) -> unsafe fn(
-    &GlobalScope,
-    *mut JSStructuredCloneReader,
-    &mut StructuredDataReader<'_>,
-    CanGc,
-) -> *mut JSObject {
+) -> unsafe fn(&GlobalScope, *mut JSStructuredCloneReader, &mut StructuredDataReader, CanGc) -> *mut JSObject {
     match val {
         SerializableInterface::Blob => read_object::<Blob>,
         SerializableInterface::DomPoint => read_object::<DOMPoint>,
@@ -151,7 +146,7 @@ fn reader_for_type(
 unsafe fn read_object<T: Serializable>(
     owner: &GlobalScope,
     r: *mut JSStructuredCloneReader,
-    sc_reader: &mut StructuredDataReader<'_>,
+    sc_reader: &mut StructuredDataReader,
     can_gc: CanGc,
 ) -> *mut JSObject {
     let mut name_space: u32 = 0;
@@ -239,7 +234,7 @@ unsafe extern "C" fn read_callback(
     );
 
     unsafe {
-        let sc_reader = &mut *(closure as *mut StructuredDataReader<'_>);
+        let sc_reader = &mut *(closure as *mut StructuredDataReader);
         let in_realm_proof = AlreadyInRealm::assert_for_cx(SafeJSContext::from_ptr(cx));
         let global = GlobalScope::from_context(cx, InRealm::Already(&in_realm_proof));
         for serializable in SerializableInterface::iter() {
@@ -322,7 +317,7 @@ unsafe extern "C" fn write_callback(
 
 fn receiver_for_type(
     val: TransferrableInterface,
-) -> fn(&GlobalScope, &mut StructuredDataReader<'_>, u64, RawMutableHandleObject) -> Result<(), ()>
+) -> fn(&GlobalScope, &mut StructuredDataReader, u64, RawMutableHandleObject) -> Result<(), ()>
 {
     match val {
         TransferrableInterface::ImageBitmap => receive_object::<ImageBitmap>,
@@ -336,7 +331,7 @@ fn receiver_for_type(
 
 fn receive_object<T: Transferable>(
     owner: &GlobalScope,
-    sc_reader: &mut StructuredDataReader<'_>,
+    sc_reader: &mut StructuredDataReader,
     extra_data: u64,
     return_object: RawMutableHandleObject,
 ) -> Result<(), ()> {
@@ -390,7 +385,7 @@ unsafe extern "C" fn read_transfer_callback(
     closure: *mut raw::c_void,
     return_object: RawMutableHandleObject,
 ) -> bool {
-    let sc_reader = unsafe { &mut *(closure as *mut StructuredDataReader<'_>) };
+    let sc_reader = unsafe { &mut *(closure as *mut StructuredDataReader) };
     let in_realm_proof = unsafe { AlreadyInRealm::assert_for_cx(SafeJSContext::from_ptr(cx)) };
     let owner = unsafe { GlobalScope::from_context(cx, InRealm::Already(&in_realm_proof)) };
 
@@ -572,27 +567,27 @@ unsafe extern "C" fn sab_cloned_callback(
 static STRUCTURED_CLONE_CALLBACKS: JSStructuredCloneCallbacks = JSStructuredCloneCallbacks {
     read: Some(read_callback),
     write: Some(write_callback),
-    reportError: Some(report_error_callback),
-    readTransfer: Some(read_transfer_callback),
-    writeTransfer: Some(write_transfer_callback),
-    freeTransfer: Some(free_transfer_callback),
-    canTransfer: Some(can_transfer_callback),
+    report_error: Some(report_error_callback),
+    read_transfer: Some(read_transfer_callback),
+    write_transfer: Some(write_transfer_callback),
+    free_transfer: Some(free_transfer_callback),
+    can_transfer: Some(can_transfer_callback),
     sabCloned: Some(sab_cloned_callback),
 };
 
-pub(crate) enum StructuredData<'a, 'b> {
-    Reader(&'a mut StructuredDataReader<'b>),
+pub(crate) enum StructuredData<'a> {
+    Reader(&'a mut StructuredDataReader),
     Writer(&'a mut StructuredDataWriter),
 }
 
 /// Reader and writer structs for results from, and inputs to, structured-data read/write operations.
 /// <https://html.spec.whatwg.org/multipage/#safe-passing-of-structured-data>
 #[repr(C)]
-pub(crate) struct StructuredDataReader<'a> {
+pub(crate) struct StructuredDataReader {
     /// A error record.
     error: Option<Error>,
     /// Rooted copies of every deserialized object to ensure they are not garbage collected.
-    roots: RootedVec<'a, Box<Heap<*mut JSObject>>>,
+    roots: RootedVec<Box<Heap<*mut JSObject>>>,
     /// A map of port implementations,
     /// used as part of the "transfer-receiving" steps of ports,
     /// to produce the DOM ports stored in `message_ports` above.
@@ -677,11 +672,11 @@ pub(crate) fn write(
         let mut sc_writer = StructuredDataWriter::default();
         let sc_writer_ptr = &mut sc_writer as *mut _;
 
-        let scbuf = JSAutoStructuredCloneBufferWrapper::new(
+        let mut scbuf = JSAutoStructuredCloneBufferWrapper::new(
             StructuredCloneScope::DifferentProcess,
             &STRUCTURED_CLONE_CALLBACKS,
         );
-        let scdata = &mut ((*scbuf.as_raw_ptr()).data_);
+        let scdata = &mut ((*scbuf.as_raw_mut_ptr()).data_);
         let policy = CloneDataPolicy {
             allowIntraClusterClonableSharedObjects_: false,
             allowSharedMemoryObjects_: false,
@@ -762,11 +757,11 @@ pub(crate) fn read(
     };
     let sc_reader_ptr = &mut sc_reader as *mut _;
     unsafe {
-        let scbuf = JSAutoStructuredCloneBufferWrapper::new(
+        let mut scbuf = JSAutoStructuredCloneBufferWrapper::new(
             StructuredCloneScope::DifferentProcess,
             &STRUCTURED_CLONE_CALLBACKS,
         );
-        let scdata = &mut ((*scbuf.as_raw_ptr()).data_);
+        let scdata = &mut ((*scbuf.as_raw_mut_ptr()).data_);
 
         WriteBytesToJSStructuredCloneData(
             data.serialized.as_mut_ptr() as *const u8,

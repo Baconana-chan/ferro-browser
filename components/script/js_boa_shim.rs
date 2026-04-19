@@ -24,7 +24,7 @@ pub use boa_bindings::js_compat::jsid;
 
 // Realm is a sub-module of context in our compat layer
 pub mod realm {
-    pub use boa_bindings::js_compat::context::*;
+    pub use boa_bindings::js_compat::realm::*;
 }
 
 // Re-export root-level types and constants

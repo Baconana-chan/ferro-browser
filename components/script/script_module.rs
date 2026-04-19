@@ -609,7 +609,7 @@ impl ModuleTree {
                 JS_SetPendingException(
                     *GlobalScope::get_cx(),
                     exception.handle(),
-                    ExceptionStackBehavior::Capture,
+                    ExceptionStackBehavior::Capture as u32,
                 );
             }
             report_pending_exception(GlobalScope::get_cx(), true, InRealm::Entered(&ar), can_gc);
@@ -1129,11 +1129,8 @@ impl ModuleOwner {
 
         rooted!(in(*cx) let mut rval = UndefinedValue());
         if network_error.is_none() && existing_rethrow_error.is_none() {
-            let record = module_tree
-                .get_record()
-                .borrow()
-                .as_ref()
-                .map(|record| record.handle());
+            let record_borrow = module_tree.get_record().borrow();
+            let record = record_borrow.as_ref().map(|record| record.handle());
 
             if let Some(record) = record {
                 let evaluated = module_tree
@@ -1150,13 +1147,13 @@ impl ModuleOwner {
         match (network_error, existing_rethrow_error) {
             (Some(_), _) => unsafe {
                 let err = gen_type_error(&global, "Dynamic import failed".to_owned(), can_gc);
-                JS_SetPendingException(*cx, err.handle(), ExceptionStackBehavior::Capture);
+                JS_SetPendingException(*cx, err.handle(), ExceptionStackBehavior::Capture as u32);
             },
             (None, Some(rethrow_error)) => unsafe {
                 JS_SetPendingException(
                     *cx,
                     rethrow_error.handle(),
-                    ExceptionStackBehavior::Capture,
+                    ExceptionStackBehavior::Capture as u32,
                 );
             },
             // do nothing if there's no errors
@@ -1442,7 +1439,7 @@ pub(crate) unsafe extern "C" fn host_import_module_dynamically(
         promise,
         CanGc::note(),
     ) {
-        unsafe { JS_SetPendingException(*cx, e.handle(), ExceptionStackBehavior::Capture) };
+        unsafe { JS_SetPendingException(*cx, e.handle(), ExceptionStackBehavior::Capture as u32) };
         return false;
     }
 

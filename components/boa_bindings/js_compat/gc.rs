@@ -4,10 +4,18 @@
 // SpiderMonkey gc module compatibility layer for Boa
 
 use std::ptr;
+use std::fmt;
 use std::marker::PhantomData;
+use std::num::{NonZeroI8, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI128, NonZeroIsize};
+use std::num::{NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU128, NonZeroUsize};
 use std::ops::{Deref, DerefMut};
+use std::thread::JoinHandle;
+use std::time::{Duration, Instant, SystemTime};
 
-use super::jsapi::{JSTracer, Value, JSObject, JSString, StringId};
+use crate::reflector::DomObject;
+use crate::root::Dom;
+
+use super::jsapi::{JSTracer, Value, JSObject, JSString, StringId, SymbolId};
 use super::glue::{PropertyDescriptor, jsid, PropertyKey};
 
 /// GCMethods - trait for types that need GC management
@@ -43,6 +51,18 @@ impl GCMethods for *mut JSString {
     }
 }
 
+impl GCMethods for *mut super::jsapi::JSFunction {
+    unsafe fn initial() -> Self {
+        ptr::null_mut()
+    }
+}
+
+impl GCMethods for *mut super::jsapi::JSScript {
+    unsafe fn initial() -> Self {
+        ptr::null_mut()
+    }
+}
+
 impl GCMethods for jsid {
     unsafe fn initial() -> Self {
         jsid::VOID
@@ -60,6 +80,42 @@ impl GCMethods for PropertyDescriptor {
 impl GCMethods for StringId {
     unsafe fn initial() -> Self {
         StringId(ptr::null_mut())
+    }
+}
+
+impl GCMethods for SymbolId {
+    unsafe fn initial() -> Self {
+        SymbolId(ptr::null_mut())
+    }
+}
+
+impl GCMethods for String {
+    unsafe fn initial() -> Self {
+        String::new()
+    }
+}
+
+impl<T: Default> GCMethods for super::jsapi::Heap<T> {
+    unsafe fn initial() -> Self {
+        super::jsapi::Heap::new()
+    }
+}
+
+impl<T: DomObject> GCMethods for Dom<T> {
+    unsafe fn initial() -> Self {
+        Dom::from_ptr(std::ptr::NonNull::<T>::dangling().as_ptr())
+    }
+}
+
+impl<T: Default> GCMethods for Box<T> {
+    unsafe fn initial() -> Self {
+        Box::new(T::default())
+    }
+}
+
+impl<T> GCMethods for Option<T> {
+    unsafe fn initial() -> Self {
+        None
     }
 }
 
@@ -177,7 +233,7 @@ pub struct RootedVec<T> {
     vec: Vec<T>,
 }
 
-impl<T: GCMethods> RootedVec<T> {
+impl<T> RootedVec<T> {
     pub fn new() -> Self {
         Self { vec: Vec::new() }
     }
@@ -211,7 +267,7 @@ impl<T: GCMethods> RootedVec<T> {
     }
 }
 
-impl<T: GCMethods> Default for RootedVec<T> {
+impl<T> Default for RootedVec<T> {
     fn default() -> Self {
         Self::new()
     }
@@ -242,6 +298,13 @@ pub enum GCProgress {
     GcSliceBegin = 1,
     GcSliceEnd = 2,
     GcCycleEnd = 3,
+}
+
+impl GCProgress {
+    pub const GC_CYCLE_BEGIN: Self = Self::GcCycleBegin;
+    pub const GC_SLICE_BEGIN: Self = Self::GcSliceBegin;
+    pub const GC_SLICE_END: Self = Self::GcSliceEnd;
+    pub const GC_CYCLE_END: Self = Self::GcCycleEnd;
 }
 
 #[repr(u32)]
@@ -280,6 +343,7 @@ pub enum GCReason {
     AbortGC = 30,
     FullWholeCell = 31,
     NoSuchReason = 32,
+    DOM_TESTUTILS = 33,
 }
 
 /// Root - a rooted value
@@ -288,13 +352,33 @@ pub struct Root<T> {
     value: T,
 }
 
-impl<T: GCMethods> Root<T> {
+impl<T> Root<T> {
     pub fn new(value: T) -> Self {
         Self { value }
     }
+
+    pub(crate) fn as_ptr(&self) -> *const T {
+        &self.value as *const T
+    }
+
+    pub(crate) fn as_mut_ptr(&mut self) -> *mut T {
+        &mut self.value as *mut T
+    }
 }
 
-impl<T: Copy> Root<T> {
+impl<T> super::rust::IntoRawPtr<T> for Root<T> {
+    fn into_raw_ptr(self) -> *const T {
+        self.as_ptr()
+    }
+}
+
+impl<T> super::rust::IntoMutRawPtr<T> for Root<T> {
+    fn into_mut_raw_ptr(mut self) -> *mut T {
+        self.as_mut_ptr()
+    }
+}
+
+impl<T> Root<T> {
     /// Get a Handle to this rooted value
     pub fn handle(&self) -> super::rust::Handle<'_, T> {
         unsafe { super::rust::Handle::from_raw(&self.value) }
@@ -304,7 +388,9 @@ impl<T: Copy> Root<T> {
     pub fn handle_mut(&mut self) -> super::rust::MutableHandle<'_, T> {
         unsafe { super::rust::MutableHandle::from_raw(&mut self.value) }
     }
-    
+}
+
+impl<T: Copy> Root<T> {
     /// Get the contained value
     pub fn get(&self) -> T {
         self.value
@@ -339,6 +425,26 @@ impl<T> Root<T> {
     }
 }
 
+impl Root<super::jsapi::ValueBits> {
+    pub fn to_object(&self) -> *mut JSObject {
+        super::jsapi::Value { data: self.value.asBits_ }.to_object()
+    }
+
+    pub fn to_int32(&self) -> i32 {
+        super::jsapi::Value { data: self.value.asBits_ }.to_i32()
+    }
+}
+
+impl Root<super::jsapi::Value> {
+    pub fn to_int32(&self) -> i32 {
+        self.value.to_i32()
+    }
+
+    pub fn to_string(&self) -> *mut JSString {
+        self.value.to_string()
+    }
+}
+
 impl<T> Deref for Root<T> {
     type Target = T;
     
@@ -350,6 +456,12 @@ impl<T> Deref for Root<T> {
 impl<T> DerefMut for Root<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.value
+    }
+}
+
+impl<T: fmt::Display> fmt::Display for Root<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.value.fmt(f)
     }
 }
 
@@ -432,16 +544,22 @@ macro_rules! auto_root {
 #[macro_export]
 macro_rules! rooted_vec {
     (let $name:ident) => {
-        let $name = ::std::vec::Vec::new();
+        let $name = $crate::js::gc::RootedVec::new();
     };
     (let mut $name:ident) => {
-        let mut $name = ::std::vec::Vec::new();
+        let mut $name = $crate::js::gc::RootedVec::new();
     };
     (let $name:ident <- $iter:expr) => {
-        let $name: ::std::vec::Vec<_> = ($iter).collect();
+        let mut $name = $crate::js::gc::RootedVec::new();
+        for value in $iter {
+            $name.push(value);
+        }
     };
     (let mut $name:ident <- $iter:expr) => {
-        let mut $name: ::std::vec::Vec<_> = ($iter).collect();
+        let mut $name = $crate::js::gc::RootedVec::new();
+        for value in $iter {
+            $name.push(value);
+        }
     };
 }
 
@@ -511,6 +629,21 @@ unsafe impl Traceable for f64 { unsafe fn trace(&self, _: *mut JSTracer) {} }
 unsafe impl Traceable for char { unsafe fn trace(&self, _: *mut JSTracer) {} }
 unsafe impl Traceable for String { unsafe fn trace(&self, _: *mut JSTracer) {} }
 unsafe impl Traceable for str { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for Duration { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for Instant { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for SystemTime { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for NonZeroI8 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for NonZeroI16 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for NonZeroI32 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for NonZeroI64 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for NonZeroI128 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for NonZeroIsize { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for NonZeroU8 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for NonZeroU16 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for NonZeroU32 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for NonZeroU64 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for NonZeroU128 { unsafe fn trace(&self, _: *mut JSTracer) {} }
+unsafe impl Traceable for NonZeroUsize { unsafe fn trace(&self, _: *mut JSTracer) {} }
 
 // Atomics
 use std::sync::atomic::{AtomicBool, AtomicI8, AtomicI16, AtomicI32, AtomicI64, AtomicIsize};
@@ -559,6 +692,16 @@ unsafe impl<T: Traceable + Copy> Traceable for Cell<T> {
     }
 }
 
+unsafe impl<A: Traceable, B: Traceable, C: Traceable, D: Traceable> Traceable for (A, B, C, D) {
+    #[inline]
+    unsafe fn trace(&self, tracer: *mut JSTracer) {
+        self.0.trace(tracer);
+        self.1.trace(tracer);
+        self.2.trace(tracer);
+        self.3.trace(tracer);
+    }
+}
+
 unsafe impl<T: Traceable> Traceable for RefCell<T> {
     #[inline]
     unsafe fn trace(&self, tracer: *mut JSTracer) {
@@ -570,6 +713,22 @@ unsafe impl<T: Traceable> Traceable for UnsafeCell<T> {
     #[inline]
     unsafe fn trace(&self, tracer: *mut JSTracer) {
         (*self.get()).trace(tracer);
+    }
+}
+
+unsafe impl Traceable for super::rust::Runtime {
+    #[inline]
+    unsafe fn trace(&self, _: *mut JSTracer) {}
+}
+
+unsafe impl Traceable for *mut super::jsapi::JobQueue {
+    #[inline]
+    unsafe fn trace(&self, _: *mut JSTracer) {}
+}
+
+impl GCMethods for super::jsapi::ValueBits {
+    unsafe fn initial() -> Self {
+        super::jsapi::ValueBits { asBits_: 0 }
     }
 }
 
@@ -675,6 +834,19 @@ unsafe impl<T: Traceable + ?Sized> Traceable for Arc<T> {
     #[inline]
     unsafe fn trace(&self, tracer: *mut JSTracer) {
         (**self).trace(tracer);
+    }
+}
+
+unsafe impl<T> Traceable for JoinHandle<T> {
+    #[inline]
+    unsafe fn trace(&self, _: *mut JSTracer) {}
+}
+
+unsafe impl<T: Traceable> Traceable for std::ops::Range<T> {
+    #[inline]
+    unsafe fn trace(&self, tracer: *mut JSTracer) {
+        self.start.trace(tracer);
+        self.end.trace(tracer);
     }
 }
 

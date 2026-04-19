@@ -1516,17 +1516,17 @@ pub mod codegen {
         }
         
         pub enum Float32ArrayOrUnrestrictedFloatSequence {
-            Float32Array(()),
+            Float32Array(crate::js::typedarray::Float32Array),
             UnrestrictedFloatSequence(Vec<f32>),
         }
         
         pub enum Int32ArrayOrLongSequence {
-            Int32Array(()),
+            Int32Array(crate::js::typedarray::Int32Array),
             LongSequence(Vec<i32>),
         }
         
         pub enum Uint32ArrayOrUnsignedLongSequence {
-            Uint32Array(()),
+            Uint32Array(crate::js::typedarray::Uint32Array),
             UnsignedLongSequence(Vec<u32>),
         }
         

@@ -163,7 +163,7 @@ impl Serializable for QuotaExceededError {
 
     /// <https://webidl.spec.whatwg.org/#quotaexceedederror>
     fn serialized_storage<'a>(
-        data: StructuredData<'a, '_>,
+        data: StructuredData<'a>,
     ) -> &'a mut Option<FxHashMap<QuotaExceededErrorId, Self::Data>> {
         match data {
             StructuredData::Reader(reader) => &mut reader.quota_exceeded_errors,

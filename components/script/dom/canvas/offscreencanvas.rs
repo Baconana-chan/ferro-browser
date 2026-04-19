@@ -261,7 +261,7 @@ impl Transferable for OffscreenCanvas {
     }
 
     fn serialized_storage<'a>(
-        data: StructuredData<'a, '_>,
+        data: StructuredData<'a>,
     ) -> &'a mut Option<FxHashMap<OffscreenCanvasId, Self::Data>> {
         match data {
             StructuredData::Reader(r) => &mut r.offscreen_canvases,

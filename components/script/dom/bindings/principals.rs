@@ -2,6 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+use std::os::raw::c_void;
 use std::ptr::NonNull;
 
 use crate::js::glue::{DestroyRustJSPrincipals, GetRustJSPrincipalsPrivate, JSPrincipalsCallbacks};
@@ -21,37 +22,18 @@ use crate::DomTypeHolder;
 pub(crate) unsafe extern "C" fn destroy_servo_jsprincipal(principals: *mut JSPrincipals) {
     unsafe {
         Box::from_raw(GetRustJSPrincipalsPrivate(principals) as *mut MutableOrigin);
-        DestroyRustJSPrincipals(principals);
+        DestroyRustJSPrincipals(principals as *mut c_void);
     }
 }
 
 pub(crate) unsafe extern "C" fn write_jsprincipal(
-    principal: *mut JSPrincipals,
     _cx: *mut JSContext,
-    writer: *mut JSStructuredCloneWriter,
+    _principal: *mut c_void,
+    _writer: *mut c_void,
 ) -> bool {
-    let Some(principal) = NonNull::new(principal) else {
-        return false;
-    };
-    let obj = unsafe { ServoJSPrincipalsRef::from_raw_nonnull(principal) };
-    let origin = obj.origin();
-    let Ok(bytes_of_origin) = bincode::serialize(&origin) else {
-        return false;
-    };
-    let Ok(len) = bytes_of_origin.len().try_into() else {
-        return false;
-    };
-
-    unsafe {
-        if !crate::js::jsapi::JS_WriteUint32Pair(writer, StructuredCloneTags::Principals as u32, len) {
-            return false;
-        }
-        if !crate::js::jsapi::JS_WriteBytes(writer, bytes_of_origin.as_ptr() as _, len as usize) {
-            return false;
-        }
-    }
-
-    true
+    // Boa compatibility: stub implementation for now
+    // TODO: Implement proper principal serialization for Boa
+    false
 }
 
 pub(crate) unsafe extern "C" fn read_jsprincipal(
@@ -91,12 +73,7 @@ pub(crate) unsafe extern "C" fn read_jsprincipal(
 
 pub(crate) const PRINCIPALS_CALLBACKS: JSPrincipalsCallbacks = JSPrincipalsCallbacks {
     write: Some(write_jsprincipal),
-    isSystemOrAddonPrincipal: Some(principals_is_system_or_addon_principal),
 };
-
-unsafe extern "C" fn principals_is_system_or_addon_principal(_: *mut JSPrincipals) -> bool {
-    false
-}
 
 // TODO is same_origin_domain equivalent to subsumes for our purposes
 pub(crate) unsafe extern "C" fn subsumes(obj: *mut JSPrincipals, other: *mut JSPrincipals) -> bool {

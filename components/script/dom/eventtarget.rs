@@ -13,7 +13,7 @@ use std::rc::Rc;
 use deny_public_fields::DenyPublicFields;
 use dom_struct::dom_struct;
 use crate::js::jsapi::JS::CompileFunction;
-use crate::js::jsapi::{JS_GetFunctionObject, SupportUnscopables};
+use crate::js::jsapi::JS_GetFunctionObject;
 use crate::js::jsval::JSVal;
 use crate::js::rust::{CompileOptionsWrapper, HandleObject, transform_u16_to_source_text};
 use libc::c_char;
@@ -764,7 +764,7 @@ impl EventTarget {
         };
 
         // Step 3.9, subsection Scope steps 1-6
-        let scopechain = crate::js::rust::EnvironmentChain::new(*cx, SupportUnscopables::Yes);
+        let scopechain = crate::js::rust::EnvironmentChain::new(*cx, true);
 
         if let Some(element) = element {
             scopechain.append(document.reflector().get_jsobject().get());
@@ -778,7 +778,7 @@ impl EventTarget {
             CompileFunction(
                 *cx,
                 scopechain.get(),
-                options.ptr,
+                &*options.ptr,
                 name.as_ptr(),
                 args.len() as u32,
                 args.as_ptr(),

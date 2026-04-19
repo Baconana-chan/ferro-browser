@@ -9,6 +9,7 @@ use std::ptr::NonNull;
 use std::rc::Rc;
 
 use super::gc::Root as GcRoot;
+use super::gc::RootedVec;
 use super::jsapi::{Heap, JSContext, RawJSContext, JSObject, JSString, Value};
 use super::rust::{HandleValue, MutableHandleValue};
 use super::typedarray::{ArrayBuffer, ArrayBufferView, ArrayBufferViewTrait, Float32Array, HeapArrayBuffer, HeapArrayBufferView};
@@ -34,6 +35,10 @@ impl<T> ConversionResult<T> {
             ConversionResult::Success(v) => Some(v),
             ConversionResult::Failure(_) => None,
         }
+    }
+
+    pub fn get_success_value(self) -> Option<T> {
+        self.get()
     }
 }
 
@@ -116,6 +121,25 @@ impl ToJSValConvertible for u32 {
     }
 }
 
+impl<'a> ToJSValConvertible for HandleValue<'a> {
+    unsafe fn to_jsval(&self, _cx: *mut JSContext, rval: MutableHandleValue<'_>) {
+        rval.set(self.get());
+    }
+}
+
+impl<T: ToJSValConvertible> ToJSValConvertible for [T] {
+    unsafe fn to_jsval(&self, _cx: *mut JSContext, rval: MutableHandleValue<'_>) {
+        // Boa compatibility stub: array materialization is not implemented yet.
+        rval.set(Value::undefined());
+    }
+}
+
+impl<T: ToJSValConvertible, const N: usize> ToJSValConvertible for [T; N] {
+    unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
+        self.as_slice().to_jsval(cx, rval);
+    }
+}
+
 impl ToJSValConvertible for i64 {
     unsafe fn to_jsval(&self, _cx: *mut JSContext, rval: MutableHandleValue<'_>) {
         rval.set(Value::from_f64(*self as f64));
@@ -183,6 +207,12 @@ impl<T: ToJSValConvertible> ToJSValConvertible for Vec<T> {
     }
 }
 
+impl<T: ToJSValConvertible> ToJSValConvertible for RootedVec<T> {
+    unsafe fn to_jsval(&self, _cx: *mut JSContext, rval: MutableHandleValue<'_>) {
+        rval.set(Value::undefined());
+    }
+}
+
 impl<T: ToJSValConvertible + ?Sized> ToJSValConvertible for Rc<T> {
     unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
         unsafe { (**self).to_jsval(cx, rval) };
@@ -229,6 +259,12 @@ impl<T: Copy + ToJSValConvertible> ToJSValConvertible for Heap<T> {
     }
 }
 
+impl<T: Copy + ToJSValConvertible> ToJSValConvertible for Box<Heap<T>> {
+    unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
+        unsafe { self.get().to_jsval(cx, rval) };
+    }
+}
+
 impl ToJSValConvertible for ArrayBuffer {
     unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
         unsafe { self.underlying_object().to_jsval(cx, rval) };
@@ -253,13 +289,31 @@ impl ToJSValConvertible for HeapArrayBufferView {
     }
 }
 
+impl ToJSValConvertible for HeapFloat32Array {
+    unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
+        unsafe { self.underlying_object().get().to_jsval(cx, rval) };
+    }
+}
+
+impl ToJSValConvertible for HeapInt32Array {
+    unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
+        unsafe { self.underlying_object().get().to_jsval(cx, rval) };
+    }
+}
+
+impl ToJSValConvertible for HeapUint32Array {
+    unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
+        unsafe { self.underlying_object().get().to_jsval(cx, rval) };
+    }
+}
+
 impl ToJSValConvertible for Float32Array {
     unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
         unsafe { self.underlying_object().to_jsval(cx, rval) };
     }
 }
 
-use super::typedarray::{Uint8ClampedArray, Float64Array, Uint8Array};
+use super::typedarray::{Float64Array, HeapFloat32Array, HeapInt32Array, HeapUint32Array, Uint8Array, Uint8ClampedArray};
 
 impl ToJSValConvertible for Uint8ClampedArray {
     unsafe fn to_jsval(&self, cx: *mut JSContext, rval: MutableHandleValue<'_>) {
