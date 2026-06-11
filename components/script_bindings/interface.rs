@@ -43,7 +43,7 @@ use crate::guard::Guard;
 use crate::principals::ServoJSPrincipals;
 use crate::script_runtime::JSContext as SafeJSContext;
 use crate::utils::{
-    DOM_PROTOTYPE_SLOT, DOMJSClass, JSCLASS_DOM_GLOBAL, ProtoOrIfaceArray, get_proto_or_iface_array,
+    AsVoidPtr, DOM_PROTOTYPE_SLOT, DOMJSClass, JSCLASS_DOM_GLOBAL, ProtoOrIfaceArray, get_proto_or_iface_array,
 };
 
 /// The class of a non-callback interface object.
@@ -183,7 +183,9 @@ pub(crate) unsafe fn create_global_object<D: DomTypes>(
         OnNewGlobalHookOption::DontFireOnNewGlobalHook,
         &options as *const _ as *const libc::c_void,
     ));
-    assert!(!rval.is_null());
+    if rval.is_null() {
+        panic!("Failed to create global object in create_global_object: class={:p}", class as *const JSClass);
+    }
 
     // Initialize the reserved slots before doing anything that can GC, to
     // avoid getting trace hooks called on a partially initialized object.
@@ -247,7 +249,9 @@ pub(crate) fn create_callback_interface_object<D: DomTypes>(
     unsafe {
         rval.set(JS_NewObject(*cx, ptr::null()));
     }
-    assert!(!rval.is_null());
+    if rval.is_null() {
+        panic!("Failed to create object in create_callback_interface_object");
+    }
     define_guarded_constants::<D>(cx, rval.handle(), constants, global);
     define_name(cx, rval.handle(), name);
     define_on_global_object(cx, global, name, rval.handle());
@@ -386,7 +390,9 @@ pub(crate) fn create_object<D: DomTypes>(
     unsafe {
         rval.set(JS_NewObjectWithGivenProto(*cx, class, proto));
     }
-    assert!(!rval.is_null());
+    if rval.is_null() {
+        panic!("Failed to create object in create_object: class={:p}, proto={:p}", class as *const JSClass, proto.as_void_ptr());
+    }
     define_guarded_methods::<D>(cx, rval.handle(), methods, global);
     define_guarded_properties::<D>(cx, rval.handle(), properties, global);
     define_guarded_constants::<D>(cx, rval.handle(), constants, global);
@@ -502,7 +508,9 @@ fn create_unscopable_object(cx: SafeJSContext, names: &[&CStr], mut rval: Mutabl
             ptr::null(),
             HandleObject::null(),
         ));
-        assert!(!rval.is_null());
+        if rval.is_null() {
+            panic!("Failed to create object in create_unscopable_object");
+        }
         for &name in names {
             assert!(JS_DefineProperty(
                 *cx,
