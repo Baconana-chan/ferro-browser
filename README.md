@@ -2,7 +2,20 @@
 
 🦀 **Lightweight, minimalist web browser** built on [Servo](https://servo.org/) in pure Rust
 
-**Status**: Active development • **Platforms**: macOS, Linux, Windows, OpenHarmony, Android
+**Status**: Active development (non-regular updates) • **Platforms**: macOS, Linux, Windows, OpenHarmony, Android
+
+> ## ⚠️ This is an experiment, not a full Servo-based browser
+>
+> Ferro Browser is a **fork of Servo 0.0.3** where the original runtime was **ripped out**, not pulled in as a dependency. This isn't "Servo with some extras bolted on" — it's Servo with its brain removed and a new one transplanted in, to see if the patient survives.
+>
+> The goal of the project is to prove, in practice, that two components can be replaced and still be good enough for a runtime browser:
+>
+> 1. **GStreamer → FFmpeg** (media)
+> 2. **SpiderMonkey → Boa** (JavaScript engine, pure Rust)
+>
+> **Current state: the project is still broken in places.** Crashes and errors are now mostly caught at the runtime level instead of taking down the whole process, but that **does not mean the browser is stable or ready for daily use**. A lot is still missing, and a lot doesn't work the way it should yet.
+>
+> If you need a working browser, this isn't it. If you're curious whether Servo's JS engine and media backend can be swapped for pure-Rust alternatives without everything falling apart completely — welcome aboard.
 
 ⚠️ Ferro Browser aims to become an everyday browser in the future. At its current stage, it intentionally uses experimental and evolving technologies, which makes it unsuitable for daily or security-critical browsing.
 
@@ -18,6 +31,8 @@ Ferro Browser is a research project exploring a more streamlined browser experie
 ✅ **FFmpeg media** (no GStreamer overhead)
 
 ## Project Status
+
+**Updates are released as they're ready, not on a fixed schedule.** This is a side/research project — don't expect a changelog cadence.
 
 ### ✅ Completed (Priority 1: Critical Usability)
 
